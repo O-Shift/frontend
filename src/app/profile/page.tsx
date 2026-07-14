@@ -163,14 +163,14 @@ export default function ProfilePage() {
 
             <div style={{ padding: '80px 60px', maxWidth: 1100, margin: '0 auto', width: '100%', position: 'relative', zIndex: 1 }}>
                 
-                {/* HERO SECTION */}
+
                 <motion.div 
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                     style={{ position: 'relative', marginBottom: 80, minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
                 >
-                    {/* GIANT BACKGROUND LOGO */}
+
                     <div className="giant-bg-logo">
                         <svg width="400" height="400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
@@ -178,13 +178,12 @@ export default function ProfilePage() {
                     </div>
 
                     <div style={{ position: 'relative', zIndex: 1 }}>
-                        {/* HUGE CINEMATIC NAME */}
+
                         <h2 style={{ 
                             fontSize: 110, 
-                            fontWeight: 400, 
+                            fontWeight: 700, 
                             margin: '0 0 32px 0', 
                             color: 'var(--text-primary)', 
-                            fontFamily: '"Playfair Display", "Times New Roman", Times, serif',
                             letterSpacing: '0.05em',
                             lineHeight: 0.9,
                             textTransform: 'uppercase'
@@ -204,16 +203,34 @@ export default function ProfilePage() {
                                     letterSpacing: '0.2em'
                                 }}>{PROFILE_DATA.jobTitle}</p>
                                 
-                                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                    <span className="profile-meta-chip">
-                                        {PROFILE_DATA.company}
-                                    </span>
-                                    <span className="profile-meta-chip">
-                                        {PROFILE_DATA.department}
-                                    </span>
-                                    <span className="profile-meta-chip role-chip">
-                                        {PROFILE_DATA.workspaceRole}
-                                    </span>
+                                <div 
+                                    className="spotlight-container"
+                                    onMouseMove={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const x = e.clientX - rect.left;
+                                        const y = e.clientY - rect.top;
+                                        e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
+                                        e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
+                                    }}
+                                    style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        gap: 12, 
+                                        flexWrap: 'wrap',
+                                        fontSize: 13,
+                                        color: 'var(--text-secondary)',
+                                        letterSpacing: '0.05em',
+                                        textTransform: 'uppercase',
+                                        fontWeight: 500,
+                                        padding: '12px 20px',
+                                        marginLeft: '-20px',
+                                        borderRadius: '8px'
+                                    }}>
+                                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, position: 'relative', zIndex: 1 }}>{PROFILE_DATA.company}</span>
+                                    <span style={{ opacity: 0.3, position: 'relative', zIndex: 1 }}>•</span>
+                                    <span style={{ position: 'relative', zIndex: 1 }}>{PROFILE_DATA.department}</span>
+                                    <span style={{ opacity: 0.3, position: 'relative', zIndex: 1 }}>•</span>
+                                    <span style={{ color: '#FF5A00', fontWeight: 600, position: 'relative', zIndex: 1 }}>{PROFILE_DATA.workspaceRole}</span>
                                 </div>
                             </div>
                             
@@ -226,7 +243,7 @@ export default function ProfilePage() {
                     </div>
                 </motion.div>
 
-                {/* BIO */}
+
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -246,7 +263,6 @@ export default function ProfilePage() {
                                 padding: '16px',
                                 color: 'var(--text-primary)',
                                 fontSize: 16,
-                                fontFamily: '"Playfair Display", "Times New Roman", Times, serif',
                                 fontStyle: 'italic',
                                 outline: 'none',
                                 resize: 'vertical'
@@ -258,7 +274,6 @@ export default function ProfilePage() {
                             fontSize: 18, 
                             lineHeight: 1.8, 
                             color: 'var(--text-secondary)',
-                            fontFamily: '"Playfair Display", "Times New Roman", Times, serif',
                             fontStyle: 'italic',
                             borderLeft: '2px solid #FF5A00',
                             paddingLeft: 32
@@ -268,28 +283,41 @@ export default function ProfilePage() {
                     )}
                 </motion.div>
 
-                {/* MONITORED COMPETITORS MARQUEE (RESTORED) */}
+
                 <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5, duration: 1 }}
                 >
-                    <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', marginBottom: 8, marginLeft: 32 }}>
+                    <h3 style={{ 
+                        fontSize: 24, 
+                        fontWeight: 600, 
+                        color: 'var(--text-primary)', 
+                        letterSpacing: '0.02em',
+                        margin: '0 0 16px 32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12
+                    }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF5A00', display: 'inline-block' }} />
                         Monitored Competitors
-                    </div>
+                    </h3>
                     <div className="competitor-marquee-wrapper">
                         <div className="competitor-marquee-content">
                             {marqueeItems.map((comp, idx) => (
-                                <div key={idx} className="competitor-logo">
-                                    {comp.icon}
-                                    <span className="competitor-name">{comp.name}</span>
+                                <div key={idx} className="competitor-card">
+                                    <div className="competitor-card-glow" />
+                                    <div className="competitor-card-content">
+                                        <div className="competitor-icon-wrapper">{comp.icon}</div>
+                                        <span className="competitor-name">{comp.name}</span>
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </motion.div>
 
-                {/* TABS */}
+
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -323,7 +351,7 @@ export default function ProfilePage() {
                     ))}
                 </motion.div>
 
-                {/* CONTENT */}
+
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={activeSection}
@@ -332,7 +360,7 @@ export default function ProfilePage() {
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     >
-                        {/* OVERVIEW */}
+
                         {activeSection === 'overview' && (
                             <motion.div variants={containerVariants} initial="hidden" animate="show">
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 60 }}>
@@ -352,21 +380,30 @@ export default function ProfilePage() {
                             </motion.div>
                         )}
 
-                        {/* CORPORATE IDENTITY */}
+
                         {activeSection === 'corporate' && (
-                            <motion.div variants={containerVariants} initial="hidden" animate="show" className="profile-detail-list">
-                                {Object.entries(PROFILE_DATA.corporate).map(([key, value]) => (
-                                    <motion.div variants={itemVariants} key={key} className="profile-detail-row">
-                                        <span className="detail-label">
+                            <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24 }}>
+                                {Object.entries(PROFILE_DATA.corporate).map(([key, value], idx) => (
+                                    <motion.div 
+                                        variants={{
+                                            hidden: { opacity: 0, scale: 0.9, y: 20 },
+                                            show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 400, damping: 20 } }
+                                        }} 
+                                        key={key} 
+                                        className="corporate-card"
+                                        whileHover={{ scale: 1.02, rotate: idx % 2 === 0 ? 1 : -1 }}
+                                    >
+                                        <div className="corporate-glow-blob" />
+                                        <span className="corporate-label">
                                             {key.replace(/([A-Z])/g, ' $1')}
                                         </span>
-                                        <span className="detail-value">{value}</span>
+                                        <span className="corporate-value">{value}</span>
                                     </motion.div>
                                 ))}
                             </motion.div>
                         )}
 
-                        {/* AREAS OF FOCUS */}
+
                         {activeSection === 'focus' && (
                             <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
                                 {PROFILE_DATA.areasOfFocus.map((area, i) => (
@@ -380,7 +417,7 @@ export default function ProfilePage() {
                             </motion.div>
                         )}
 
-                        {/* MARKETS & REGIONS */}
+
                         {activeSection === 'markets' && (
                             <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
                                 <motion.div variants={itemVariants}>
@@ -410,23 +447,36 @@ export default function ProfilePage() {
                             </motion.div>
                         )}
 
-                        {/* STRATEGIC OBJECTIVES */}
+
                         {activeSection === 'objectives' && (
-                            <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                            <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 32, position: 'relative', paddingLeft: 40 }}>
+                                <motion.div 
+                                    initial={{ height: 0 }} 
+                                    animate={{ height: '100%' }} 
+                                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                                    style={{ position: 'absolute', left: 8, top: 0, width: 2, background: 'linear-gradient(to bottom, #FF5A00, transparent)' }} 
+                                />
                                 {PROFILE_DATA.objectives.map((obj, i) => (
-                                    <motion.div variants={itemVariants} key={i} className="objective-card-large">
-                                        <div>
-                                            <h4 style={{ margin: '0 0 8px 0', fontSize: 24, fontFamily: '"Playfair Display", "Times New Roman", Times, serif', fontWeight: 400, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>{obj.title}</h4>
-                                            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)' }}>Target: {obj.deadline}</div>
-                                        </div>
-                                        <div>
-                                            <span className="objective-status-badge" style={{
-                                                background: obj.status === 'Completed' ? 'rgba(16, 185, 129, 0.1)' : obj.status === 'At Risk' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 90, 0, 0.1)',
-                                                color: obj.status === 'Completed' ? '#10B981' : obj.status === 'At Risk' ? '#EF4444' : '#FF5A00',
-                                                borderColor: obj.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : obj.status === 'At Risk' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 90, 0, 0.2)'
-                                            }}>
-                                                {obj.status}
-                                            </span>
+                                    <motion.div 
+                                        variants={{
+                                            hidden: { opacity: 0, x: -30 },
+                                            show: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+                                        }} 
+                                        key={i} 
+                                        className="objective-timeline-card group"
+                                    >
+                                        <div className="objective-timeline-dot" />
+                                        <div className="objective-card-inner">
+                                            <div style={{ flex: 1 }}>
+                                                <h4 className="objective-title">{obj.title}</h4>
+                                                <div className="objective-meta">Target: {obj.deadline}</div>
+                                            </div>
+                                            <div className="objective-status-wrapper">
+                                                <span className={`objective-status-badge status-${obj.status.replace(/\s+/g, '-').toLowerCase()}`}>
+                                                    <span className="status-dot" />
+                                                    {obj.status}
+                                                </span>
+                                            </div>
                                         </div>
                                     </motion.div>
                                 ))}
