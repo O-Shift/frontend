@@ -156,6 +156,7 @@ export default function Sidebar() {
                   <button className="upgrade-btn">Upgrade to Pro</button>
               </div> */}
 
+                <Link href="/profile" style={{ textDecoration: 'none' }}>
                     <div className="user-profile">
                         <div className="avatar"></div>
                         <div className="user-info">
@@ -171,8 +172,9 @@ export default function Sidebar() {
                             </svg>
                         </div>
                     </div>
-                </div>
+                </Link>
             </div>
+        </div>
         </div>
     );
 }
