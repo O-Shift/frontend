@@ -121,8 +121,20 @@ const containerVariants = {
 
 const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } }
 };
+
+const corporateCardVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 20 },
+    show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 20 } }
+};
+
+const objectiveVariants = {
+    hidden: { opacity: 0, x: -30 },
+    show: { opacity: 1, x: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } }
+};
+
+
 
 export default function ProfilePage() {
     const [activeSection, setActiveSection] = useState<string>('overview');
@@ -385,10 +397,7 @@ export default function ProfilePage() {
                             <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24 }}>
                                 {Object.entries(PROFILE_DATA.corporate).map(([key, value], idx) => (
                                     <motion.div 
-                                        variants={{
-                                            hidden: { opacity: 0, scale: 0.9, y: 20 },
-                                            show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 400, damping: 20 } }
-                                        }} 
+                                        variants={corporateCardVariants} 
                                         key={key} 
                                         className="corporate-card"
                                         whileHover={{ scale: 1.02, rotate: idx % 2 === 0 ? 1 : -1 }}
@@ -458,10 +467,7 @@ export default function ProfilePage() {
                                 />
                                 {PROFILE_DATA.objectives.map((obj, i) => (
                                     <motion.div 
-                                        variants={{
-                                            hidden: { opacity: 0, x: -30 },
-                                            show: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
-                                        }} 
+                                        variants={objectiveVariants} 
                                         key={i} 
                                         className="objective-timeline-card group"
                                     >
