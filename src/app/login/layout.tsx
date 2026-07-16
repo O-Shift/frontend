@@ -2,11 +2,11 @@ import '../auth.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Sign Up - CShift',
-    description: 'Create a new CShift account',
+    title: 'Login - CShift',
+    description: 'Login to CShift',
 };
 
-export default function SignupLayout({
+export default function LoginLayout({
     children,
 }: {
     children: React.ReactNode;

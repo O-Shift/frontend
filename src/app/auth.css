@@ -1,0 +1,450 @@
+/* ===== AUTH PAGES (Login & Signup) ===== */
+
+.auth-root {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #fcfcf7; /* Light off-white cream background */
+  font-family: var(--font-poppins), sans-serif;
+  overflow: hidden;
+}
+
+.auth-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 2rem;
+  z-index: 10;
+  position: relative;
+}
+
+.auth-content {
+  width: 100%;
+  max-width: 440px;
+  z-index: 10;
+  position: relative;
+  /* Entrance Animation */
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-logo {
+  margin-bottom: 2.5rem;
+}
+
+.auth-header {
+  margin-bottom: 2rem;
+}
+
+.auth-header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+  letter-spacing: -1px;
+}
+
+.auth-header p {
+  font-size: 1rem;
+  color: #6b6b6b;
+  line-height: 1.5;
+}
+
+.auth-header p strong {
+  color: #ff7a00;
+  font-weight: 600;
+}
+
+/* --- Form Styles --- */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-field {
+  position: relative;
+}
+
+.auth-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-icon {
+  position: absolute;
+  left: 1.2rem;
+  color: #888;
+  font-size: 1.2rem;
+  pointer-events: none;
+  transition: color 0.3s;
+}
+
+.auth-input-icon.right {
+  left: auto;
+  right: 1.2rem;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.auth-input {
+  width: 100%;
+  background: #fcfcf9;
+  border: 1px solid #eaeaea;
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem 1.1rem 3.5rem; /* Padding for icon */
+  color: #333;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.auth-input:focus {
+  background: #ffffff;
+  border-color: #ff7a00;
+  box-shadow: 0 0 0 4px rgba(255, 122, 0, 0.15);
+}
+
+.auth-input:focus + .auth-input-icon,
+.auth-input-wrapper:focus-within .auth-input-icon {
+  color: #ff7a00;
+}
+
+.auth-input::placeholder {
+  color: #aaa;
+}
+
+/* --- Dropdown Styles --- */
+.auth-dropdown-chevron {
+  transition: transform 0.3s ease;
+}
+
+.auth-dropdown-chevron.open {
+  transform: rotate(180deg);
+}
+
+.auth-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: 100%;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 50;
+  padding: 0.5rem 0;
+  animation: fadeInDown 0.2s ease-out forwards;
+}
+
+.auth-dropdown-item {
+  padding: 0.8rem 1.2rem;
+  font-size: 0.95rem;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.auth-dropdown-item:hover {
+  background: #f8f8f8;
+  color: #ff7a00;
+}
+
+.auth-dropdown-item.active {
+  background: rgba(255, 122, 0, 0.05);
+  color: #ff7a00;
+  font-weight: 600;
+}
+
+.auth-dropdown-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auth-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.auth-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #555;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.auth-checkbox input {
+  accent-color: #ff7a00;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.auth-forgot {
+  color: #ff7a00;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.auth-forgot:hover {
+  color: #e65c00;
+}
+
+.auth-submit-btn {
+  background: linear-gradient(135deg, #ff8c20, #f06a00);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 1.2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 15px rgba(255, 122, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.auth-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(255, 122, 0, 0.35), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #ff9b3b, #f37711);
+}
+
+.btn-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.auth-submit-btn:hover .btn-icon {
+  transform: translateX(4px);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.85rem;
+  margin: 2rem 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.auth-divider::before {
+  margin-right: 1em;
+}
+
+.auth-divider::after {
+  margin-left: 1em;
+}
+
+.auth-social {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-social-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 0.9rem;
+  font-size: 1.4rem;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.auth-social-btn:hover {
+  background: #f8f8f8;
+  border-color: #d0d0d0;
+  transform: translateY(-1px);
+}
+
+.auth-social-btn.google { color: #DB4437; }
+.auth-social-btn.microsoft { color: #00A4EF; }
+.auth-social-btn.apple { color: #000000; }
+
+.auth-switch {
+  text-align: center;
+  margin-top: 2.5rem;
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.auth-switch a {
+  color: #ff7a00;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+  margin-left: 0.2rem;
+}
+
+.auth-switch a:hover {
+  color: #e65c00;
+  text-decoration: underline;
+}
+
+/* ===== RIGHT SIDE — Wavy Orange Panel ===== */
+
+.auth-right {
+  flex: 1.2;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  overflow: hidden; /* Prevent SVGs from extending outside */
+  min-height: 100vh;
+  background-color: transparent; /* SVG handles background */
+  border-radius: 0;
+  border-left: none;
+  box-shadow: none;
+  opacity: 0;
+  animation: fadeIn 1.2s ease forwards;
+  animation-delay: 0.2s;
+}
+
+/* Container for the full-screen absolutely positioned SVG */
+.auth-wave-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(40px);
+  animation: waveSweep 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes waveSweep {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.orange-wave-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Mascot */
+.auth-mascot {
+  position: absolute;
+  z-index: 5;
+  right: -2%; /* Shifted right so the mascot body centers over the right-aligned text */
+  top: 50%;
+  width: 700px;
+  height: auto;
+  filter: drop-shadow(0 25px 45px rgba(0, 0, 0, 0.3));
+  /* Simple, slow floating animation */
+  animation: mascotFloat 4s ease-in-out infinite;
+}
+
+@keyframes mascotFloat {
+  0%, 100% {
+    transform: translateY(-58%);
+  }
+  50% {
+    transform: translateY(-62%);
+  }
+}
+
+/* Slogan */
+.auth-slogan {
+  position: absolute;
+  bottom: 8%;
+  right: 8%;
+  z-index: 5;
+  text-align: right;
+}
+
+.auth-slogan h2 {
+  font-size: 3rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.15;
+  letter-spacing: -1px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.auth-slogan h2 .slogan-bold {
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1200px) {
+  .orange-wave-bg {
+    left: -10%;
+    width: 140%;
+  }
+}
+
+@media (max-width: 1100px) {
+  .auth-mascot {
+    width: 450px;
+    right: 2%;
+  }
+  .auth-slogan h2 {
+    font-size: 2.2rem;
+  }
+}
+
+@media (max-width: 968px) {
+  .auth-right {
+    display: none;
+  }
+  .auth-left {
+    padding: 3rem 1.5rem;
+  }
+}
