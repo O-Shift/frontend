@@ -61,6 +61,7 @@ function getPattern(index: number, c1: string, c2: string) {
 
 export default function CompetitorsPage() {
   const [query, setQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const router = useRouter();
 
   const [selectedNode, setSelectedNode] = useState<any>(null);
@@ -89,24 +90,33 @@ export default function CompetitorsPage() {
   return (
     <>
     <div className="main-content" style={{ overflowY: 'auto', padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 1000, marginBottom: 60, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h1 style={{ color: 'var(--text-primary)', fontSize: 48, fontWeight: 700, marginBottom: 16, letterSpacing: '-0.02em', lineHeight: 1 }}>Competitors</h1>
-          <div style={{ color: 'var(--text-secondary)', fontSize: 18 }}>Select a competitor profile to analyze performance gaps and metrics.</div>
-        </div>
-        <div className="competitors-search skeleton-target" style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          background: 'var(--card-bg)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 16,
-          padding: '16px 24px',
-          width: 400,
-          boxShadow: '0 8px 32px var(--shadow-color)',
-          transition: 'border-color 0.3s ease'
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 16 }}>
+      <div style={{ width: '100%', maxWidth: 1000, marginBottom: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <motion.div 
+          animate={{ opacity: isSearchFocused ? 0 : 1, width: isSearchFocused ? 0 : 'auto' }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          style={{ overflow: 'hidden', whiteSpace: 'nowrap', paddingRight: 24 }}
+        >
+          <h1 style={{ color: 'var(--text-primary)', fontSize: 36, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.02em', lineHeight: 1 }}>Competitors</h1>
+          <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Select a competitor profile to analyze performance gaps and metrics.</div>
+        </motion.div>
+        <motion.div className="competitors-search skeleton-target"
+          animate={{ 
+            width: isSearchFocused ? '100%' : 320,
+            borderColor: isSearchFocused ? 'var(--text-secondary)' : 'var(--border-color)',
+            boxShadow: isSearchFocused ? '0 16px 48px var(--shadow-color)' : '0 8px 32px var(--shadow-color)'
+          }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 16,
+            padding: '16px 24px'
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 16, flexShrink: 0 }}>
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -115,6 +125,8 @@ export default function CompetitorsPage() {
             placeholder="Search competitors..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             style={{
               background: 'transparent',
               border: 'none',
@@ -126,33 +138,27 @@ export default function CompetitorsPage() {
               fontWeight: 500
             }}
           />
-        </div>
+        </motion.div>
       </div>
 
       <motion.div layout style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-        gap: 40,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+        gap: 32,
         width: '100%',
         maxWidth: 1000
       }}>
-        <AnimatePresence mode="popLayout">
         {filtered.map((company, i) => {
           const [c1, c2] = getBrandColors(company.domain);
           const pattern = getPattern(i, c1, c2);
           const patternBack = getPattern(i, c2, c1);
 
           return (
-            <motion.div
-              layout
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: -20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            <div
               key={company.domain}
               className="competitor-card skeleton-target"
               style={{
-                height: '400px',
+                height: '320px',
                 borderRadius: '24px',
                 background: pattern,
                 cursor: 'pointer',
@@ -197,7 +203,7 @@ export default function CompetitorsPage() {
                 className="card-front"
                 style={{
                   position: 'absolute', inset: 0,
-                  padding: '32px',
+                  padding: '24px',
                   display: 'flex', flexDirection: 'column',
                   transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }}
@@ -213,11 +219,11 @@ export default function CompetitorsPage() {
                 >
                   <img src={`https://logo.clearbit.com/${company.domain}`} alt={company.name} style={{ width: '70%', height: '70%', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLImageElement).src = `https://www.google.com/s2/favicons?domain=${company.domain}&sz=64`; }} />
                 </div>
-                <div style={{ zIndex: 2, color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 24, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                <div style={{ zIndex: 2, color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 16, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
                   {company.domain}
                 </div>
                 <div style={{ marginTop: 'auto', zIndex: 2 }}>
-                  <div style={{ color: 'white', fontSize: 28, fontWeight: 800, lineHeight: 1.1, textTransform: 'uppercase', letterSpacing: '-0.5px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                  <div style={{ color: 'white', fontSize: 24, fontWeight: 800, lineHeight: 1.1, textTransform: 'uppercase', letterSpacing: '-0.5px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
                     {company.name}
                   </div>
                 </div>
@@ -228,8 +234,8 @@ export default function CompetitorsPage() {
                 className="card-overlay"
                 style={{
                   position: 'absolute', left: 0, right: 0, bottom: 0,
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 60%, transparent 100%)',
-                  padding: '80px 32px 32px 32px',
+                  background: `linear-gradient(to top, ${c2} 20%, color-mix(in srgb, ${c2} 85%, transparent) 65%, transparent 100%)`,
+                  padding: '60px 24px 24px 24px',
                   opacity: 0,
                   transform: 'translateY(40px)',
                   transition: 'opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -237,17 +243,16 @@ export default function CompetitorsPage() {
                   pointerEvents: 'none', zIndex: 10
                 }}
               >
-                <div style={{ color: 'rgba(255,255,255,0.95)', fontSize: 14, lineHeight: 1.6, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                <div style={{ color: 'rgba(255,255,255,0.95)', fontSize: 12, lineHeight: 1.5, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
                   Leading innovator in the {['Tesla', 'Uber'].includes(company.name) ? 'transportation' : ['Netflix', 'Spotify'].includes(company.name) ? 'entertainment' : 'technology'} sector, focused on scaling digital experiences and capturing global market share through aggressive strategy and cutting-edge R&D.
                 </div>
-                <div style={{ marginTop: 24, padding: '8px 16px', background: c1, color: 'white', borderRadius: 20, fontSize: 13, fontWeight: 600, display: 'inline-flex', alignSelf: 'flex-start', boxShadow: `0 4px 12px ${c1}80` }}>
+                <div style={{ marginTop: 16, padding: '8px 16px', background: 'white', color: c1, borderRadius: 20, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignSelf: 'flex-start', boxShadow: `0 4px 12px rgba(0,0,0,0.2)` }}>
                   Click to know more
                 </div>
               </div>
-            </motion.div>
+            </div>
           );
         })}
-        </AnimatePresence>
       </motion.div>
     </div>
 

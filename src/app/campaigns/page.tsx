@@ -130,7 +130,7 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+    <div className="skeleton-target" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
       <style>{`
         .campaign-node.blurred { filter: blur(8px) opacity(0.3); pointer-events: none; }
         .campaign-node.selected .cards { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
@@ -294,27 +294,25 @@ export default function CampaignsPage() {
                 onMouseEnter={() => setHoveredFolderId(camp.id)}
                 onMouseLeave={() => setHoveredFolderId(null)}
               >
-                <div className="folder-wrapper skeleton-target" title={camp.title}>
-                  <div className="folder-back" style={{
-                    background: `linear-gradient(135deg, #3f3f46, #18181b)`,
-                    ['--tab-bg' as any]: '#3f3f46',
-                    boxShadow: isHovered ? `0 0 24px ${activeColor}44` : undefined,
-                    transition: 'box-shadow 0.3s ease',
-                  }} />
+                <div className="deck-wrapper skeleton-target" title={camp.title} style={{ ['--cord-color' as any]: activeColor }}>
                   <div className={`cards ${isSelected ? 'cards-hidden' : ''}`}>
-                    <div className="card card-left"   style={{ backgroundImage: `url('${camp.imgs[0]}')` }} />
-                    <div className="card card-center" style={{ backgroundImage: `url('${camp.imgs[1]}')` }} />
-                    <div className="card card-right"  style={{ backgroundImage: `url('${camp.imgs[2]}')` }} />
+                    <div className="card card-left" style={{ backgroundImage: `url('${camp.imgs[0]}')` }}>
+                      <div className="floating-bubble" style={{ bottom: 45, left: -20 }}>
+                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> {(camp.roi * 12).toFixed(0)}
+                      </div>
+                    </div>
+                    
+                    <div className="card card-right" style={{ backgroundImage: `url('${camp.imgs[1]}')` }}>
+                      <div className="floating-bubble" style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}>
+                        Wen
+                      </div>
+                    </div>
+
+                    <div className="card deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('${camp.imgs[2]}')` }}>
+                      <div className="logo">{camp.title}</div>
+                    </div>
                   </div>
-                  <div className="folder-front" style={{
-                    background: `rgba(24, 24, 27, 0.7)`,
-                    borderColor: `rgba(255, 255, 255, 0.1)`,
-                    borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                    ...(isHovered ? { borderColor: `${activeColor}66`, borderTopColor: `${activeColor}66` } : {}),
-                    transition: 'border-color 0.3s ease',
-                  }}>
-                    <div className="logo">{camp.title}</div>
-                  </div>
+                  <div className="cord-ring" />
                 </div>
               </div>
             </div>

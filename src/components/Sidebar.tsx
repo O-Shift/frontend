@@ -15,7 +15,7 @@ export default function Sidebar() {
                 <div className="logo-area">
                     OShift
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div className="sidebar-header-actions">
                     {/* Theme toggle */}
                     <button
                         className="collapse-btn theme-toggle-btn"
@@ -157,7 +157,7 @@ export default function Sidebar() {
               </div> */}
 
                 <Link href="/profile" style={{ textDecoration: 'none' }}>
-                    <div className="user-profile">
+                    <div className={`user-profile ${pathname === '/profile' ? 'active' : ''}`}>
                         <div className="avatar"></div>
                         <div className="user-info">
                             <div className="user-name">Vasil S.</div>

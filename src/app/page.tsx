@@ -494,16 +494,25 @@ export default function DashboardPage() {
                                 >
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                         <div className="scene" style={{ marginBottom: 16 }}>
-                                            <div className="folder-wrapper" title={camp.name}>
-                                                <div className="folder-back" style={{ background: `linear-gradient(135deg, #3f3f46, #18181b)`, ['--tab-bg' as any]: '#3f3f46' }} />
+                                            <div className="deck-wrapper" title={camp.name}>
                                                 <div className="cards">
-                                                    <div className="card card-left" style={{ backgroundImage: `url('${camp.imgs[0]}')` }} />
-                                                    <div className="card card-center" style={{ backgroundImage: `url('${camp.imgs[1]}')` }} />
-                                                    <div className="card card-right" style={{ backgroundImage: `url('${camp.imgs[2]}')` }} />
+                                                    <div className="card card-left" style={{ backgroundImage: `url('${camp.imgs[0]}')` }}>
+                                                      <div className="floating-bubble" style={{ bottom: 45, left: -20 }}>
+                                                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> 20
+                                                      </div>
+                                                    </div>
+                                                    
+                                                    <div className="card card-right" style={{ backgroundImage: `url('${camp.imgs[1]}')` }}>
+                                                      <div className="floating-bubble" style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}>
+                                                        Wen
+                                                      </div>
+                                                    </div>
+
+                                                    <div className="card deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('${camp.imgs[2]}')` }}>
+                                                        <div className="logo" style={{ fontSize: 13, lineHeight: 1.2, color: '#e4e4e7' }}>{camp.name}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="folder-front" style={{ background: `rgba(24, 24, 27, 0.7)`, borderColor: `rgba(255, 255, 255, 0.1)`, borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                                                    <div className="logo" style={{ fontSize: 13, lineHeight: 1.2, color: '#e4e4e7' }}>{camp.name}</div>
-                                                </div>
+                                                <div className="cord-ring" />
                                             </div>
                                         </div>
                                         <div className="camp-info-box" style={{ textAlign: 'center', background: 'var(--card-bg-alt)', padding: '14px 20px', borderRadius: 12, border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>

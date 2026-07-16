@@ -18,6 +18,11 @@ export default function PartnershipsPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
 
+  useEffect(() => {
+    document.body.classList.toggle('is-thinking-active', isThinking);
+    return () => document.body.classList.remove('is-thinking-active');
+  }, [isThinking]);
+
   // ESC closes the prompt bar and floating sidebar, but keeps the chip
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
@@ -700,9 +705,8 @@ export default function PartnershipsPage() {
   }, [currentView]);
 
   return (
-    <div className="main-content" id="graphContainer" ref={containerRef}>
-        <div className={`thinking-body-glow ${isThinking ? 'is-thinking' : ''}`} style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-            <SkeletonOverlay />
+    <div className="main-content skeleton-target" id="graphContainer" ref={containerRef}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
             <canvas id="obsidianCanvas" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}></canvas>
         </div>
 
@@ -725,26 +729,20 @@ export default function PartnershipsPage() {
                   </div>
                 )}
             </div>
-            <div className="icon-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 5v14M5 12h14" />
-                </svg>
-            </div>
         </div>
 
         <div className="bottom-right-controls">
             <div className="br-pill">
                 <button className="icon-btn" onClick={() => (window as any).zoomOut()}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 7v6h6" />
-                        <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
                 <div className="divider"></div>
                 <button className="icon-btn" onClick={() => (window as any).zoomIn()}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 7v6h-6" />
-                        <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7" />
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
             </div>

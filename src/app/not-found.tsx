@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Chess } from 'chess.js';
 import { useRouter } from 'next/navigation';
 import { Poppins } from 'next/font/google';
@@ -57,27 +57,6 @@ export default function NotFoundPage() {
   const [isChess, setIsChess] = useState(false);
   const [showPieces, setShowPieces] = useState(false);
 
-  // Parallax background state
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springConfig = { damping: 25, stiffness: 100, mass: 0.5 };
-  const smoothX = useSpring(mouseX, springConfig);
-  const smoothY = useSpring(mouseY, springConfig);
-
-  const rotateX = useTransform(smoothY, [-1, 1], [15, -15]);
-  const rotateY = useTransform(smoothX, [-1, 1], [-15, 15]);
-  const bgX = useTransform(smoothX, [-1, 1], [-40, 40]);
-  const bgY = useTransform(smoothY, [-1, 1], [-40, 40]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX.set((e.clientX / window.innerWidth) * 2 - 1);
-      mouseY.set((e.clientY / window.innerHeight) * 2 - 1);
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY]);
-
   // Chess state
   const [game, setGame] = useState<Chess | null>(null);
   const [board, setBoard] = useState<any[][]>([]);
@@ -131,211 +110,229 @@ export default function NotFoundPage() {
   };
 
   const checkerboardStyle = {
-    background: 'conic-gradient(var(--bg-main) 90deg, var(--accent) 90deg 180deg, var(--bg-main) 180deg 270deg, var(--accent) 270deg) 0 0 / 25% 25%',
+    background: 'conic-gradient(#111 90deg, var(--accent) 90deg 180deg, #111 180deg 270deg, var(--accent) 270deg) 0 0 / 25% 25%',
     backgroundRepeat: 'repeat'
+  };
+
+  const foilStyle = {
+    backgroundImage: `url('https://images.unsplash.com/photo-1618365908648-e71bd5716cba?q=80&w=1000')`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    color: 'transparent',
+    filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.5))'
   };
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'var(--bg-main-alt)', color: 'var(--text-primary)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      fontFamily: poppins.style.fontFamily, overflow: 'hidden'
+      background: '#0a0a0a', color: '#ffffff',
+      fontFamily: poppins.style.fontFamily,
+      padding: '2vw', boxSizing: 'border-box'
     }}>
-      {/* Interactive Parallax Grid */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          top: '-50%', left: '-50%',
-          width: '200%', height: '200%',
-          backgroundImage: 'linear-gradient(to right, var(--text-primary) 1px, transparent 1px), linear-gradient(to bottom, var(--text-primary) 1px, transparent 1px)',
-          backgroundSize: '100px 100px',
-          opacity: 0.08,
-          zIndex: 0,
-          pointerEvents: 'none',
-          x: bgX,
-          y: bgY,
-          rotateX,
-          rotateY,
-          transformPerspective: 1200
-        }}
-      />
+      <div style={{
+        position: 'relative', width: '100%', height: '100%',
+        border: '1px solid rgba(255,255,255,0.15)', borderRadius: '24px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', background: '#111111'
+      }}>
+        
+        {/* Top Nav */}
+        <div style={{ position: 'absolute', top: '32px', left: '32px', right: '32px', display: 'flex', justifyContent: 'space-between', zIndex: 20 }}>
+          <button style={{ 
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', 
+            borderRadius: '999px', padding: '10px 28px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+            letterSpacing: '0.05em'
+          }}>
+            = MENU
+          </button>
+          <div style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '-0.05em', color: '#fff' }}>OSHIFT</div>
+        </div>
 
-      <div style={{ height: '5vh', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2vh', position: 'relative', zIndex: 10 }}>
-        <AnimatePresence>
+        {/* 404 Graphic Container */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: '-5vh' }}>
+          
+          {/* Orange Offset Shadows */}
           {!isChess && (
+            <div style={{
+              position: 'absolute', display: 'flex', fontSize: 'clamp(150px, 28vw, 380px)', fontWeight: 900, lineHeight: 1,
+              color: 'var(--accent)', zIndex: 0, transform: 'translate(10px, 15px) scale(1.02)'
+            }}>
+              <div>4</div><div style={{ margin: '0 2vw' }}>0</div><div>4</div>
+            </div>
+          )}
+
+          {/* Main 404 Text */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 'clamp(150px, 28vw, 380px)', fontWeight: 900, lineHeight: 1, zIndex: 1
+          }}>
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              style={{ fontSize: '1.5rem', letterSpacing: '0.1em', fontWeight: 500 }}
+              animate={isChess ? { x: '-100vw', opacity: 0 } : { x: 0, opacity: 1 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              style={!isChess ? foilStyle : {}}
             >
-              Oops!
+              4
+            </motion.div>
+
+            <motion.div
+              layout
+              onClick={() => !isChess && setIsChess(true)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5,
+                margin: '0 2vw',
+                ...(isChess ? {
+                  position: 'absolute', inset: 0, margin: 'auto',
+                  width: 'min(75vh, 90vw)', height: 'min(75vh, 90vw)',
+                  maxWidth: '800px', maxHeight: '800px', cursor: 'default',
+                  ...checkerboardStyle
+                } : {
+                  position: 'relative', cursor: 'pointer', display: 'inline-block',
+                  ...foilStyle
+                })
+              }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {!isChess && "0"}
+
+              {isChess && showPieces && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  style={{ width: '100%', height: '100%', position: 'relative' }}
+                >
+                  {[...Array(8)].map((_, r) => [...Array(8)].map((_, c) => {
+                    const p = board[r]?.[c];
+                    const sq = `${String.fromCharCode(97 + c)}${8 - r}`;
+                    const isSel = selectedSquare === sq;
+                    const isDest = validDestinations.includes(sq);
+                    return (
+                      <div
+                        key={sq}
+                        onClick={() => handleSquareClick(sq)}
+                        style={{
+                          position: 'absolute',
+                          top: `${r * 12.5}%`, left: `${c * 12.5}%`,
+                          width: '12.5%', height: '12.5%',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer',
+                          background: isSel ? 'rgba(0, 255, 0, 0.4)' : isDest ? 'rgba(255, 0, 0, 0.4)' : 'transparent',
+                        }}
+                      >
+                        {p && (() => {
+                          const PieceIcon = PieceGraphics[p.type];
+                          return (
+                            <div style={{
+                              fontSize: 'clamp(28px, 6.5vmin, 64px)',
+                              color: p.color === 'w' ? '#ffffff' : '#111111',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                              <PieceIcon style={{ stroke: p.color === 'w' ? '#111111' : '#ffffff', strokeWidth: '16px' }} />
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }))}
+                </motion.div>
+              )}
+            </motion.div>
+
+            <motion.div
+              animate={isChess ? { x: '100vw', opacity: 0 } : { x: 0, opacity: 1 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              style={!isChess ? foilStyle : {}}
+            >
+              4
+            </motion.div>
+          </div>
+
+          {/* Speech Bubbles and Stickers */}
+          {!isChess && (
+            <>
+              {/* Left Bubble */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, rotate: -20 }} animate={{ opacity: 1, scale: 1, rotate: -10 }}
+                style={{
+                  position: 'absolute', top: '15%', left: '-5%', background: '#fff', color: '#000',
+                  padding: '8px 20px', borderRadius: '999px', fontSize: 'clamp(0.7rem, 1.2vw, 1rem)', fontWeight: 800,
+                  whiteSpace: 'nowrap', zIndex: 15, border: '2px solid #000', filter: 'drop-shadow(4px 4px 0px rgba(0,0,0,1))'
+                }}
+              >
+                DAMN WHAT HAPPENED ?!
+              </motion.div>
+
+              {/* Right Bubble */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, rotate: 20 }} animate={{ opacity: 1, scale: 1, rotate: 12 }}
+                style={{
+                  position: 'absolute', bottom: '25%', right: '-8%', background: '#fff', color: '#000',
+                  padding: '8px 20px', borderRadius: '999px', fontSize: 'clamp(0.7rem, 1.2vw, 1rem)', fontWeight: 800,
+                  whiteSpace: 'nowrap', zIndex: 15, border: '2px solid #000', filter: 'drop-shadow(4px 4px 0px rgba(0,0,0,1))'
+                }}
+              >
+                SOME ERROR OR SOMETHING?
+              </motion.div>
+
+              {/* Stickers */}
+              <div style={{ position: 'absolute', top: '45%', left: '30%', fontSize: '4.5rem', zIndex: 12, filter: 'drop-shadow(2px 2px 0 white) drop-shadow(-2px -2px 0 white) drop-shadow(2px -2px 0 white) drop-shadow(-2px 2px 0 white)', transform: 'rotate(-15deg)' }}>🍄</div>
+              <div style={{ position: 'absolute', top: '15%', right: '35%', fontSize: '3.5rem', zIndex: 12, filter: 'drop-shadow(2px 2px 0 white) drop-shadow(-2px -2px 0 white) drop-shadow(2px -2px 0 white) drop-shadow(-2px 2px 0 white)', transform: 'rotate(25deg)' }}>🌸</div>
+            </>
+          )}
+        </div>
+
+        {/* Footer Text & Button */}
+        {!isChess && (
+          <div style={{ position: 'absolute', bottom: '12%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 10 }}>
+            <p style={{ color: '#888', fontSize: '0.85rem', textAlign: 'center', maxWidth: '420px', lineHeight: 1.6, fontWeight: 500 }}>
+              We apologize for the inconvenience you experienced, our specialists are already working on solving this problem
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              style={{ background: '#fff', color: '#000', border: 'none', borderRadius: '999px', padding: '12px 36px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s', filter: 'drop-shadow(0 4px 10px rgba(255,255,255,0.1))' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              Go back home
+            </button>
+          </div>
+        )}
+
+        {/* Floating Book a Call Button */}
+        {!isChess && (
+          <button style={{
+            position: 'absolute', bottom: '32px', right: '32px', width: '80px', height: '80px',
+            background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '50%',
+            fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', zIndex: 20,
+            boxShadow: '0 10px 30px rgba(255, 90, 0, 0.4)', transition: 'transform 0.2s',
+            lineHeight: 1.2
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            Book a<br/>call
+          </button>
+        )}
+
+        {/* Chess Overlays */}
+        <AnimatePresence>
+          {isChess && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+              style={{ position: 'absolute', bottom: '5%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', zIndex: 30 }}
+            >
+              <div style={{ fontSize: '1.2rem', fontWeight: 600, letterSpacing: '0.05em' }}>{gameStatus}</div>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <button onClick={initGame} style={{ padding: '8px 24px', fontSize: '0.9rem', background: '#fff', color: '#000', border: 'none', cursor: 'pointer', fontWeight: 600, borderRadius: '4px' }}>Reset</button>
+                <button onClick={() => { setIsChess(false); setShowPieces(false); }} style={{ padding: '8px 24px', fontSize: '0.9rem', background: 'transparent', color: '#fff', border: '1px solid #fff', cursor: 'pointer', fontWeight: 600, borderRadius: '4px' }}>Close</button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 'clamp(180px, 30vw, 420px)', fontWeight: 900, lineHeight: 1, zIndex: 10
-      }}>
-        <motion.div
-          animate={isChess ? { x: '-100vw', opacity: 0 } : { x: 0, opacity: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          style={{ userSelect: 'none', marginRight: '-5vw', zIndex: 1, textShadow: '0 10px 30px rgba(0,0,0,0.4)' }}
-        >
-          4
-        </motion.div>
-
-        <motion.div
-          layout
-          onClick={() => !isChess && setIsChess(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 5,
-            filter: isChess ? 'none' : 'drop-shadow(0 15px 40px rgba(0,0,0,0.5))',
-            ...(isChess ? {
-              position: 'absolute',
-              inset: 0,
-              margin: 'auto',
-              width: 'min(75vh, 90vw)', height: 'min(75vh, 90vw)',
-              maxWidth: '800px', maxHeight: '800px',
-              cursor: 'default',
-              ...checkerboardStyle
-            } : {
-              position: 'relative',
-              cursor: 'pointer',
-              ...checkerboardStyle,
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              color: 'transparent',
-              display: 'inline-block',
-              userSelect: 'none'
-            })
-          }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {!isChess && "0"}
-
-          {isChess && showPieces && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              style={{ width: '100%', height: '100%', position: 'relative' }}
-            >
-              {[...Array(8)].map((_, r) => [...Array(8)].map((_, c) => {
-                const p = board[r]?.[c];
-                const sq = `${String.fromCharCode(97 + c)}${8 - r}`;
-                const isSel = selectedSquare === sq;
-                const isDest = validDestinations.includes(sq);
-                return (
-                  <div
-                    key={sq}
-                    onClick={() => handleSquareClick(sq)}
-                    style={{
-                      position: 'absolute',
-                      top: `${r * 12.5}%`, left: `${c * 12.5}%`,
-                      width: '12.5%', height: '12.5%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer',
-                      background: isSel ? 'rgba(0, 255, 0, 0.4)' : isDest ? 'rgba(255, 0, 0, 0.4)' : 'transparent',
-                    }}
-                  >
-                    {p && (() => {
-                      const PieceIcon = PieceGraphics[p.type];
-                      return (
-                        <div style={{
-                          fontSize: 'clamp(28px, 6.5vmin, 64px)',
-                          color: p.color === 'w' ? '#ffffff' : '#111111',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          <PieceIcon style={{ stroke: p.color === 'w' ? '#111111' : '#ffffff', strokeWidth: '16px' }} />
-                        </div>
-                      );
-                    })()}
-                  </div>
-                );
-              }))}
-            </motion.div>
-          )}
-        </motion.div>
-
-        <motion.div
-          animate={isChess ? { x: '100vw', opacity: 0 } : { x: 0, opacity: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          style={{ userSelect: 'none', marginLeft: '-5vw', zIndex: 1, textShadow: '0 10px 30px rgba(0,0,0,0.4)' }}
-        >
-          4
-        </motion.div>
-      </div>
-
-      <AnimatePresence>
-        {isChess && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            style={{ position: 'absolute', bottom: '5%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
-          >
-            <div style={{ fontSize: '1.2rem', fontWeight: 600, letterSpacing: '0.05em' }}>{gameStatus}</div>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <button onClick={initGame} style={{ padding: '8px 24px', fontSize: '0.9rem', background: 'var(--text-primary)', color: 'var(--bg-main-alt)', border: 'none', cursor: 'pointer', fontWeight: 600, borderRadius: '4px' }}>Reset</button>
-              <button onClick={() => { setIsChess(false); setShowPieces(false); }} style={{ padding: '8px 24px', fontSize: '0.9rem', background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--text-primary)', cursor: 'pointer', fontWeight: 600, borderRadius: '4px' }}>Close</button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {!isChess && (
-          <motion.img
-            src="/404.png"
-            alt="Mascot"
-            initial={{ opacity: 0, y: 50, x: 50 }}
-            animate={{ opacity: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, y: 50, x: 50 }}
-            style={{
-              position: 'absolute',
-              bottom: '-20%',
-              right: '10%',
-              height: 'clamp(300px, 45vw, 650px)',
-              width: 'auto',
-              objectFit: 'contain',
-              zIndex: 8,
-              pointerEvents: 'none',
-              filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.4))'
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {!isChess && (
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            position: 'absolute',
-            bottom: '10%',
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-primary)',
-            fontSize: '1rem',
-            fontWeight: 500,
-            cursor: 'pointer',
-            opacity: 0.6,
-            transition: 'opacity 0.2s',
-            zIndex: 20
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
-        >
-          Return Home
-        </button>
-      )}
     </div>
   );
 }

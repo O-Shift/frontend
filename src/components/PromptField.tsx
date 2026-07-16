@@ -112,15 +112,15 @@ export default function PromptField({
             >
               <div className="context-chip">
                 <svg
-                  width="16"
-                  height="16"
+                  width="12"
+                  height="12"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  style={{ color: '#818cf8' }}
+                  style={{ color: 'var(--accent)' }}
                 >
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                   <polyline points="9 22 9 12 15 12 15 22" />
@@ -167,23 +167,9 @@ export default function PromptField({
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
                 </button>
-                <button className="icon-btn-cb" style={{ fontWeight: 600 }}>/</button>
               </div>
 
               <div className="right-controls">
-                <button className="icon-btn-cb">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                    <rect x="14" y="6" width="2" height="6"></rect>
-                  </svg>
-                </button>
-                <div className="model-pill">
-                  3 Flash
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 4 }}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </div>
                 <button className="icon-btn-cb">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
