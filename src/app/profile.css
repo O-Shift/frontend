@@ -62,40 +62,38 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
 }
 
-/* ===== GIANT BACKGROUND LOGO ===== */
-.giant-bg-logo {
-  position: absolute;
-  top: 50%;
-  left: 60%;
-  transform: translate(-50%, -50%);
-  opacity: 0.03;
+.glass-pill {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
-  transition: all 0.5s ease;
-  animation: floatGiantLogo 20s ease-in-out infinite;
-  z-index: 0;
-  pointer-events: none;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
-[data-theme="light"] .giant-bg-logo {
-  opacity: 0.05;
-  color: #000;
+[data-theme="light"] .glass-pill {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
-@keyframes floatGiantLogo {
-  0% {
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
-    filter: blur(0px);
-  }
+.glass-pill.highlight {
+  background: rgba(255, 90, 0, 0.1);
+  border-color: rgba(255, 90, 0, 0.2);
+  color: #FF5A00;
+}
 
-  50% {
-    transform: translate(-45%, -55%) scale(1.1) rotate(5deg);
-    filter: blur(4px);
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
-    filter: blur(0px);
-  }
+.glass-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+[data-theme="light"] .glass-pill:hover {
+  background: rgba(0, 0, 0, 0.06);
 }
 
 /* ===== COMPETITOR MARQUEE (CREATIVE) ===== */
