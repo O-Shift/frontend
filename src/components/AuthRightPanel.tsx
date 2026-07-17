@@ -4,27 +4,28 @@ import OrangeWaveBackground from './OrangeWaveBackground';
 export default function AuthRightPanel() {
     return (
         <div className="auth-right">
-            {/* The responsive flowing SVG background */}
+            {/* Full-screen orange route background */}
             <div className="auth-wave-container">
                 <OrangeWaveBackground />
             </div>
 
-            {/* Mascot + Slogan grouped so mascot sits directly above "Always" */}
-            <div className="auth-mascot-slogan-group">
-                <Image
-                    src="/mascot_running.png"
-                    alt="OShift Mascot"
-                    width={550}
-                    height={550}
-                    className="auth-mascot"
-                    priority
-                />
-                <div className="auth-slogan">
-                    <h2>
-                        Always<br />
-                        one step <span className="slogan-bold">ahead</span>
-                    </h2>
-                </div>
+            {/* Mascot — positioned in the right-center of the orange area */}
+            <Image
+                src="/mascot_running.png"
+                alt="OShift Mascot"
+                width={560}
+                height={560}
+                className="auth-mascot"
+                priority
+            />
+
+            {/* Slogan — bottom-left of the orange area */}
+            <div className="auth-slogan">
+                <h2>
+                    <span className="slogan-always">Always</span><br />
+                    <span className="slogan-onestep">one step </span>
+                    <span className="slogan-ahead">ahead</span>
+                </h2>
             </div>
         </div>
     );

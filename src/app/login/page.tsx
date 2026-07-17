@@ -1,12 +1,23 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FiMail, FiLock, FiEyeOff } from 'react-icons/fi';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { FaMicrosoft, FaApple } from 'react-icons/fa';
 import AuthRightPanel from '@/components/AuthRightPanel';
 
 export default function LoginPage() {
+    const router = useRouter();
+    const [showPassword, setShowPassword] = useState(false);
+
+    const handleLogin = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        // Simulate login process
+        router.push('/');
+    };
+
     return (
         <>
             {/* Left Side: Login Form */}
@@ -27,7 +38,7 @@ export default function LoginPage() {
                         <p>Log in to continue your journey with <strong>OShift</strong>.</p>
                     </div>
 
-                    <form className="auth-form" onSubmit={(e) => e.preventDefault()}>
+                    <form className="auth-form" onSubmit={handleLogin}>
                         <div className="auth-field">
                             <div className="auth-input-wrapper">
                                 <FiMail className="auth-input-icon" />
@@ -44,12 +55,19 @@ export default function LoginPage() {
                             <div className="auth-input-wrapper">
                                 <FiLock className="auth-input-icon" />
                                 <input 
-                                    type="password" 
+                                    type={showPassword ? 'text' : 'password'}
                                     className="auth-input" 
                                     placeholder="Password" 
                                     required 
                                 />
-                                <FiEyeOff className="auth-input-icon right" />
+                                <button
+                                    type="button"
+                                    className="auth-eye-btn"
+                                    onClick={() => setShowPassword(prev => !prev)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <FiEye /> : <FiEyeOff />}
+                                </button>
                             </div>
                         </div>
 
@@ -72,13 +90,13 @@ export default function LoginPage() {
                     <div className="auth-divider">or continue with</div>
 
                     <div className="auth-social">
-                        <button className="auth-social-btn google">
+                        <button type="button" className="auth-social-btn google" onClick={() => handleLogin()}>
                             <FcGoogle />
                         </button>
-                        <button className="auth-social-btn microsoft">
+                        <button type="button" className="auth-social-btn microsoft" onClick={() => handleLogin()}>
                             <FaMicrosoft color="#00a4ef" />
                         </button>
-                        <button className="auth-social-btn apple">
+                        <button type="button" className="auth-social-btn apple" onClick={() => handleLogin()}>
                             <FaApple />
                         </button>
                     </div>

@@ -2,11 +2,11 @@ import '../auth.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Login - CShift',
-    description: 'Login to CShift',
+    title: 'Update Password - OShift',
+    description: 'Update your OShift password',
 };
 
-export default function LoginLayout({
+export default function UpdatePasswordLayout({
     children,
 }: {
     children: React.ReactNode;
