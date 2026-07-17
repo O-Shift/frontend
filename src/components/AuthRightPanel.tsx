@@ -9,22 +9,22 @@ export default function AuthRightPanel() {
                 <OrangeWaveBackground />
             </div>
 
-            {/* Mascot */}
-            <Image
-                src="/mascot_running.png"
-                alt="OShift Mascot"
-                width={450}
-                height={450}
-                className="auth-mascot"
-                priority
-            />
-
-            {/* Slogan */}
-            <div className="auth-slogan">
-                <h2>
-                    Always<br />
-                    one step <span className="slogan-bold">ahead</span>
-                </h2>
+            {/* Mascot + Slogan grouped so mascot sits directly above "Always" */}
+            <div className="auth-mascot-slogan-group">
+                <Image
+                    src="/mascot_running.png"
+                    alt="OShift Mascot"
+                    width={550}
+                    height={550}
+                    className="auth-mascot"
+                    priority
+                />
+                <div className="auth-slogan">
+                    <h2>
+                        Always<br />
+                        one step <span className="slogan-bold">ahead</span>
+                    </h2>
+                </div>
             </div>
         </div>
     );

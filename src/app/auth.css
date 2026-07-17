@@ -377,34 +377,39 @@
   object-fit: cover;
 }
 
+/* Mascot + Slogan group — mascot always sits directly above 'Always' */
+.auth-mascot-slogan-group {
+  position: absolute;
+  bottom: 6%;
+  right: 5%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* right-align both mascot and text */
+  gap: 0;
+}
+
 /* Mascot */
 .auth-mascot {
-  position: absolute;
-  z-index: 5;
-  right: -2%; /* Shifted right so the mascot body centers over the right-aligned text */
-  top: 50%;
-  width: 700px;
+  width: 720px;
   height: auto;
   filter: drop-shadow(0 25px 45px rgba(0, 0, 0, 0.3));
-  /* Simple, slow floating animation */
   animation: mascotFloat 4s ease-in-out infinite;
+  /* Shift right so character body (not transparent edge) centers over text */
+  margin-right: -40px;
 }
 
 @keyframes mascotFloat {
   0%, 100% {
-    transform: translateY(-58%);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-62%);
+    transform: translateY(-14px);
   }
 }
 
 /* Slogan */
 .auth-slogan {
-  position: absolute;
-  bottom: 8%;
-  right: 8%;
-  z-index: 5;
   text-align: right;
 }
 
@@ -432,8 +437,7 @@
 
 @media (max-width: 1100px) {
   .auth-mascot {
-    width: 450px;
-    right: 2%;
+    width: 380px;
   }
   .auth-slogan h2 {
     font-size: 2.2rem;
