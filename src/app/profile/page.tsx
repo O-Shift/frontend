@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Globe from '@/components/Globe';
 
 const PROFILE_DATA = {
     name: 'Vasil Stoyanov',
@@ -87,26 +88,11 @@ const PROFILE_DATA = {
         },
     ],
     competitors: [
-        { 
-            name: 'Rabbit', 
-            icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 22h20L12 2z"/></svg>
-        },
-        { 
-            name: 'Talabat', 
-            icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        },
-        { 
-            name: 'InstaShop', 
-            icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
-        },
-        { 
-            name: 'Breadfast', 
-            icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        },
-        { 
-            name: 'Noon', 
-            icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        }
+        { name: 'Rabbit', logo: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.rabbitmart.com&size=128' },
+        { name: 'Talabat', logo: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.talabat.com&size=128' },
+        { name: 'InstaShop', logo: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://instashop.com&size=128' },
+        { name: 'Breadfast', logo: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.breadfast.com&size=128' },
+        { name: 'Noon', logo: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.noon.com&size=128' }
     ]
 };
 
@@ -158,139 +144,193 @@ export default function ProfilePage() {
     return (
         <div className="main-content" style={{ overflowY: 'auto', paddingBottom: 60, display: 'flex', flexDirection: 'column', position: 'relative', background: 'var(--bg-main)' }}>
             <style>{`
-                @keyframes liveGradientProfile {
-                    0% { transform: scale(1) translate(0px, 0px); opacity: 0.1; }
-                    33% { transform: scale(1.05) translate(2% , 2%); opacity: 0.15; }
-                    66% { transform: scale(0.95) translate(-2%, -2%); opacity: 0.1; }
-                    100% { transform: scale(1) translate(0px, 0px); opacity: 0.1; }
+                .competitor-orb {
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    border: 1px solid var(--border-color);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                    position: relative;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                    overflow: hidden;
+                }
+                .competitor-logo-hover {
+                    position: relative;
+                    cursor: pointer;
+                }
+                .competitor-logo-hover:hover .competitor-orb {
+                    transform: translateY(-6px) scale(1.1);
+                    border-color: #FF5A00;
+                    box-shadow: 0 10px 25px rgba(255, 90, 0, 0.2);
+                }
+                .competitor-logo-hover:hover .comp-tooltip {
+                    opacity: 1;
+                    transform: translate(-50%, -10px);
+                }
+                .comp-tooltip {
+                    position: absolute;
+                    top: -30px;
+                    left: 50%;
+                    transform: translate(-50%, 0);
+                    background: var(--text-primary);
+                    color: var(--bg-main);
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                    white-space: nowrap;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                 }
             `}</style>
             
+            {/* Subtle Grid Overlay */}
             <div style={{
-                position: 'absolute', top: -150, left: 0, right: 0, height: '800px',
-                background: `radial-gradient(circle at 30% 0%, ${brandColor1}, transparent 40%), radial-gradient(circle at 70% 20%, ${brandColor2}, transparent 40%)`,
-                filter: 'blur(120px)', animation: 'liveGradientProfile 20s ease-in-out infinite',
-                pointerEvents: 'none', zIndex: 0
+                position: 'absolute', inset: 0, zIndex: 0, opacity: 0.3, pointerEvents: 'none',
+                backgroundImage: `linear-gradient(to right, var(--border-color) 1px, transparent 1px), linear-gradient(to bottom, var(--border-color) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px',
+                maskImage: 'linear-gradient(to bottom, black 0%, transparent 60%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 60%)'
             }} />
 
-            <div style={{ padding: '80px 60px', maxWidth: 1100, margin: '0 auto', width: '100%', position: 'relative', zIndex: 1 }}>
+            <div style={{ padding: '80px 60px', maxWidth: 1200, margin: '0 auto', width: '100%', position: 'relative', zIndex: 1 }}>
                 
-
-                <motion.div 
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ position: 'relative', marginBottom: 80, minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
-                >
-
-                    <div className="giant-bg-logo">
-                        <svg width="400" height="400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-                        </svg>
-                    </div>
-
-                    <div style={{ position: 'relative', zIndex: 1 }}>
-
-                        <h2 style={{ 
-                            fontSize: 110, 
-                            fontWeight: 700, 
-                            margin: '0 0 32px 0', 
-                            color: 'var(--text-primary)', 
-                            letterSpacing: '0.05em',
-                            lineHeight: 0.9,
-                            textTransform: 'uppercase'
+                {/* TOP 2-COLUMN SECTION */}
+                <div style={{ display: 'flex', gap: '40px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '60px' }}>
+                    
+                    {/* LEFT SIDEBAR: PROFILE CARD */}
+                <div style={{ 
+                    width: '340px', 
+                    background: 'var(--card-bg)', 
+                    borderRadius: '24px', 
+                    padding: '16px',
+                    border: '1px solid var(--border-color)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.05)',
+                    display: 'flex', flexDirection: 'column'
+                }}>
+                    <div style={{ position: 'relative' }}>
+                        <div style={{
+                            height: '140px',
+                            borderRadius: '16px',
+                            position: 'relative',
+                            background: 'linear-gradient(135deg, #FF5A00 0%, #A16207 100%)',
+                            overflow: 'hidden'
                         }}>
-                            {PROFILE_DATA.name.split(' ')[0]}<br/>
-                            {PROFILE_DATA.name.split(' ')[1]}
-                        </h2>
+                        </div>
 
+                        <div style={{
+                            position: 'absolute', bottom: '-40px', left: '20px',
+                            width: '80px', height: '80px', borderRadius: '50%',
+                            background: 'var(--card-bg)', padding: '4px', zIndex: 1
+                        }}>
+                            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style={{ marginTop: '50px', padding: '0 10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
-                                <p style={{ 
-                                    fontSize: 14, 
-                                    color: '#FF5A00', 
-                                    margin: '0 0 24px 0', 
-                                    fontWeight: 600,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.2em'
-                                }}>{PROFILE_DATA.jobTitle}</p>
-                                
-                                <div 
-                                    className="spotlight-container"
-                                    onMouseMove={(e) => {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const x = e.clientX - rect.left;
-                                        const y = e.clientY - rect.top;
-                                        e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
-                                        e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
-                                    }}
-                                    style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center',
-                                        gap: 12, 
-                                        flexWrap: 'wrap',
-                                        fontSize: 13,
-                                        color: 'var(--text-secondary)',
-                                        letterSpacing: '0.05em',
-                                        textTransform: 'uppercase',
-                                        fontWeight: 500,
-                                        padding: '12px 20px',
-                                        marginLeft: '-20px',
-                                        borderRadius: '8px'
-                                    }}>
-                                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, position: 'relative', zIndex: 1 }}>{PROFILE_DATA.company}</span>
-                                    <span style={{ opacity: 0.3, position: 'relative', zIndex: 1 }}>•</span>
-                                    <span style={{ position: 'relative', zIndex: 1 }}>{PROFILE_DATA.department}</span>
-                                    <span style={{ opacity: 0.3, position: 'relative', zIndex: 1 }}>•</span>
-                                    <span style={{ color: '#FF5A00', fontWeight: 600, position: 'relative', zIndex: 1 }}>{PROFILE_DATA.workspaceRole}</span>
-                                </div>
+                                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{PROFILE_DATA.name}</h2>
+                                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>{PROFILE_DATA.jobTitle} @ {PROFILE_DATA.company}</p>
                             </div>
-                            
-                            <div style={{ paddingTop: 16 }}>
-                                <button onClick={() => setIsEditing(!isEditing)} className="profile-edit-btn">
-                                    {isEditing ? 'Save Changes' : 'Edit Profile'}
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button onClick={() => setIsEditing(!isEditing)} style={{ 
+                                    background: 'var(--text-primary)', color: 'var(--bg-main)', border: 'none',
+                                    padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer'
+                                }}>
+                                    {isEditing ? 'Save' : 'Edit'}
                                 </button>
                             </div>
                         </div>
                     </div>
-                </motion.div>
 
+                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '24px 10px' }} />
 
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{PROFILE_DATA.areasOfFocus.length}</span>
+                            </div>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Focus</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                                <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{PROFILE_DATA.objectives.length}</span>
+                            </div>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Objectives</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+                                <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{PROFILE_DATA.markets.countries.length}</span>
+                            </div>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Markets</span>
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '0 10px 10px 10px' }}>
+                        <button style={{
+                            width: '100%', padding: '14px', borderRadius: '16px', border: 'none',
+                            background: 'var(--text-primary)', color: 'var(--bg-main)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                            fontSize: '14px', fontWeight: 600, cursor: 'pointer'
+                        }}>
+                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </div>
+                            Get in Touch
+                        </button>
+                    </div>
+                </div>
+
+                {/* RIGHT MAIN CONTENT */}
+                <div style={{ flex: 1, minWidth: '300px' }}>
+
+                {/* Clean Bio Section */}
                 <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4, duration: 0.8 }}
-                    style={{ marginBottom: 40, maxWidth: 800 }}
+                    style={{ marginBottom: 60, maxWidth: 800 }}
                 >
+                    <h3 style={{ 
+                        fontSize: 14, 
+                        fontWeight: 600, 
+                        color: 'var(--text-secondary)', 
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em',
+                        marginBottom: '16px'
+                    }}>
+                        About
+                    </h3>
                     {isEditing ? (
                         <textarea 
                             value={bioText}
                             onChange={(e) => setBioText(e.target.value)}
                             style={{ 
-                                width: '100%',
-                                minHeight: '120px',
-                                background: 'transparent',
-                                border: '1px solid #FF5A00',
-                                borderRadius: '8px',
-                                padding: '16px',
-                                color: 'var(--text-primary)',
-                                fontSize: 16,
-                                fontStyle: 'italic',
-                                outline: 'none',
-                                resize: 'vertical'
+                                width: '100%', minHeight: '120px',
+                                background: 'transparent', border: '1px solid var(--border-color)',
+                                borderRadius: '8px', padding: '16px',
+                                color: 'var(--text-primary)', fontSize: 16,
+                                outline: 'none', resize: 'vertical'
                             }}
                         />
                     ) : (
-                        <p style={{ 
-                            margin: 0, 
-                            fontSize: 18, 
-                            lineHeight: 1.8, 
-                            color: 'var(--text-secondary)',
-                            fontStyle: 'italic',
-                            borderLeft: '2px solid #FF5A00',
-                            paddingLeft: 32
-                        }}>
-                            "{bioText}"
+                        <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                            {bioText}
                         </p>
                     )}
                 </motion.div>
@@ -300,37 +340,37 @@ export default function ProfilePage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5, duration: 1 }}
+                    style={{ marginBottom: 60 }}
                 >
                     <h3 style={{ 
-                        fontSize: 24, 
+                        fontSize: 14, 
                         fontWeight: 600, 
-                        color: 'var(--text-primary)', 
-                        letterSpacing: '0.02em',
-                        margin: '0 0 16px 32px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
+                        color: 'var(--text-secondary)', 
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em',
+                        marginBottom: '20px'
                     }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF5A00', display: 'inline-block' }} />
                         Monitored Competitors
                     </h3>
-                    <div className="competitor-marquee-wrapper">
-                        <div className="competitor-marquee-content">
-                            {marqueeItems.map((comp, idx) => (
-                                <div key={idx} className="competitor-card">
-                                    <div className="competitor-card-glow" />
-                                    <div className="competitor-card-content">
-                                        <div className="competitor-icon-wrapper">{comp.icon}</div>
-                                        <span className="competitor-name">{comp.name}</span>
-                                    </div>
+                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {PROFILE_DATA.competitors.map((comp, idx) => (
+                            <div key={idx} className="competitor-logo-hover">
+                                <div className="competitor-orb">
+                                    <img src={comp.logo} alt={comp.name} style={{ width: 32, height: 32, objectFit: 'contain' }} />
                                 </div>
-                            ))}
-                        </div>
+                                <div className="comp-tooltip">
+                                    {comp.name}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </motion.div>
+                
+                </div> {/* END RIGHT MAIN CONTENT */}
+            </div> {/* END TOP 2-COLUMN SECTION */}
 
-
-                <motion.div 
+            {/* FULL WIDTH TABS SECTION */}
+            <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6, duration: 0.6 }}
@@ -428,30 +468,41 @@ export default function ProfilePage() {
 
 
                         {activeSection === 'markets' && (
-                            <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-                                <motion.div variants={itemVariants}>
-                                    <h4 style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 16px 0', letterSpacing: '0.15em' }}>Countries</h4>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                                        {PROFILE_DATA.markets.countries.map((c, i) => (
-                                            <span key={i} className="market-pill">{c}</span>
-                                        ))}
+                            <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '80px', alignItems: 'center' }}>
+                                {/* Left Side: 3D Globe */}
+                                <motion.div variants={itemVariants} style={{ width: '100%' }}>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <h3 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Global Footprint</h3>
+                                        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Monitored strategic regions</p>
+                                    </div>
+                                    {/* Explicit height required for Three.js renderer to measure container */}
+                                    <div style={{ width: '100%', height: '500px', position: 'relative' }}>
+                                        <Globe key="globe-v7" />
                                     </div>
                                 </motion.div>
-                                <motion.div variants={itemVariants}>
-                                    <h4 style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 16px 0', letterSpacing: '0.15em' }}>Regions</h4>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                                        {PROFILE_DATA.markets.regions.map((r, i) => (
-                                            <span key={i} className="market-pill">{r}</span>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                                <motion.div variants={itemVariants}>
-                                    <h4 style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 16px 0', letterSpacing: '0.15em' }}>Industries of Interest</h4>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                                        {PROFILE_DATA.markets.industries.map((ind, i) => (
-                                            <span key={i} className="market-pill">{ind}</span>
-                                        ))}
-                                    </div>
+
+                                {/* Right Side: Data */}
+                                <motion.div variants={containerVariants} style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+                                    <motion.div variants={itemVariants}>
+                                        <h4 style={{ fontSize: 12, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 12px 0', letterSpacing: '0.15em', fontWeight: 600 }}>Active Countries</h4>
+                                        <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: 16, lineHeight: 1.6, fontWeight: 400 }}>
+                                            {PROFILE_DATA.markets.countries.join(' • ')}
+                                        </p>
+                                    </motion.div>
+                                    
+                                    <motion.div variants={itemVariants}>
+                                        <h4 style={{ fontSize: 12, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 12px 0', letterSpacing: '0.15em', fontWeight: 600 }}>Broader Regions</h4>
+                                        <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: 16, lineHeight: 1.6, fontWeight: 400 }}>
+                                            {PROFILE_DATA.markets.regions.join(' • ')}
+                                        </p>
+                                    </motion.div>
+
+                                    <motion.div variants={itemVariants}>
+                                        <h4 style={{ fontSize: 12, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 12px 0', letterSpacing: '0.15em', fontWeight: 600 }}>Industries of Interest</h4>
+                                        <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: 16, lineHeight: 1.6, fontWeight: 400 }}>
+                                            {PROFILE_DATA.markets.industries.join(' • ')}
+                                        </p>
+                                    </motion.div>
                                 </motion.div>
                             </motion.div>
                         )}
