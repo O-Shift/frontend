@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import PromptField from '@/components/PromptField';
 
+// BACKEND: signals.signals aggregated by day (e.g. SELECT date_trunc('day', created_at), sum(score) WHERE competitor_id = ?)
 const mockChartData = [
     { name: 'Jan', share: 48, engagement: 340, time: 58 },
     { name: 'Feb', share: 32, engagement: 210, time: 72 },
@@ -17,12 +18,14 @@ const mockChartData = [
     { name: 'Oct', share: 35, engagement: 260, time: 68 }
 ];
 
+// BACKEND: insights.insights_gaps — SELECT title, description WHERE competitor_id = ?
 const gaps = [
     { title: "Gen-Z Reach", desc: "Low engagement compared to peers on TikTok." },
     { title: "Sponsorship ROI", desc: "Diminishing returns on major influencer campaigns." },
     { title: "Sentiment Dip", desc: "Recent PR issues affected overall trust scores." }
 ];
 
+// BACKEND: sense.sense_reviews WHERE competitor_id = ?
 const reviews = [
     { user: "Karan", date: "1 week ago", text: "Incredible ecosystem integration. Nothing else comes close to this level of polish.", stars: 5, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" },
     { user: "Sarah", date: "3 weeks ago", text: "Prices keep going up but the core product hasn't improved much. Really frustrating.", stars: 2, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" },
@@ -30,6 +33,7 @@ const reviews = [
     { user: "Peter", date: "2 weeks ago", text: "Customer service took 3 days to respond to a critical billing error. Unacceptable.", stars: 1, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" }
 ];
 
+// BACKEND: ⚠️ NO EQUIVALENT — campaigns table doesn't exist
 const campaigns = [
     {
         name: "Summer Creator Fund", date: "Jun 2026", metric: "+15% Engagement", status: "Active",

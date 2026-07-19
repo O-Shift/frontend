@@ -14,6 +14,7 @@ export default function LoginPage() {
 
     const handleLogin = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
+        // BACKEND: supabase.auth.signInWithPassword({ email, password }) → redirects to / on success
         // Simulate login process
         router.push('/');
     };
@@ -90,6 +91,7 @@ export default function LoginPage() {
                     <div className="auth-divider">or continue with</div>
 
                     <div className="auth-social">
+                        {/* BACKEND: supabase.auth.signInWithOAuth({ provider: 'google' | 'azure' | 'apple' }) */}
                         <button type="button" className="auth-social-btn google" onClick={() => handleLogin()}>
                             <FcGoogle />
                         </button>

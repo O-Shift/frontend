@@ -10,6 +10,7 @@ export default function ForgotPasswordPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // BACKEND: supabase.auth.resetPasswordForEmail(email, { redirectTo: '/update-password' })
         setIsSent(true);
     };
 

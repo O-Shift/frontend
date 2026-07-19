@@ -4,12 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Globe from '@/components/Globe';
 
 const PROFILE_DATA = {
+    // BACKEND: core.core_workspace_members + core.core_roles
     name: 'Vasil Stoyanov',
     jobTitle: 'Head of Strategy',
     company: 'OShift',
     department: 'Strategic Intelligence',
     workspaceRole: 'Admin',
+    // BACKEND: ⚠️ NO EQUIVALENT — no bio field in any table
     bio: 'Driving competitive intelligence and market expansion strategies across MENA and European markets. Passionate about leveraging data-driven insights to uncover hidden opportunities and anticipating market shifts.',
+    // BACKEND: core.core_workspaces + core.core_workspace_members
     corporate: {
         company: 'OShift',
         industry: 'Competitive Intelligence & SaaS',
@@ -17,6 +20,7 @@ const PROFILE_DATA = {
         position: 'Head of Strategy',
         workspaceRole: 'Admin',
     },
+    // BACKEND: ⚠️ NO EQUIVALENT — needs design decision
     areasOfFocus: [
         { 
             label: 'Market Expansion', 
@@ -65,11 +69,13 @@ const PROFILE_DATA = {
             )
         },
     ],
+    // BACKEND: ⚠️ NO EQUIVALENT — could be stored in core.core_workspaces JSONB metadata column
     markets: {
         countries: ['Egypt', 'UAE', 'Saudi Arabia', 'Germany', 'UK'],
         regions: ['MENA', 'Western Europe', 'North Africa'],
         industries: ['EdTech', 'FinTech', 'E-Commerce', 'SaaS', 'Logistics'],
     },
+    // BACKEND: ⚠️ NO EQUIVALENT — needs design decision
     objectives: [
         {
             title: 'Expand MENA Market Presence',

@@ -16,6 +16,8 @@ const C = {
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
 
+// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
+// BACKEND: ⚠️ NO EQUIVALENT — OShift tracks competitor intelligence, not creator analytics (platformData)
 const platformData: Record<string, any[]> = {
     all: months.map((m, i) => ({
         name: m, audience: [42, 68, 31, 55, 72, 38, 59, 81, 44, 63][i],
@@ -49,18 +51,24 @@ const platformData: Record<string, any[]> = {
     }))
 };
 
+// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
+// BACKEND: ⚠️ NO EQUIVALENT — opportunities table doesn't exist in OShift
 const opportunities = [
     { name: "Brand Deal — Nike", desc: "Product placement opportunity", value: 15, priority: "high", platform: "ig", expiresIn: 12, badge: false },
     { name: "Podcast Collab", desc: "The Joe Rogan Experience", value: 50, priority: "high", platform: "podcast", expiresIn: 5, badge: false },
     { name: "Sponsorship — Raycon", desc: "90-day exclusive offer", value: 8, priority: "medium", platform: "yt", expiresIn: 30, badge: true }
 ];
 
+// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
+// BACKEND: ⚠️ NO EQUIVALENT — perfItems are creator performance metrics, not tracked in OShift
 const perfItems = [
     { name: "Summer Creator Fund", metric: "+15%", progress: 64, target: "5M views", trend: "up", badge: false },
     { name: "Tech Reviewers Push", metric: "2.4M", progress: 100, target: "2.4M views", trend: "flat", badge: false },
     { name: "Podcast Sponsorships", metric: "-5%", progress: 30, target: "$20K revenue", trend: "down", badge: true }
 ];
 
+// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
+// BACKEND: ⚠️ NO EQUIVALENT — campaigns table doesn't exist
 const campaigns = [
     {
         name: "Summer Creator Fund", date: "Jun 2026", metric: "+15% Engagement", status: "Active",
@@ -90,12 +98,16 @@ const campaigns = [
     }
 ];
 
+// BACKEND: insights.insights_gaps
+// BACKEND: insights.insights_gaps — SELECT title, description, severity, suggested_action, benchmark
 const gaps = [
     { title: "Gen-Z Reach", desc: "Low engagement compared to peers on TikTok.", severity: "high", action: "Launch short-form vertical video series targeting 18-24 demographic", benchmark: "Peers avg 2.3x higher" },
     { title: "Sponsorship ROI", desc: "Diminishing returns on major influencer campaigns.", severity: "medium", action: "Diversify into micro-influencer partnerships with higher conversion rates", benchmark: "Micro-influencers avg 3.5% higher ROI" },
     { title: "Sentiment Dip", desc: "Recent PR issues affected overall trust scores.", severity: "low", action: "Publish behind-the-scenes content and community AMA to rebuild trust", benchmark: "Trust scores down 12% vs last quarter" }
 ];
 
+// BACKEND: sense.sense_reviews
+// BACKEND: sense.sense_reviews — SELECT user, text, stars, sentiment, response_status
 const reviews = [
     { user: "Karan", date: "1 week ago", text: "Incredible ecosystem integration. Nothing else comes close to this level of polish.", stars: 5, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop", responseStatus: "replied", sentiment: "positive" },
     { user: "Sarah", date: "3 weeks ago", text: "Prices keep going up but the core product hasn't improved much. Really frustrating.", stars: 2, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop", responseStatus: "pending", sentiment: "critical" },
@@ -278,7 +290,9 @@ export default function DashboardPage() {
                                 <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
                             </svg>
                         </div>
+                        {/* BACKEND: core.core_workspaces, core.core_workspace_members, core.core_roles */}
                         <div>
+                            {/* BACKEND: core.core_workspace_members + core.core_roles */}
                             <h2 style={{ fontSize: 36, fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Vasil S.</h2>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 16, marginTop: 2, fontWeight: 500 }}>Creator & Founder &middot; Since 2024</div>
                         </div>
@@ -291,6 +305,7 @@ export default function DashboardPage() {
 
                 {/* STATS BAR */}
                 <div style={{ display: 'flex', marginBottom: 48, borderBottom: '1px solid var(--border-color)', paddingBottom: 0 }} className="section-divider">
+                    {/* BACKEND: ⚠️ NO EQUIVALENT — OShift does not track creator analytics (Total Followers, Total Views, etc.) */}
                     {[
                         { label: 'Total Followers', value: '847K', change: '+12%', trend: 'up' as const, data: [30, 35, 32, 40, 45, 42, 50, 55, 52, 60, 65, 62, 70] },
                         { label: 'Total Views', value: '12.4M', change: '+8%', trend: 'up' as const, data: [100, 120, 110, 140, 160, 150, 180, 200, 190, 220, 240, 230, 260] },
@@ -757,6 +772,8 @@ export default function DashboardPage() {
             </div>
         </div>
 
+        {/* BACKEND: POST /hermes/conversations/{id}/messages */}
+        {/* BACKEND: POST /hermes/conversations/{id}/messages (SSE streaming) */}
         <PromptField 
             selectedNode={selectedNode}
             setSelectedNode={setSelectedNode}

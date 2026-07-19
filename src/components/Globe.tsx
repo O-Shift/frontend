@@ -137,10 +137,11 @@ export default function Globe({ className }: { className?: string }) {
     const hoverRing = new THREE.Mesh(ringGeo, ringMat);
     globeGroup.add(hoverRing);
 
-    // Invisible sphere for raycasting
+    // Pick sphere for raycasting — MUST be visible:true or Three.js skips it.
+    // colorWrite:false means it writes depth but no color, so it's invisible.
     const pickSphere = new THREE.Mesh(
       new THREE.SphereGeometry(GLOBE_RADIUS, 32, 32),
-      new THREE.MeshBasicMaterial({ visible: false })
+      new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })
     );
     globeGroup.add(pickSphere);
 
@@ -190,8 +191,9 @@ export default function Globe({ className }: { className?: string }) {
     scene.add(rimLight);
 
     // ---------- Interaction ----------
-    // Azimuth = 4.16 puts Cairo/MENA facing the camera on load
-    let targetAzimuth = 4.16;
+    // Azimuth 4.168 = Cairo dead-center facing camera on load
+    // Auto-rotate slowly (0.012 rad/s) so it takes ~130s for Cairo to rotate to back
+    let targetAzimuth = 4.168;
     let targetPolar = Math.PI / 2 - 0.15;
     let azimuth = targetAzimuth;
     let polar = targetPolar;
@@ -291,7 +293,7 @@ export default function Globe({ className }: { className?: string }) {
       const elapsed = now / 1000;
       lastTime = now;
 
-      if (autoRotate && !isDragging) targetAzimuth += dt * 0.06;
+      if (autoRotate && !isDragging) targetAzimuth += dt * 0.012;
 
       azimuth += (targetAzimuth - azimuth) * 0.1;
       polar += (targetPolar - polar) * 0.1;

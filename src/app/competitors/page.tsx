@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 
+// BACKEND: competitors.competitors_watchlist — SELECT id, name, domain WHERE workspace_id = ?
 const entities = [
   { name: "Tesla", domain: "tesla.com" },
   { name: "Meta", domain: "meta.com" },
@@ -85,6 +86,7 @@ export default function CompetitorsPage() {
     return () => window.removeEventListener('keydown', onEsc);
   }, []);
 
+  // BACKEND: filter done client-side on fetched data
   const filtered = entities.filter(e => e.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -98,6 +100,7 @@ export default function CompetitorsPage() {
         >
           <h1 style={{ color: 'var(--text-primary)', fontSize: 36, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.02em', lineHeight: 1 }}>Competitors</h1>
           <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Select a competitor profile to analyze performance gaps and metrics.</div>
+          {/* BACKEND: add competitor → POST /competitors { name, url } via FastAPI */}
         </motion.div>
         <motion.div className="competitors-search skeleton-target"
           animate={{ 
@@ -121,6 +124,7 @@ export default function CompetitorsPage() {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
+            // BACKEND: client-side filter on competitors list — no server search endpoint
             type="text"
             placeholder="Search competitors..."
             value={query}
@@ -171,6 +175,7 @@ export default function CompetitorsPage() {
                 const logoDiv = e.currentTarget.querySelector('.search-logo-container') as HTMLDivElement;
                 if (logoDiv) {
                   const rect = logoDiv.getBoundingClientRect();
+                  // BACKEND: company detail page fetches signals for this competitor
                   router.push(`/company/${company.domain}?startX=${rect.left}&startY=${rect.top}&startW=${rect.width}&round=false`);
                 }
               }}
@@ -256,6 +261,7 @@ export default function CompetitorsPage() {
       </motion.div>
     </div>
 
+      {/* BACKEND: POST /hermes/conversations/{id}/messages (SSE) */}
       <PromptField 
           selectedNode={selectedNode}
           setSelectedNode={setSelectedNode}

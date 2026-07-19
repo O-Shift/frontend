@@ -65,6 +65,7 @@ export default function SignupPage() {
                         <h1 style={{ fontSize: '2rem' }}>Create your OShift account</h1>
                     </div>
 
+                    {/* BACKEND: supabase.auth.signUp({ email, password }) → workspace creation may need separate POST /workspaces */}
                     <form className="auth-form" onSubmit={(e) => e.preventDefault()}>
                         <div className="auth-field">
                             <div className="auth-input-wrapper">

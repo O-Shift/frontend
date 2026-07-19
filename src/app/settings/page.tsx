@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { useTheme } from '@/components/ThemeProvider';
 
+// BACKEND: core.core_workspace_members JOIN core.core_roles WHERE workspace_id = ?
 const MOCK_USERS = [
   { id: 1, name: 'Alex Rivera', email: 'alex@oshift.ai', role: 'Admin', access: 'All Pages', status: 'Active' },
   { id: 2, name: 'Sarah Chen', email: 'sarah@oshift.ai', role: 'Editor', access: 'Campaigns, Opportunities', status: 'Active' },
@@ -98,6 +99,7 @@ export default function SettingsPage() {
                 <h2 className="skeleton-target" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 16 }}>General</h2>
                 <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '16px 24px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    {/* BACKEND: core.core_workspace_members */}
                     <div style={{ background: 'var(--card-bg-alt)', width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                     </div>
