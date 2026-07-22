@@ -2,8 +2,8 @@ import '../auth.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Sign Up - CShift',
-    description: 'Create a new CShift account',
+    title: 'Sign Up - OShift',
+    description: 'Create a new OShift account',
 };
 
 export default function SignupLayout({

@@ -3,7 +3,6 @@
  */
 
 import { feature } from 'topojson-client';
-// @ts-expect-error - world-atlas ships untyped JSON
 import countriesTopo from 'world-atlas/countries-110m.json';
 import type { LngLat } from './world-map-types';
 

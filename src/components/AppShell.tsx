@@ -2,7 +2,15 @@
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 
-const SHELL_EXCLUDED_ROUTES = ['/login', '/signup', '/forgot-password', '/update-password', '/onboarding'];
+const SHELL_EXCLUDED_ROUTES = [
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/update-password',
+    '/onboarding',
+    '/workspaces',
+    '/auth',
+];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();

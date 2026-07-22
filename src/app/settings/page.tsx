@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { useTheme } from '@/components/ThemeProvider';
+import { createClient } from '@/utils/supabase/client';
 
 // BACKEND: core.core_workspace_members JOIN core.core_roles WHERE workspace_id = ?
 const MOCK_USERS = [
@@ -12,7 +14,9 @@ const MOCK_USERS = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('main');
+  const [loggingOut, setLoggingOut] = useState(false);
   const [notifications, setNotifications] = useState({
     weeklyReport: true,
     newOpportunities: true,
@@ -51,6 +55,15 @@ export default function SettingsPage() {
     window.addEventListener('keydown', onEsc);
     return () => window.removeEventListener('keydown', onEsc);
   }, []);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    sessionStorage.removeItem('oshift.workspace_id');
+    router.push('/login');
+    router.refresh();
+  };
 
   const renderHeader = (title: string) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
@@ -185,8 +198,13 @@ export default function SettingsPage() {
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Securely sign out of your account on this device.</p>
                     </div>
                   </div>
-                  <button style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                    Logout
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: loggingOut ? 'wait' : 'pointer', opacity: loggingOut ? 0.7 : 1 }}
+                  >
+                    {loggingOut ? 'Signing out…' : 'Logout'}
                   </button>
                 </div>
               </div>

@@ -207,7 +207,6 @@ export default function NotFoundPage() {
               whileHover={!isChess ? { scale: 1.05 } : {}}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5,
-                margin: '0 2vw',
                 ...(isChess ? {
                   position: 'absolute', inset: 0, margin: 'auto',
                   width: 'min(65vh, 80vw)', height: 'min(65vh, 80vw)',
@@ -219,7 +218,7 @@ export default function NotFoundPage() {
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                 } : {
-                  position: 'relative', cursor: 'pointer', display: 'inline-block',
+                  position: 'relative', cursor: 'pointer', display: 'inline-block', margin: '0 2vw',
                   background: 'conic-gradient(var(--bg-body) 90deg, var(--accent) 90deg 180deg, var(--bg-body) 180deg 270deg, var(--accent) 270deg) 0 0 / 25% 25%',
                   WebkitBackgroundClip: 'text',
                   backgroundClip: 'text',
