@@ -130,7 +130,15 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
       };
 
       const onWheel = (e: WheelEvent) => {
+        if (
+          (e.target as Element).closest('.command-wrapper') ||
+          (e.target as Element).closest('#mascot-img') ||
+          (e.target as Element).closest('.chat-window')
+        ) {
+          return;
+        }
         e.preventDefault();
+
         const zoomAmount = Math.exp(e.deltaY * -0.002);
         const rect   = container.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;

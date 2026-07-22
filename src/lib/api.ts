@@ -76,3 +76,91 @@ export async function apiFetch<T>(
     return { ok: false, error: msg, status: 0 };
   }
 }
+
+export interface SseEvent {
+  type: string;
+  data: unknown;
+  raw: string;
+}
+
+export async function* sseStream(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): AsyncGenerator<SseEvent, void, void> {
+  const token = await getAccessToken();
+  const base = getApiBaseUrl().replace(/\/$/, "");
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const url = normalized.startsWith("/v1/")
+    ? `${base}${normalized}`
+    : `${base}/v1${normalized}`;
+  const workspaceId =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("oshift.workspace_id")
+      : null;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(workspaceId ? { "X-Workspace-ID": workspaceId } : {}),
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  const convId = res.headers.get("X-Conversation-Id");
+  if (convId) {
+    yield {
+      type: "conversation_id",
+      data: convId,
+      raw: convId,
+    };
+  }
+
+  if (!res.ok || !res.body) {
+    const text = await res.text().catch(() => "");
+    yield {
+      type: "error",
+      data: { status: res.status, statusText: res.statusText, body: text },
+      raw: `HTTP ${res.status} ${res.statusText}`,
+    };
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const payload = trimmed.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          const json = JSON.parse(payload);
+          yield { type: json.type || "message", data: json, raw: payload };
+        } catch {
+          yield { type: "raw", data: payload, raw: payload };
+        }
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    yield {
+      type: "error",
+      data: { content: `Network connection error: ${msg}` },
+      raw: msg,
+    };
+  }
+}
+

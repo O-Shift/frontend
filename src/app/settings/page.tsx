@@ -359,8 +359,9 @@ export default function SettingsPage() {
         commandActive={commandActive}
         setCommandActive={setCommandActive}
         setSidebarCollapsed={setSidebarCollapsed}
-        onSubmit={() => setIsThinking(true)}
+        onThinkingChange={setIsThinking}
       />
+
     </>
   );
 }

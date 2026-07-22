@@ -670,8 +670,9 @@ export default function CompetitorsPage() {
         commandActive={commandActive}
         setCommandActive={setCommandActive}
         setSidebarCollapsed={setSidebarCollapsed}
-        onSubmit={() => setIsThinking(true)}
+        onThinkingChange={setIsThinking}
       />
+
     </>
   );
 }

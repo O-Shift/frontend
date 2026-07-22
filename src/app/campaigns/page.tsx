@@ -439,11 +439,11 @@ export default function CampaignsPage() {
       {/* ── Mascot + AI prompt — shared PromptField component ───── */}
       <PromptField
         selectedNode={selectedNode}
-        setSelectedNode={handleSetSelectedNode}
+        setSelectedNode={setSelectedNode}
         commandActive={commandActive}
         setCommandActive={setCommandActive}
         setSidebarCollapsed={setSidebarCollapsed}
-        onSubmit={() => setIsThinking(true)}
+        onThinkingChange={setIsThinking}
       />
 
       <div className={`v0-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`} onMouseDown={(e) => e.stopPropagation()}>

@@ -780,8 +780,9 @@ export default function DashboardPage() {
             commandActive={commandActive}
             setCommandActive={setCommandActive}
             setSidebarCollapsed={setSidebarCollapsed}
-            onSubmit={() => setIsThinking(true)}
+            onThinkingChange={setIsThinking}
         />
+
         </>
     );
 }

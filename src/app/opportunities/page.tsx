@@ -639,8 +639,9 @@ export default function OpportunitiesPage() {
           commandActive={commandActive}
           setCommandActive={setCommandActive}
           setSidebarCollapsed={setSidebarCollapsed}
-          onSubmit={() => setIsThinking(true)}
+          onThinkingChange={setIsThinking}
       />
+
     </>
   );
 }

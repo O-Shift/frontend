@@ -733,7 +733,15 @@ export default function PartnershipsPage() {
     const onMouseLeave = () => { isDragging = false; };
 
     const onWheel = (e: WheelEvent) => {
+        if (
+            (e.target as Element).closest('.command-wrapper') ||
+            (e.target as Element).closest('#mascot-img') ||
+            (e.target as Element).closest('.chat-window')
+        ) {
+            return;
+        }
         e.preventDefault();
+
         const zoomAmount = Math.exp(e.deltaY * -0.002);
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -879,8 +887,9 @@ export default function PartnershipsPage() {
             commandActive={commandActive}
             setCommandActive={setCommandActive}
             setSidebarCollapsed={setSidebarCollapsed}
-            onSubmit={() => setIsThinking(true)}
+            onThinkingChange={setIsThinking}
         />
+
 
         <div className={`v0-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`} onMouseDown={(e) => e.stopPropagation()}>
             <div className="v0-sidebar-header">
