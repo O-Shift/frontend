@@ -1,8 +1,90 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import PromptField from '@/components/PromptField';
-import SkeletonOverlay from '@/components/SkeletonOverlay';
+import { apiFetch } from '@/lib/api';
+
+interface DBGraphNode {
+  id: string;
+  name: string;
+  entity_type: string;
+  metadata?: {
+    domain?: string;
+    website?: string;
+    url?: string;
+    color?: string;
+    type?: string;
+    value?: number;
+    [key: string]: any;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface DBGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  rel_type: string;
+  source_name?: string;
+  source_type?: string;
+  target_name?: string;
+  target_type?: string;
+  metadata?: any;
+}
+
+interface PartnershipsResponse {
+  workspace_id: string;
+  nodes: DBGraphNode[];
+  edges: DBGraphEdge[];
+  node_count: number;
+  edge_count: number;
+}
+
+interface Competitor {
+  id: string;
+  name: string;
+  website: string;
+  description?: string;
+  created_at?: string;
+}
+
+function extractDomain(input?: string | null): string {
+  if (!input) return '';
+  const str = input.trim();
+  try {
+    const urlStr = str.startsWith('http://') || str.startsWith('https://')
+      ? str
+      : `https://${str}`;
+    const host = new URL(urlStr).hostname.replace(/^www\./, '');
+    if (host.includes('.')) return host;
+  } catch {
+    // ignore
+  }
+
+  if (str.includes('.')) {
+    return str.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  }
+
+  return '';
+}
+
+function getDynamicDomain(name: string, metadata?: any): string {
+  if (metadata?.domain) return extractDomain(metadata.domain);
+  if (metadata?.website) return extractDomain(metadata.website);
+  if (metadata?.url) return extractDomain(metadata.url);
+  return extractDomain(name);
+}
+
+function getDynamicBrandColor(str: string): string {
+  if (!str) return 'hsl(210, 70%, 50%)';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 75%, 50%)`;
+}
 
 export default function PartnershipsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -18,12 +100,35 @@ export default function PartnershipsPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
 
+  const [dbGraphData, setDbGraphData] = useState<PartnershipsResponse | null>(null);
+  const [dbCompetitors, setDbCompetitors] = useState<Competitor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [graphRes, compRes] = await Promise.all([
+      apiFetch<PartnershipsResponse>('/graph/partnerships'),
+      apiFetch<Competitor[]>('/competitors'),
+    ]);
+
+    if (graphRes.ok && graphRes.data) {
+      setDbGraphData(graphRes.data);
+    }
+    if (compRes.ok && compRes.data) {
+      setDbCompetitors(compRes.data);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   useEffect(() => {
     document.body.classList.toggle('is-thinking-active', isThinking);
     return () => document.body.classList.remove('is-thinking-active');
   }, [isThinking]);
 
-  // ESC closes the prompt bar and floating sidebar, but keeps the chip
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -39,6 +144,7 @@ export default function PartnershipsPage() {
   const targetTransform = useRef({ x: 0, y: 0, k: 1 });
   
   useEffect(() => {
+    if (loading) return;
     if (!containerRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -61,214 +167,215 @@ export default function PartnershipsPage() {
     targetTransform.current = { x: width / 2, y: height / 2, k: 1 };
     transform.current = { x: width / 2, y: height / 2, k: 1 };
     
-    const NUM_NODES = 250;
-    const NUM_HUBS = 12;
-
-    const timelineEvents: any[] = [];
-    const NUM_EVENTS = Math.floor(NUM_NODES / 2);
-    let currentDate = new Date(2021, 0, 1);
-    let lastMonth = -1;
-
-    for (let i = 0; i < NUM_EVENTS; i++) {
-        const month = currentDate.getMonth();
-        const isFirstOfMonth = month !== lastMonth;
-        lastMonth = month;
-
-        timelineEvents.push({
-            id: i,
-            x: i * 80,
-            dateStr: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            monthStr: currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-            isFirstOfMonth: isFirstOfMonth,
-            node1: null as any,
-            node2: null as any
-        });
-        currentDate.setDate(currentDate.getDate() + 2 + Math.floor(Math.random() * 4));
-    }
-
-    const pairIndices = Array.from({length: NUM_NODES}, (_, i) => i);
-    for (let i = pairIndices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pairIndices[i], pairIndices[j]] = [pairIndices[j], pairIndices[i]];
-    }
-
-    const nodeToEvent = new Array(NUM_NODES);
-    const nodeYOffset = new Array(NUM_NODES);
-    for (let i = 0; i < NUM_EVENTS; i++) {
-        const n1 = pairIndices[i * 2];
-        const n2 = pairIndices[i * 2 + 1];
-        nodeToEvent[n1] = i;
-        nodeToEvent[n2] = i;
-        nodeYOffset[n1] = -100 - Math.random() * 60;
-        nodeYOffset[n2] = 100 + Math.random() * 60;
-    }
-
     const nodes: any[] = [];
     const links: any[] = [];
     const preloadedImages: any = {};
-    
-    const entities = [
-      { name: "Apple", domain: "apple.com", type: "company", color: "#FF5A00" },
-      { name: "Google", domain: "google.com", type: "company", color: "#34A853" },
-      { name: "Microsoft", domain: "microsoft.com", type: "company", color: "#00A4EF" },
-      { name: "Amazon", domain: "amazon.com", type: "company", color: "#FF9900" },
-      { name: "Tesla", domain: "tesla.com", type: "company", color: "#E31937" },
-      { name: "Meta", domain: "meta.com", type: "company", color: "#0668E1" },
-      { name: "MrBeast", domain: "mrbeast.store", type: "influencer", color: "#E50914" },
-      { name: "Netflix", domain: "netflix.com", type: "company", color: "#E50914" },
-      { name: "Spotify", domain: "spotify.com", type: "company", color: "#1DB954" },
-      { name: "Stripe", domain: "stripe.com", type: "company", color: "#635BFF" },
-      { name: "MKBHD", domain: "mkbhd.com", type: "influencer", color: "#FF0000" },
-      { name: "Uber", domain: "uber.com", type: "company", color: "#FFFFFF" }
-    ];
+    const nodeMap = new Map<string, any>();
+    const timelineEvents: any[] = [];
 
-    const processImageCache = (domain: string, type: string, imgUrl: string, fallbackUrl: string | null) => {
-      if (!preloadedImages[domain]) {
-        const imgObj = { loaded: false, canvas: null as HTMLCanvasElement | null };
-        preloadedImages[domain] = imgObj;
-        const img = new Image();
-        img.src = imgUrl;
-        
-        const cacheImg = () => {
-          const c = document.createElement('canvas');
-          c.width = 128;
-          c.height = 128;
-          const xctx = c.getContext('2d');
-          if(!xctx) return;
-          
-          xctx.beginPath();
-          if (type === 'company') {
-              if((xctx as any).roundRect) (xctx as any).roundRect(2, 2, 124, 124, 24);
-              else xctx.rect(2, 2, 124, 124);
-          } else {
-              xctx.arc(64, 64, 62, 0, Math.PI * 2);
-          }
-          xctx.fillStyle = '#ffffff';
-          xctx.fill();
-          xctx.clip();
+    const processImageCache = (
+      key: string,
+      domain: string,
+      name: string,
+      type: string,
+      color: string
+    ) => {
+      if (preloadedImages[key]) return;
+
+      const imgObj = { loaded: false, canvas: null as HTMLCanvasElement | null, img: null as HTMLImageElement | null };
+      preloadedImages[key] = imgObj;
+
+      const renderMonogramCanvas = () => {
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 128;
+        const xctx = c.getContext('2d');
+        if (!xctx) return;
+
+        xctx.beginPath();
+        if (type === 'company') {
+          if ((xctx as any).roundRect) (xctx as any).roundRect(2, 2, 124, 124, 24);
+          else xctx.rect(2, 2, 124, 124);
+        } else {
+          xctx.arc(64, 64, 62, 0, Math.PI * 2);
+        }
+        xctx.fillStyle = color || '#27272a';
+        xctx.fill();
+
+        const initial = (name || domain || 'C').charAt(0).toUpperCase();
+        xctx.fillStyle = '#ffffff';
+        xctx.font = 'bold 56px Inter, sans-serif';
+        xctx.textAlign = 'center';
+        xctx.textBaseline = 'middle';
+        xctx.fillText(initial, 64, 64);
+
+        imgObj.canvas = c;
+        imgObj.loaded = true;
+      };
+
+      if (!domain) {
+        renderMonogramCanvas();
+        return;
+      }
+
+      const imgUrl = `https://logo.clearbit.com/${domain}`;
+      const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+
+      const img = new Image();
+
+      let triedFallback = false;
+
+      const cacheImg = () => {
+        if (img.naturalWidth <= 16 || img.naturalHeight <= 16) {
+          renderMonogramCanvas();
+          return;
+        }
+
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 128;
+        const xctx = c.getContext('2d');
+        if (!xctx) {
+          renderMonogramCanvas();
+          return;
+        }
+
+        xctx.beginPath();
+        if (type === 'company') {
+          if ((xctx as any).roundRect) (xctx as any).roundRect(2, 2, 124, 124, 24);
+          else xctx.rect(2, 2, 124, 124);
+        } else {
+          xctx.arc(64, 64, 62, 0, Math.PI * 2);
+        }
+        xctx.fillStyle = '#ffffff';
+        xctx.fill();
+        xctx.clip();
+
+        try {
           xctx.drawImage(img, 2, 2, 124, 124);
-          
           imgObj.canvas = c;
           imgObj.loaded = true;
-        };
+        } catch {
+          imgObj.img = img;
+          imgObj.loaded = true;
+        }
+      };
 
-        img.onload = cacheImg;
-        img.onerror = () => {
-            if (fallbackUrl && img.src !== fallbackUrl) {
-                img.src = fallbackUrl;
-            }
-        };
-      }
+      img.onload = cacheImg;
+      img.onerror = () => {
+        if (!triedFallback && fallbackUrl && img.src !== fallbackUrl) {
+          triedFallback = true;
+          img.src = fallbackUrl;
+        } else {
+          renderMonogramCanvas();
+        }
+      };
+
+      img.src = imgUrl;
     };
 
-    for (let i = 0; i < NUM_NODES; i++) {
-      const isHub = i < NUM_HUBS;
-      let value = 0;
-      let radius = 3.5;
-      let imgUrl = null;
-      let label = '';
-      let domain = '';
-      let type = 'normal';
-      let color = '#8E8E93';
+    const rawEntities: any[] = [];
 
-      if (isHub) {
-          const entity = entities[i % entities.length];
-          label = entity.name;
-          domain = entity.domain;
-          type = entity.type;
-          color = entity.color || '#FF5A00';
-
-          imgUrl = `https://logo.clearbit.com/${entity.domain}`;
-          const fallbackUrl = `https://www.google.com/s2/favicons?domain=${entity.domain}&sz=128`;
-          processImageCache(entity.domain, type, imgUrl, fallbackUrl);
-
-          value = 50 + Math.random() * 2950;
-          radius = 8 + Math.sqrt(value) * 0.25;
-      } else {
-          const isCompany = Math.random() > 0.4;
-          type = isCompany ? 'company' : 'influencer';
-          const idStr = i.toString();
-          let fallbackUrl = null;
-          
-          if (isCompany) {
-              const smallCompanies = ["vercel.com", "figma.com", "notion.so", "openai.com", "anthropic.com", "linear.app", "github.com", "gitlab.com", "slack.com", "raycast.com", "arc.net"];
-              domain = smallCompanies[i % smallCompanies.length];
-              imgUrl = `https://logo.clearbit.com/${domain}`;
-              fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-              label = domain.split('.')[0];
-              color = '#8E8E93';
-          } else {
-              domain = `influencer_${i}`;
-              imgUrl = `https://i.pravatar.cc/50?u=${idStr}`;
-              label = `Creator ${i}`;
-              color = '#a78bfa';
-          }
-
-          processImageCache(domain, type, imgUrl, fallbackUrl);
-          value = 5 + Math.random() * 20;
-          radius = 5 + Math.sqrt(value) * 0.4;
+    if (dbGraphData?.nodes) {
+      for (const gn of dbGraphData.nodes) {
+        const dom = getDynamicDomain(gn.name, gn.metadata);
+        rawEntities.push({
+          id: gn.id,
+          name: gn.name,
+          domain: dom,
+          type: gn.entity_type === 'content_creator' ? 'influencer' : 'company',
+          color: gn.metadata?.color || getDynamicBrandColor(dom || gn.name),
+          isHub: gn.entity_type === 'competitor' || gn.entity_type === 'agency',
+          created_at: gn.created_at || gn.updated_at
+        });
       }
+    }
 
-      const eventIdx = nodeToEvent[i];
-      const ev = timelineEvents[eventIdx];
-      let tX = ev ? ev.x : 0;
-      let tY = nodeYOffset[i];
+    for (const comp of dbCompetitors) {
+      const dom = extractDomain(comp.website) || getDynamicDomain(comp.name);
+      if (!rawEntities.some(e => e.id === comp.id || e.name.toLowerCase() === comp.name.toLowerCase())) {
+        rawEntities.push({
+          id: comp.id,
+          name: comp.name,
+          domain: dom,
+          type: 'company',
+          color: getDynamicBrandColor(dom || comp.name),
+          isHub: true,
+          created_at: comp.created_at
+        });
+      }
+    }
 
-      nodes.push({
-          id: i,
-          x: (Math.random() - 0.5) * width * 1.5,
-          y: (Math.random() - 0.5) * height * 1.5,
-          vx: 0,
-          vy: 0,
-          isHub: isHub,
-          value: value,
-          domain: domain,
-          type: type,
-          radius: radius,
-          baseRadius: radius,
-          color: color,
-          label: label,
-          timelineX: tX,
-          timelineY: tY,
-          orbitOffset: Math.random() * Math.PI * 2
+    // STRICT DYNAMIC TIMELINE: Real DB Timestamps only
+    const entitiesWithDates = rawEntities
+      .filter(e => e.created_at)
+      .map(e => ({ ...e, dateObj: new Date(e.created_at) }))
+      .filter(e => !isNaN(e.dateObj.getTime()))
+      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+    if (entitiesWithDates.length > 0) {
+      entitiesWithDates.forEach((entity, idx) => {
+        const d = entity.dateObj;
+        timelineEvents.push({
+          id: idx,
+          x: idx * 160,
+          dateStr: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          monthStr: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          isFirstOfMonth: true,
+          entityId: entity.id
+        });
       });
     }
 
-    for (let i = NUM_HUBS; i < NUM_NODES; i++) {
-        const targetHub = Math.floor(Math.random() * NUM_HUBS);
-        links.push({ source: nodes[i], target: nodes[targetHub] });
+    for (let i = 0; i < rawEntities.length; i++) {
+      const entity = rawEntities[i];
+      const isHub = entity.isHub;
+      const value = isHub ? 150 + Math.random() * 2000 : 15 + Math.random() * 50;
+      const radius = isHub ? 12 + Math.sqrt(value) * 0.25 : 6 + Math.sqrt(value) * 0.4;
+      const cacheKey = entity.id || `${entity.name}_${i}`;
 
-        if (Math.random() > 0.85) {
-            const randomNode = Math.floor(NUM_HUBS + Math.random() * (NUM_NODES - NUM_HUBS));
-            if (randomNode !== i) {
-                links.push({ source: nodes[i], target: nodes[randomNode] });
-            }
-        }
+      processImageCache(cacheKey, entity.domain, entity.name, entity.type, entity.color);
+
+      const evIdx = timelineEvents.findIndex(ev => ev.entityId === entity.id);
+      const ev = evIdx !== -1 ? timelineEvents[evIdx] : null;
+
+      const nodeObj = {
+        id: entity.id || cacheKey,
+        cacheKey: cacheKey,
+        x: (Math.random() - 0.5) * width * 1.2,
+        y: (Math.random() - 0.5) * height * 1.2,
+        vx: 0,
+        vy: 0,
+        isHub: isHub,
+        value: value,
+        domain: entity.domain,
+        type: entity.type,
+        radius: radius,
+        baseRadius: radius,
+        color: entity.color,
+        label: entity.name,
+        hasRealDate: !!ev,
+        timelineX: ev ? ev.x : 0,
+        timelineY: (i % 2 === 0 ? -1 : 1) * (80 + (i % 3) * 40),
+        orbitOffset: Math.random() * Math.PI * 2
+      };
+
+      nodes.push(nodeObj);
+      nodeMap.set(entity.id, nodeObj);
+      nodeMap.set(entity.name.toLowerCase(), nodeObj);
+      if (entity.domain) nodeMap.set(entity.domain.toLowerCase(), nodeObj);
     }
 
-    for (let i = 0; i < NUM_EVENTS; i++) {
-        const n1Idx = pairIndices[i * 2];
-        const n2Idx = pairIndices[i * 2 + 1];
-        if (n1Idx !== undefined && n2Idx !== undefined) {
-            const n1 = nodes[n1Idx];
-            const n2 = nodes[n2Idx];
-            links.push({ source: n1, target: n2 });
-            const ev = timelineEvents[i];
-            if (ev) {
-                ev.node1 = n1;
-                ev.node2 = n2;
-            }
+    if (dbGraphData?.edges && dbGraphData.edges.length > 0) {
+      for (const edge of dbGraphData.edges) {
+        const src = nodeMap.get(edge.source) || nodeMap.get((edge.source_name || '').toLowerCase());
+        const tgt = nodeMap.get(edge.target) || nodeMap.get((edge.target_name || '').toLowerCase());
+        if (src && tgt && src !== tgt) {
+          links.push({ source: src, target: tgt, rel_type: edge.rel_type });
         }
+      }
     }
-    
-    for (let i = 0; i < NUM_HUBS; i++) {
-        for (let j = i + 1; j < NUM_HUBS; j++) {
-            if (Math.random() > 0.75) {
-                links.push({ source: nodes[i], target: nodes[j] });
-            }
-        }
-    }
-    
+
     let isDragging = false;
     let hoveredNode: any = null;
     let localSelectedNode: any = null;
@@ -367,92 +474,103 @@ export default function PartnershipsPage() {
         ctx.translate(tr.x, tr.y);
         ctx.scale(tr.k, tr.k);
 
-        ctx.lineWidth = 0.5 / tr.k;
-        for (const link of links) {
-            if (mode === 'timeline') continue;
+        // Draw Links in Graph Mode
+        if (mode === 'graph') {
+          ctx.lineWidth = 0.5 / tr.k;
+          for (const link of links) {
+              ctx.beginPath();
+              ctx.moveTo(link.source.x, link.source.y);
+              ctx.lineTo(link.target.x, link.target.y);
 
-            ctx.beginPath();
-            ctx.moveTo(link.source.x, link.source.y);
-            ctx.lineTo(link.target.x, link.target.y);
-
-            if (link.source === hoveredNode || link.target === hoveredNode || link.source === localSelectedNode || link.target === localSelectedNode) {
-                const gradient = ctx.createLinearGradient(link.source.x, link.source.y, link.target.x, link.target.y);
-                gradient.addColorStop(0, link.source.color || 'rgba(142, 142, 147, 0.8)');
-                gradient.addColorStop(1, link.target.color || 'rgba(142, 142, 147, 0.8)');
-                ctx.strokeStyle = gradient;
-                ctx.lineWidth = 2.0 / tr.k;
-            } else if (link.source.isHub && link.target.isHub) {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.lineWidth = 1.5 / tr.k;
-            } else {
-                ctx.strokeStyle = 'rgba(142, 142, 147, 0.4)';
-                ctx.lineWidth = 1.0 / tr.k;
-            }
-            ctx.stroke();
+              if (link.source === hoveredNode || link.target === hoveredNode || link.source === localSelectedNode || link.target === localSelectedNode) {
+                  const gradient = ctx.createLinearGradient(link.source.x, link.source.y, link.target.x, link.target.y);
+                  gradient.addColorStop(0, link.source.color || 'rgba(142, 142, 147, 0.8)');
+                  gradient.addColorStop(1, link.target.color || 'rgba(142, 142, 147, 0.8)');
+                  ctx.strokeStyle = gradient;
+                  ctx.lineWidth = 2.0 / tr.k;
+              } else if (link.source.isHub && link.target.isHub) {
+                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                  ctx.lineWidth = 1.5 / tr.k;
+              } else {
+                  ctx.strokeStyle = 'rgba(142, 142, 147, 0.4)';
+                  ctx.lineWidth = 1.0 / tr.k;
+              }
+              ctx.stroke();
+          }
         }
         
+        // Draw Timeline Mode
         if (mode === 'timeline') {
             const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
             const TIMELINE_BASE_Y = 0;
-            ctx.beginPath();
-            const minX = -100;
-            const maxX = (timelineEvents.length - 1) * 80 + 200;
-            ctx.moveTo(minX, TIMELINE_BASE_Y);
-            ctx.lineTo(maxX, TIMELINE_BASE_Y);
-            ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 2 / tr.k;
-            ctx.stroke();
 
-            let lastDrawnX = -Infinity;
-            const minTextSpacing = 80 / tr.k;
+            if (timelineEvents.length > 0) {
+              // Baseline axis line
+              ctx.beginPath();
+              const minX = -100;
+              const maxX = (timelineEvents.length - 1) * 160 + 300;
+              ctx.moveTo(minX, TIMELINE_BASE_Y);
+              ctx.lineTo(maxX, TIMELINE_BASE_Y);
+              ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.35)';
+              ctx.lineWidth = 2.5 / tr.k;
+              ctx.stroke();
 
-            ctx.fillStyle = isLightMode ? '#52525b' : '#a1a1aa';
-            ctx.font = `600 ${14 / tr.k}px Inter, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            
-            for (const ev of timelineEvents) {
-                if (ev.node1 && ev.node2) {
-                    ctx.beginPath();
-                    ctx.moveTo(ev.node1.x, ev.node1.y + ev.node1.radius);
-                    ctx.lineTo(ev.node2.x, ev.node2.y - ev.node2.radius);
-                    ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.15)';
-                    ctx.lineWidth = 1.5 / tr.k;
-                    ctx.stroke();
+              // Connectors to nodes with real dates
+              for (const n of nodes) {
+                if (n.hasRealDate) {
+                  ctx.beginPath();
+                  ctx.moveTo(n.x, TIMELINE_BASE_Y);
+                  ctx.lineTo(n.x, n.y);
+                  ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)';
+                  ctx.lineWidth = 1.5 / tr.k;
+                  ctx.stroke();
                 }
+              }
 
-                ctx.beginPath();
-                ctx.moveTo(ev.x, TIMELINE_BASE_Y - 6 / tr.k);
-                ctx.lineTo(ev.x, TIMELINE_BASE_Y + 6 / tr.k);
-                ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)';
-                ctx.lineWidth = 2 / tr.k;
-                ctx.stroke();
+              // Timeline date labels & tick marks
+              ctx.fillStyle = isLightMode ? '#52525b' : '#a1a1aa';
+              ctx.font = `600 ${14 / tr.k}px Inter, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'top';
+              
+              for (const ev of timelineEvents) {
+                  ctx.beginPath();
+                  ctx.moveTo(ev.x, TIMELINE_BASE_Y - 8 / tr.k);
+                  ctx.lineTo(ev.x, TIMELINE_BASE_Y + 8 / tr.k);
+                  ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.5)';
+                  ctx.lineWidth = 2 / tr.k;
+                  ctx.stroke();
 
-                const textStr = tr.k < 0.4 ? ev.monthStr : ev.dateStr;
-                const isMajor = tr.k < 0.4 ? ev.isFirstOfMonth : true;
-
-                if (isMajor && (ev.x - lastDrawnX > minTextSpacing)) {
-                    ctx.fillText(textStr, ev.x, TIMELINE_BASE_Y + 20 / tr.k);
-                    lastDrawnX = ev.x;
-                }
-            }
-
-            ctx.fillStyle = isLightMode ? '#ffffff' : '#18181b';
-            ctx.strokeStyle = isLightMode ? '#52525b' : 'rgba(255, 255, 255, 0.8)';
-            ctx.lineWidth = 2 / tr.k;
-            for (const ev of timelineEvents) {
-                ctx.beginPath();
-                ctx.arc(ev.x, TIMELINE_BASE_Y, 3 / tr.k, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
+                  ctx.fillText(ev.dateStr, ev.x, TIMELINE_BASE_Y + 24 / tr.k);
+              }
+            } else {
+              ctx.fillStyle = isLightMode ? '#71717a' : '#a1a1aa';
+              ctx.font = `500 ${16 / tr.k}px Inter, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('No timeline event timestamps available in database for these graph records.', 0, 0);
             }
         }
 
+        // Render Empty State if 0 DB records
+        if (nodes.length === 0) {
+          const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+          ctx.fillStyle = isLightMode ? '#52525b' : '#a1a1aa';
+          ctx.font = `600 ${18 / tr.k}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('No partnership graph records found in workspace.', 0, -10);
+          ctx.font = `400 ${14 / tr.k}px Inter, sans-serif`;
+          ctx.fillStyle = isLightMode ? '#a1a1aa' : '#71717a';
+          ctx.fillText('Add competitors or run partnership discovery to generate graph nodes.', 0, 20);
+        }
+
+        // Draw Nodes
         for (const n of nodes) {
             const scaledRadius = n.radius / Math.max(tr.k * 0.5, 0.8);
             const isActive = n === localSelectedNode || n === hoveredNode;
 
-            if (n.isHub) {
+            if (n.isHub && mode === 'graph') {
                 ctx.save();
                 ctx.translate(n.x, n.y);
                 ctx.rotate(t * 0.5 + n.orbitOffset);
@@ -480,17 +598,18 @@ export default function PartnershipsPage() {
                 continue; 
             }
 
-            const pImg = preloadedImages[n.domain];
+            const pImg = preloadedImages[n.cacheKey || n.domain];
 
-            if (pImg && pImg.canvas) {
+            if (pImg && (pImg.canvas || pImg.img)) {
+                const imgSource = pImg.canvas || pImg.img;
                 if (isActive) {
                     ctx.save();
                     ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
                     ctx.shadowBlur = 20 * tr.k;
-                    ctx.drawImage(pImg.canvas, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
+                    ctx.drawImage(imgSource, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
                     ctx.restore();
                 } else {
-                    ctx.drawImage(pImg.canvas, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
+                    ctx.drawImage(imgSource, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
                 }
                 
                 ctx.beginPath();
@@ -535,7 +654,7 @@ export default function PartnershipsPage() {
         applyPhysics();
         const mode = currentView.toLowerCase();
         for (const n of nodes) {
-            const baseR = mode === 'timeline' ? 12 : n.baseRadius;
+            const baseR = mode === 'timeline' ? 14 : n.baseRadius;
             const targetRadius = (n === hoveredNode || n === localSelectedNode) ? baseR * 1.25 : baseR;
             n.radius += (targetRadius - n.radius) * 0.2;
         }
@@ -589,14 +708,12 @@ export default function PartnershipsPage() {
             hoveredNode = null;
             let minDist = Infinity;
             for (const n of nodes) {
-                if (n.isHub) {
-                    const dx = n.x - mouseX;
-                    const dy = n.y - mouseY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < n.radius + 15 && dist < minDist) {
-                        hoveredNode = n;
-                        minDist = dist;
-                    }
+                const dx = n.x - mouseX;
+                const dy = n.y - mouseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < n.radius + 15 && dist < minDist) {
+                    hoveredNode = n;
+                    minDist = dist;
                 }
             }
             canvas.style.cursor = hoveredNode ? 'pointer' : (isDragging ? 'grabbing' : 'grab');
@@ -681,7 +798,7 @@ export default function PartnershipsPage() {
             const screenY = clickedNode.y * transform.current.k + transform.current.y - screenR;
             const startW = screenR * 2;
             const isRound = clickedNode.type !== 'company';
-            router.push(`/company/${clickedNode.domain}?startX=${screenX}&startY=${screenY}&startW=${startW}&round=${isRound}`);
+            router.push(`/company/${clickedNode.domain || clickedNode.label}?startX=${screenX}&startY=${screenY}&startW=${startW}&round=${isRound}`);
         }
     };
 
@@ -702,7 +819,7 @@ export default function PartnershipsPage() {
         container.removeEventListener('mouseleave', onMouseLeave);
         container.removeEventListener('wheel', onWheel);
     };
-  }, [currentView]);
+  }, [currentView, loading, dbGraphData, dbCompetitors, router]);
 
   return (
     <div className="main-content skeleton-target" id="graphContainer" ref={containerRef}>
