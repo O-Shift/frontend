@@ -1,7 +1,12 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Globe from '@/components/Globe';
+import { getCompetitors, Competitor } from '@/lib/api';
+
+
 
 const PROFILE_DATA = {
     // BACKEND: core.core_workspace_members + core.core_roles
@@ -132,6 +137,17 @@ export default function ProfilePage() {
     const [activeSection, setActiveSection] = useState<string>('overview');
     const [isEditing, setIsEditing] = useState(false);
     const [bioText, setBioText] = useState(PROFILE_DATA.bio);
+    const [realCompetitors, setRealCompetitors] = useState<Competitor[]>([]);
+    const router = useRouter();
+
+    useEffect(() => {
+        getCompetitors().then((res) => {
+            if (res.ok && res.data) {
+                setRealCompetitors(res.data);
+            }
+        });
+    }, []);
+
 
     const sections = [
         { id: 'overview', label: 'Overview' },
@@ -359,18 +375,41 @@ export default function ProfilePage() {
                         Monitored Competitors
                     </h3>
                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {PROFILE_DATA.competitors.map((comp, idx) => (
-                            <div key={idx} className="competitor-logo-hover">
-                                <div className="competitor-orb">
-                                    <img src={comp.logo} alt={comp.name} style={{ width: 32, height: 32, objectFit: 'contain' }} />
-                                </div>
-                                <div className="comp-tooltip">
-                                    {comp.name}
-                                </div>
+                        {realCompetitors.length > 0 ? (
+                            realCompetitors.map((comp) => {
+                                const domain = comp.website
+                                    ? comp.website.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+                                    : '';
+                                return (
+                                    <div
+                                        key={comp.id}
+                                        className="competitor-logo-hover"
+                                        onClick={() => router.push(`/competitors/${comp.id}`)}
+                                    >
+                                        <div className="competitor-orb">
+                                            <img
+                                                src={`https://logo.clearbit.com/${domain}`}
+                                                alt={comp.name}
+                                                style={{ width: 32, height: 32, objectFit: 'contain' }}
+                                                onError={(e) => {
+                                                    (e.target as any).src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="comp-tooltip">
+                                            {comp.name}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                                No competitors monitored in this workspace yet.
                             </div>
-                        ))}
+                        )}
                     </div>
                 </motion.div>
+
                 
                 </div> {/* END RIGHT MAIN CONTENT */}
             </div> {/* END TOP 2-COLUMN SECTION */}

@@ -4,16 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
-import { apiFetch } from '@/lib/api';
-
-interface Competitor {
-  id: string;
-  workspace_id?: string;
-  name: string;
-  website: string;
-  description?: string | null;
-  created_at?: string;
-}
+import { getCompetitors, deleteCompetitor, Competitor, apiFetch } from '@/lib/api';
 
 function extractDomain(website: string): string {
   if (!website) return '';
@@ -86,15 +77,16 @@ export default function CompetitorsPage() {
   const [newCompName, setNewCompName] = useState('');
   const [newCompWebsite, setNewCompWebsite] = useState('');
   const [newCompDesc, setNewCompDesc] = useState('');
+  const [newCompIndustry, setNewCompIndustry] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
-  const loadCompetitors = useCallback(async () => {
+  const loadCompetitorsList = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await apiFetch<Competitor[]>('/competitors');
+    const res = await getCompetitors();
     if (res.ok) {
-      setCompetitors(res.data);
+      setCompetitors(res.data || []);
     } else {
       setError(res.error || 'Failed to fetch competitors');
     }
@@ -102,8 +94,8 @@ export default function CompetitorsPage() {
   }, []);
 
   useEffect(() => {
-    loadCompetitors();
-  }, [loadCompetitors]);
+    loadCompetitorsList();
+  }, [loadCompetitorsList]);
 
   useEffect(() => {
     document.body.classList.toggle('is-thinking-active', isThinking);
@@ -139,6 +131,7 @@ export default function CompetitorsPage() {
         name: newCompName.trim(),
         website: formattedWebsite,
         description: newCompDesc.trim() || undefined,
+        industry: newCompIndustry.trim() || undefined,
       }),
     });
 
@@ -148,8 +141,9 @@ export default function CompetitorsPage() {
       setNewCompName('');
       setNewCompWebsite('');
       setNewCompDesc('');
+      setNewCompIndustry('');
       setIsAddModalOpen(false);
-      loadCompetitors();
+      loadCompetitorsList();
     } else {
       setAddError(res.error || 'Failed to add competitor');
     }
@@ -158,7 +152,7 @@ export default function CompetitorsPage() {
   const handleDeleteCompetitor = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to remove this competitor?')) return;
-    const res = await apiFetch(`/competitors/${id}`, { method: 'DELETE' });
+    const res = await deleteCompetitor(id);
     if (res.ok) {
       setCompetitors((prev) => prev.filter((c) => c.id !== id));
     } else {
@@ -166,11 +160,11 @@ export default function CompetitorsPage() {
     }
   };
 
-  const filtered = competitors.filter(
+  const filtered = (competitors || []).filter(
     (c) =>
-      c.name.toLowerCase().includes(query.toLowerCase()) ||
-      c.website.toLowerCase().includes(query.toLowerCase()) ||
-      extractDomain(c.website).toLowerCase().includes(query.toLowerCase())
+      (c?.name || '').toLowerCase().includes(query.toLowerCase()) ||
+      (c?.website || '').toLowerCase().includes(query.toLowerCase()) ||
+      extractDomain(c?.website || '').toLowerCase().includes(query.toLowerCase())
   );
 
   return (
@@ -355,12 +349,8 @@ export default function CompetitorsPage() {
                     boxShadow: '0 20px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
                     transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease'
                   }}
-                  onClick={(e) => {
-                    const logoDiv = e.currentTarget.querySelector('.search-logo-container') as HTMLDivElement;
-                    if (logoDiv) {
-                      const rect = logoDiv.getBoundingClientRect();
-                      router.push(`/company/${domain}?startX=${rect.left}&startY=${rect.top}&startW=${rect.width}&round=false`);
-                    }
+                  onClick={() => {
+                    router.push(`/competitors/${company.id}`);
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-10px) scale(1.02)';
@@ -466,7 +456,7 @@ export default function CompetitorsPage() {
                       )}
                     </div>
                     <div style={{ zIndex: 2, color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 16, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                      {domain || company.website}
+                      {company.industry ? `${company.industry} • ${domain || company.website}` : (domain || company.website)}
                     </div>
                     <div style={{ marginTop: 'auto', zIndex: 2 }}>
                       <div style={{ color: 'white', fontSize: 24, fontWeight: 800, lineHeight: 1.1, textTransform: 'uppercase', letterSpacing: '-0.5px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
@@ -493,7 +483,7 @@ export default function CompetitorsPage() {
                       {company.description || `Monitored competitor profile for ${company.name}. Click to view signals and intelligence.`}
                     </div>
                     <div style={{ marginTop: 16, padding: '8px 16px', background: 'white', color: c1, borderRadius: 20, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignSelf: 'flex-start', boxShadow: `0 4px 12px rgba(0,0,0,0.2)` }}>
-                      Click to know more
+                      View Intelligence
                     </div>
                   </div>
                 </div>
@@ -602,6 +592,28 @@ export default function CompetitorsPage() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
+                    Industry (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. E-Commerce / SaaS"
+                    value={newCompIndustry}
+                    onChange={(e) => setNewCompIndustry(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
+                      color: 'var(--text-primary, #ffffff)',
+                      fontSize: 15,
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
                     Description (optional)
                   </label>
                   <textarea
@@ -672,7 +684,6 @@ export default function CompetitorsPage() {
         setSidebarCollapsed={setSidebarCollapsed}
         onThinkingChange={setIsThinking}
       />
-
     </>
   );
 }

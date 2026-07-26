@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { FiChevronLeft, FiChevronRight, FiSearch, FiX, FiCheck } from 'react-icons/fi';
 import '../onboarding.css';
 import Image from 'next/image';
+import { createCompetitorsBatch } from '@/lib/api';
+
 
 const MOCK_COMPANIES = [
     { name: 'Apple', domain: 'apple.com' },
@@ -45,10 +47,26 @@ export default function OnboardingStep2() {
         setSelectedCompetitors(selectedCompetitors.filter(c => c.domain !== domain));
     };
 
-    const handleContinue = () => {
-        // In a real flow, navigate to next step or finish onboarding
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+
+    const handleContinue = async () => {
+        if (selectedCompetitors.length === 0 || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            const items = selectedCompetitors.map((c) => ({
+                name: c.name,
+                website: c.domain.startsWith('http') ? c.domain : `https://${c.domain}`,
+                seed_pages: [c.domain.startsWith('http') ? c.domain : `https://${c.domain}`],
+            }));
+            await createCompetitorsBatch(items);
+        } catch {
+            // Proceed even if batch submission encounters non-fatal warning
+        }
+        setIsSubmitting(false);
         router.push('/onboarding/step-3');
     };
+
 
     return (
         <div className="onboarding-container">

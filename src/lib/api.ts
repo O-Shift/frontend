@@ -44,13 +44,27 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const workspaceId =
+  let workspaceId =
     typeof window !== "undefined"
       ? sessionStorage.getItem("oshift.workspace_id")
       : null;
+
+  if (!workspaceId && !init?.skipWorkspace && !normalized.includes("/workspaces")) {
+    try {
+      const wsRes = await apiFetch<Array<{ id: string }>>("/workspaces", { skipWorkspace: true });
+      if (wsRes.ok && Array.isArray(wsRes.data) && wsRes.data.length > 0) {
+        workspaceId = wsRes.data[0].id;
+        sessionStorage.setItem("oshift.workspace_id", workspaceId);
+      }
+    } catch {
+      // Ignore resolution error
+    }
+  }
+
   if (workspaceId && !init?.skipWorkspace) {
     headers.set("X-Workspace-ID", workspaceId);
   }
+
 
   try {
     const res = await fetch(url, { ...init, headers });
@@ -163,4 +177,188 @@ export async function* sseStream(
     };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Competitors Domain Types & Helper APIs
+// ---------------------------------------------------------------------------
+
+export interface Competitor {
+  id: string;
+  workspace_id: string;
+  name: string;
+  website: string;
+  description?: string | null;
+  founding_year?: number | null;
+  market_valuation_usd?: number | null;
+  industry?: string | null;
+  metadata?: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface CompetitorCreatePayload {
+  name: string;
+  website: string;
+  description?: string | null;
+  founding_year?: number | null;
+  market_valuation_usd?: number | null;
+  industry?: string | null;
+  seed_pages?: string[];
+  metadata?: Record<string, any> | null;
+}
+
+export interface CompetitorBatchResponse {
+  created: Competitor[];
+  skipped: string[];
+}
+
+export interface AggregatedMetricPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface AggregatedMetricsResponse {
+  competitor_id: string;
+  metric: string;
+  range: string;
+  granularity: string;
+  points: AggregatedMetricPoint[];
+}
+
+export interface InsightGapSource {
+  id: string;
+  title?: string | null;
+  url?: string | null;
+  source?: string | null;
+  captured_at?: string | null;
+}
+
+export interface InsightGap {
+  id: string;
+  competitor_id?: string | null;
+  layer?: string | null;
+  title: string;
+  body?: string | null;
+  confidence?: number | null;
+  detected_at?: string | null;
+  signal_ids?: string[];
+  sources?: InsightGapSource[];
+}
+
+export interface CampaignPost {
+  id: string;
+  title: string;
+  content: string;
+  platform: string;
+  source: string;
+  url?: string | null;
+  captured_at?: string | null;
+}
+
+export interface Campaign {
+  id: string;
+  competitor_id?: string | null;
+  title: string;
+  description?: string | null;
+  confidence?: number | null;
+  detected_at?: string | null;
+  metadata?: Record<string, any> | null;
+  posts: CampaignPost[];
+}
+
+export interface SenseReview {
+  id: string;
+  workspace_id: string;
+  competitor_id: string;
+  platform: string;
+  review_id?: string | null;
+  rating?: number | null;
+  title?: string | null;
+  body?: string | null;
+  sentiment?: string | null;
+  url?: string | null;
+  reviewed_at?: string | null;
+  captured_at?: string | null;
+  metadata?: Record<string, any> | null;
+}
+
+
+export interface ScrapeTriggerResponse {
+  run: {
+    id: string;
+    workspace_id: string;
+    competitor_id: string;
+    status: string;
+    started_at?: string | null;
+    completed_at?: string | null;
+    pages_total: number;
+    pages_ok: number;
+    pages_failed: number;
+  };
+  counts: Record<string, any>;
+}
+
+export async function getCompetitors(): Promise<ApiResult<Competitor[]>> {
+  return apiFetch<Competitor[]>("/competitors");
+}
+
+export async function getCompetitor(id: string): Promise<ApiResult<Competitor>> {
+  return apiFetch<Competitor>(`/competitors/${id}`);
+}
+
+export async function createCompetitorsBatch(
+  items: CompetitorCreatePayload[]
+): Promise<ApiResult<CompetitorBatchResponse>> {
+  return apiFetch<CompetitorBatchResponse>("/competitors/batch", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+}
+
+export async function getCompetitorAggregatedMetrics(
+  id: string,
+  metric: "market_share" | "score" | "volume" | "engagement" | "sentiment" | string = "score",
+  range: "1m" | "3m" | "6m" | "1y" = "6m",
+  granularity: "day" | "week" | "month" = "month"
+): Promise<ApiResult<AggregatedMetricsResponse>> {
+
+  return apiFetch<AggregatedMetricsResponse>(
+    `/competitors/${id}/signals/aggregated?metric=${metric}&range=${range}&granularity=${granularity}`
+  );
+}
+
+export async function getInsightsGaps(
+  competitorId?: string
+): Promise<ApiResult<InsightGap[]>> {
+  const q = competitorId ? `?competitor_id=${competitorId}` : "";
+  return apiFetch<InsightGap[]>(`/insights/gaps${q}`);
+}
+
+export async function getCompetitorCampaigns(
+  competitorId?: string
+): Promise<ApiResult<Campaign[]>> {
+  const q = competitorId ? `&competitor_id=${competitorId}` : "";
+  return apiFetch<Campaign[]>(`/campaigns?owner_type=competitor${q}`);
+}
+
+export async function getSenseReviews(
+  competitorId?: string
+): Promise<ApiResult<SenseReview[]>> {
+  const q = competitorId ? `?competitor_id=${competitorId}` : "";
+  return apiFetch<SenseReview[]>(`/sense/reviews${q}`);
+}
+
+export async function triggerCompetitorScrape(
+  id: string
+): Promise<ApiResult<ScrapeTriggerResponse>> {
+  return apiFetch<ScrapeTriggerResponse>(`/competitors/${id}/scrape`, {
+    method: "POST",
+  });
+}
+
+export async function deleteCompetitor(id: string): Promise<ApiResult<void>> {
+  return apiFetch<void>(`/competitors/${id}`, {
+    method: "DELETE",
+  });
+}
+
 

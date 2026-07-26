@@ -112,10 +112,12 @@ export default function PartnershipsPage() {
     ]);
 
     if (graphRes.ok && graphRes.data) {
-      setDbGraphData(graphRes.data);
+      const gData = (graphRes.data as any)?.data || graphRes.data;
+      setDbGraphData(gData);
     }
     if (compRes.ok && compRes.data) {
-      setDbCompetitors(compRes.data);
+      const cData = Array.isArray(compRes.data) ? compRes.data : (compRes.data as any)?.data || (compRes.data as any)?.competitors || [];
+      setDbCompetitors(cData);
     }
     setLoading(false);
   }, []);
@@ -281,7 +283,7 @@ export default function PartnershipsPage() {
         const dom = getDynamicDomain(gn.name, gn.metadata);
         rawEntities.push({
           id: gn.id,
-          name: gn.name,
+          name: gn.name || 'Unknown',
           domain: dom,
           type: gn.entity_type === 'content_creator' ? 'influencer' : 'company',
           color: gn.metadata?.color || getDynamicBrandColor(dom || gn.name),
@@ -291,12 +293,12 @@ export default function PartnershipsPage() {
       }
     }
 
-    for (const comp of dbCompetitors) {
-      const dom = extractDomain(comp.website) || getDynamicDomain(comp.name);
-      if (!rawEntities.some(e => e.id === comp.id || e.name.toLowerCase() === comp.name.toLowerCase())) {
+    for (const comp of dbCompetitors || []) {
+      const dom = extractDomain(comp.website || '') || getDynamicDomain(comp.name || '');
+      if (!rawEntities.some(e => e.id === comp.id || ((e.name || '').toLowerCase() === (comp.name || '').toLowerCase()))) {
         rawEntities.push({
           id: comp.id,
-          name: comp.name,
+          name: comp.name || 'Unknown',
           domain: dom,
           type: 'company',
           color: getDynamicBrandColor(dom || comp.name),
@@ -362,7 +364,7 @@ export default function PartnershipsPage() {
 
       nodes.push(nodeObj);
       nodeMap.set(entity.id, nodeObj);
-      nodeMap.set(entity.name.toLowerCase(), nodeObj);
+      if (entity.name) nodeMap.set(entity.name.toLowerCase(), nodeObj);
       if (entity.domain) nodeMap.set(entity.domain.toLowerCase(), nodeObj);
     }
 
