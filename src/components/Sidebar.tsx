@@ -77,6 +77,12 @@ export default function Sidebar() {
                         </svg>
                         Dashboard
                     </Link>
+                    <Link href="/chat" className={`nav-item ${pathname === '/chat' ? 'active' : ''}`}>
+                        <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        AI Agent Chat
+                    </Link>
                     <Link href="/opportunities" className={`nav-item ${pathname === '/opportunities' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10" />
@@ -113,26 +119,27 @@ export default function Sidebar() {
                 </div>
 
                 <div className="nav-section">
-                    <div className="nav-label">OTHER</div>
-                    <a className="nav-item">
+                    <div className="nav-label">WORKFLOWS & INTEGRATIONS</div>
+                    <Link href="/automations" className={`nav-item ${pathname === '/automations' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10 9 9 9 8 9" />
+                            <polygon points="5 3 19 12 5 21 5 3" />
                         </svg>
-                        Documentation
-                    </a>
-                    <a className="nav-item">
+                        Automations
+                    </Link>
+                    <Link href="/exports" className={`nav-item ${pathname === '/exports' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 22v-5" />
-                            <path d="M9 8V2" />
-                            <path d="M15 8V2" />
-                            <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" />
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                            <polyline points="16 6 12 2 8 6" />
+                            <line x1="12" y1="2" x2="12" y2="15" />
                         </svg>
-                        Integrations
-                    </a>
+                        Exports
+                    </Link>
+                    <Link href="/social-accounts" className={`nav-item ${pathname === '/social-accounts' ? 'active' : ''}`}>
+                        <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                        </svg>
+                        Social Accounts
+                    </Link>
                     <Link href="/settings" className={`nav-item ${pathname === '/settings' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="3" />

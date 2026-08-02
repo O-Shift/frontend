@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import { getApiBaseUrl } from "@/lib/auth/constants";
+import { emitLog } from "@/components/LogPanel";
 
 export async function getAccessToken(): Promise<string | null> {
   const supabase = createClient();
@@ -27,8 +28,16 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { skipWorkspace?: boolean },
 ): Promise<ApiResult<T>> {
+  const startTime = Date.now();
   const token = await getAccessToken();
   if (!token) {
+    emitLog({
+      type: "api",
+      method: init?.method || "GET",
+      path,
+      status: 401,
+      summary: `${init?.method || "GET"} ${path} - 401 Not signed in`,
+    });
     return { ok: false, error: "Not signed in", status: 401 };
   }
 
@@ -55,6 +64,7 @@ export async function apiFetch<T>(
   try {
     const res = await fetch(url, { ...init, headers });
     const text = await res.text();
+    const durationMs = Date.now() - startTime;
     let data: T | null = null;
     if (text) {
       try {
@@ -68,11 +78,37 @@ export async function apiFetch<T>(
         data && typeof data === "object" && "detail" in data
           ? String((data as { detail: unknown }).detail)
           : res.statusText;
+      emitLog({
+        type: "api",
+        method: init?.method || "GET",
+        path,
+        status: res.status,
+        durationMs,
+        summary: `${init?.method || "GET"} ${path} (${res.status})`,
+        details: { error: errMsg, response: data },
+      });
       return { ok: false, error: errMsg, status: res.status };
     }
+    emitLog({
+      type: "api",
+      method: init?.method || "GET",
+      path,
+      status: res.status,
+      durationMs,
+      summary: `${init?.method || "GET"} ${path} (${res.status})`,
+      details: data,
+    });
     return { ok: true, data: data as T, status: res.status };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
+    emitLog({
+      type: "api",
+      method: init?.method || "GET",
+      path,
+      status: 0,
+      summary: `${init?.method || "GET"} ${path} (Network error)`,
+      details: { error: msg },
+    });
     return { ok: false, error: msg, status: 0 };
   }
 }
@@ -99,6 +135,14 @@ export async function* sseStream(
       ? sessionStorage.getItem("oshift.workspace_id")
       : null;
 
+  emitLog({
+    type: "sse",
+    method: "POST",
+    path,
+    summary: `SSE connect ${path}`,
+    details: body,
+  });
+
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -122,6 +166,14 @@ export async function* sseStream(
 
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
+    emitLog({
+      type: "sse",
+      method: "POST",
+      path,
+      status: res.status,
+      summary: `SSE error ${path} (${res.status})`,
+      details: text,
+    });
     yield {
       type: "error",
       data: { status: res.status, statusText: res.statusText, body: text },
@@ -148,6 +200,13 @@ export async function* sseStream(
         if (!payload || payload === "[DONE]") continue;
         try {
           const json = JSON.parse(payload);
+          emitLog({
+            type: "sse",
+            method: "POST",
+            path,
+            summary: `SSE event: ${json.type || "message"}`,
+            details: json,
+          });
           yield { type: json.type || "message", data: json, raw: payload };
         } catch {
           yield { type: "raw", data: payload, raw: payload };
@@ -156,6 +215,13 @@ export async function* sseStream(
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    emitLog({
+      type: "sse",
+      method: "POST",
+      path,
+      summary: `SSE network disconnect ${path}`,
+      details: { error: msg },
+    });
     yield {
       type: "error",
       data: { content: `Network connection error: ${msg}` },
@@ -163,4 +229,5 @@ export async function* sseStream(
     };
   }
 }
+
 

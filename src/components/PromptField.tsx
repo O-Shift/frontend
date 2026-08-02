@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import { cleanMessageContent } from '@/lib/utils/chat';
 import { sseStream } from '@/lib/api';
+import { formatToolName } from '@/hooks/use-agent-chat';
 import { Trash2, X, User } from 'lucide-react';
 
 export interface ChatMessage {
@@ -229,15 +230,16 @@ export default function PromptField({
 
           if (event.type === 'tool_call') {
             const toolName = (event.data as { tool?: string })?.tool || 'action';
+            const formattedTool = formatToolName(toolName);
             if (!executedTools.includes(toolName)) {
               executedTools.push(toolName);
             }
             if (!initialTokenReceived) {
               setThinkingActive(false);
             }
-            // Display live tool execution status while agent works
+            // Display live user-friendly tool execution status while agent works
             if (!assistantAccumulator) {
-              setStreamingText(`⚙️ *Executing ${toolName}...*`);
+              setStreamingText(`⚙️ *${formattedTool}*`);
             }
             continue;
           }

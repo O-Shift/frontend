@@ -1,6 +1,7 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import LogPanel from '@/components/LogPanel';
 
 const SHELL_EXCLUDED_ROUTES = [
     '/login',
@@ -17,13 +18,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const isShellExcluded = SHELL_EXCLUDED_ROUTES.some(r => pathname.startsWith(r));
 
     if (isShellExcluded) {
-        return <>{children}</>;
+        return (
+            <>
+                {children}
+                <LogPanel />
+            </>
+        );
     }
 
     return (
         <div className="app-window">
             <Sidebar />
             {children}
+            <LogPanel />
         </div>
     );
 }
+
