@@ -1,0 +1,933 @@
+'use client';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import PromptField from '@/components/PromptField';
+import { apiFetch } from '@/lib/api';
+
+interface DBGraphNode {
+  id: string;
+  name: string;
+  entity_type: string;
+  metadata?: {
+    domain?: string;
+    website?: string;
+    url?: string;
+    color?: string;
+    type?: string;
+    value?: number;
+    [key: string]: any;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface DBGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  rel_type: string;
+  source_name?: string;
+  source_type?: string;
+  target_name?: string;
+  target_type?: string;
+  metadata?: any;
+}
+
+interface PartnershipsResponse {
+  workspace_id: string;
+  nodes: DBGraphNode[];
+  edges: DBGraphEdge[];
+  node_count: number;
+  edge_count: number;
+}
+
+interface Competitor {
+  id: string;
+  name: string;
+  website: string;
+  description?: string;
+  created_at?: string;
+}
+
+function extractDomain(input?: string | null): string {
+  if (!input) return '';
+  const str = input.trim();
+  try {
+    const urlStr = str.startsWith('http://') || str.startsWith('https://')
+      ? str
+      : `https://${str}`;
+    const host = new URL(urlStr).hostname.replace(/^www\./, '');
+    if (host.includes('.')) return host;
+  } catch {
+    // ignore
+  }
+
+  if (str.includes('.')) {
+    return str.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  }
+
+  return '';
+}
+
+function getDynamicDomain(name: string, metadata?: any): string {
+  if (metadata?.domain) return extractDomain(metadata.domain);
+  if (metadata?.website) return extractDomain(metadata.website);
+  if (metadata?.url) return extractDomain(metadata.url);
+  return extractDomain(name);
+}
+
+function getDynamicBrandColor(str: string): string {
+  if (!str) return 'hsl(210, 70%, 50%)';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 75%, 50%)`;
+}
+
+export default function PartnershipsPage() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const router = useRouter();
+  
+  const [zoom, setZoom] = useState(100);
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
+  const [currentView, setCurrentView] = useState('Graph');
+  
+  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [commandActive, setCommandActive] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [isThinking, setIsThinking] = useState(false);
+
+  const [dbGraphData, setDbGraphData] = useState<PartnershipsResponse | null>(null);
+  const [dbCompetitors, setDbCompetitors] = useState<Competitor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [graphRes, compRes] = await Promise.all([
+      apiFetch<PartnershipsResponse>('/graph/partnerships'),
+      apiFetch<Competitor[]>('/competitors'),
+    ]);
+
+    if (graphRes.ok && graphRes.data) {
+      setDbGraphData(graphRes.data);
+    }
+    if (compRes.ok && compRes.data) {
+      setDbCompetitors(compRes.data);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    document.body.classList.toggle('is-thinking-active', isThinking);
+    return () => document.body.classList.remove('is-thinking-active');
+  }, [isThinking]);
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCommandActive(false);
+        setSidebarCollapsed(true);
+      }
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, []);
+  
+  const transform = useRef({ x: 0, y: 0, k: 1 });
+  const targetTransform = useRef({ x: 0, y: 0, k: 1 });
+  
+  useEffect(() => {
+    if (loading) return;
+    if (!containerRef.current || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    let width = container.clientWidth;
+    let height = container.clientHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    const handleResize = () => {
+      width = container.clientWidth;
+      height = container.clientHeight;
+      canvas.width = width;
+      canvas.height = height;
+    };
+    window.addEventListener('resize', handleResize);
+
+    targetTransform.current = { x: width / 2, y: height / 2, k: 1 };
+    transform.current = { x: width / 2, y: height / 2, k: 1 };
+    
+    const nodes: any[] = [];
+    const links: any[] = [];
+    const preloadedImages: any = {};
+    const nodeMap = new Map<string, any>();
+    const timelineEvents: any[] = [];
+
+    const processImageCache = (
+      key: string,
+      domain: string,
+      name: string,
+      type: string,
+      color: string
+    ) => {
+      if (preloadedImages[key]) return;
+
+      const imgObj = { loaded: false, canvas: null as HTMLCanvasElement | null, img: null as HTMLImageElement | null };
+      preloadedImages[key] = imgObj;
+
+      const renderMonogramCanvas = () => {
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 128;
+        const xctx = c.getContext('2d');
+        if (!xctx) return;
+
+        xctx.beginPath();
+        if (type === 'company') {
+          if ((xctx as any).roundRect) (xctx as any).roundRect(2, 2, 124, 124, 24);
+          else xctx.rect(2, 2, 124, 124);
+        } else {
+          xctx.arc(64, 64, 62, 0, Math.PI * 2);
+        }
+        xctx.fillStyle = color || '#27272a';
+        xctx.fill();
+
+        const initial = (name || domain || 'C').charAt(0).toUpperCase();
+        xctx.fillStyle = '#ffffff';
+        xctx.font = 'bold 56px Inter, sans-serif';
+        xctx.textAlign = 'center';
+        xctx.textBaseline = 'middle';
+        xctx.fillText(initial, 64, 64);
+
+        imgObj.canvas = c;
+        imgObj.loaded = true;
+      };
+
+      if (!domain) {
+        renderMonogramCanvas();
+        return;
+      }
+
+      const imgUrl = `https://logo.clearbit.com/${domain}`;
+      const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+
+      const img = new Image();
+
+      let triedFallback = false;
+
+      const cacheImg = () => {
+        if (img.naturalWidth <= 16 || img.naturalHeight <= 16) {
+          renderMonogramCanvas();
+          return;
+        }
+
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 128;
+        const xctx = c.getContext('2d');
+        if (!xctx) {
+          renderMonogramCanvas();
+          return;
+        }
+
+        xctx.beginPath();
+        if (type === 'company') {
+          if ((xctx as any).roundRect) (xctx as any).roundRect(2, 2, 124, 124, 24);
+          else xctx.rect(2, 2, 124, 124);
+        } else {
+          xctx.arc(64, 64, 62, 0, Math.PI * 2);
+        }
+        xctx.fillStyle = '#ffffff';
+        xctx.fill();
+        xctx.clip();
+
+        try {
+          xctx.drawImage(img, 2, 2, 124, 124);
+          imgObj.canvas = c;
+          imgObj.loaded = true;
+        } catch {
+          imgObj.img = img;
+          imgObj.loaded = true;
+        }
+      };
+
+      img.onload = cacheImg;
+      img.onerror = () => {
+        if (!triedFallback && fallbackUrl && img.src !== fallbackUrl) {
+          triedFallback = true;
+          img.src = fallbackUrl;
+        } else {
+          renderMonogramCanvas();
+        }
+      };
+
+      img.src = imgUrl;
+    };
+
+    const rawEntities: any[] = [];
+
+    if (dbGraphData?.nodes) {
+      for (const gn of dbGraphData.nodes) {
+        const dom = getDynamicDomain(gn.name, gn.metadata);
+        rawEntities.push({
+          id: gn.id,
+          name: gn.name,
+          domain: dom,
+          type: gn.entity_type === 'content_creator' ? 'influencer' : 'company',
+          color: gn.metadata?.color || getDynamicBrandColor(dom || gn.name),
+          isHub: gn.entity_type === 'competitor' || gn.entity_type === 'agency',
+          created_at: gn.created_at || gn.updated_at
+        });
+      }
+    }
+
+    for (const comp of dbCompetitors) {
+      const dom = extractDomain(comp.website) || getDynamicDomain(comp.name);
+      if (!rawEntities.some(e => e.id === comp.id || e.name.toLowerCase() === comp.name.toLowerCase())) {
+        rawEntities.push({
+          id: comp.id,
+          name: comp.name,
+          domain: dom,
+          type: 'company',
+          color: getDynamicBrandColor(dom || comp.name),
+          isHub: true,
+          created_at: comp.created_at
+        });
+      }
+    }
+
+    // STRICT DYNAMIC TIMELINE: Real DB Timestamps only
+    const entitiesWithDates = rawEntities
+      .filter(e => e.created_at)
+      .map(e => ({ ...e, dateObj: new Date(e.created_at) }))
+      .filter(e => !isNaN(e.dateObj.getTime()))
+      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+    if (entitiesWithDates.length > 0) {
+      entitiesWithDates.forEach((entity, idx) => {
+        const d = entity.dateObj;
+        timelineEvents.push({
+          id: idx,
+          x: idx * 160,
+          dateStr: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          monthStr: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          isFirstOfMonth: true,
+          entityId: entity.id
+        });
+      });
+    }
+
+    for (let i = 0; i < rawEntities.length; i++) {
+      const entity = rawEntities[i];
+      const isHub = entity.isHub;
+      const value = isHub ? 150 + Math.random() * 2000 : 15 + Math.random() * 50;
+      const radius = isHub ? 12 + Math.sqrt(value) * 0.25 : 6 + Math.sqrt(value) * 0.4;
+      const cacheKey = entity.id || `${entity.name}_${i}`;
+
+      processImageCache(cacheKey, entity.domain, entity.name, entity.type, entity.color);
+
+      const evIdx = timelineEvents.findIndex(ev => ev.entityId === entity.id);
+      const ev = evIdx !== -1 ? timelineEvents[evIdx] : null;
+
+      const nodeObj = {
+        id: entity.id || cacheKey,
+        cacheKey: cacheKey,
+        x: (Math.random() - 0.5) * width * 1.2,
+        y: (Math.random() - 0.5) * height * 1.2,
+        vx: 0,
+        vy: 0,
+        isHub: isHub,
+        value: value,
+        domain: entity.domain,
+        type: entity.type,
+        radius: radius,
+        baseRadius: radius,
+        color: entity.color,
+        label: entity.name,
+        hasRealDate: !!ev,
+        timelineX: ev ? ev.x : 0,
+        timelineY: (i % 2 === 0 ? -1 : 1) * (80 + (i % 3) * 40),
+        orbitOffset: Math.random() * Math.PI * 2
+      };
+
+      nodes.push(nodeObj);
+      nodeMap.set(entity.id, nodeObj);
+      nodeMap.set(entity.name.toLowerCase(), nodeObj);
+      if (entity.domain) nodeMap.set(entity.domain.toLowerCase(), nodeObj);
+    }
+
+    if (dbGraphData?.edges && dbGraphData.edges.length > 0) {
+      for (const edge of dbGraphData.edges) {
+        const src = nodeMap.get(edge.source) || nodeMap.get((edge.source_name || '').toLowerCase());
+        const tgt = nodeMap.get(edge.target) || nodeMap.get((edge.target_name || '').toLowerCase());
+        if (src && tgt && src !== tgt) {
+          links.push({ source: src, target: tgt, rel_type: edge.rel_type });
+        }
+      }
+    }
+
+    let isDragging = false;
+    let hoveredNode: any = null;
+    let localSelectedNode: any = null;
+    let lastX = 0, lastY = 0;
+    
+    (window as any).setViewMode = (mode: string) => {
+        setCurrentView(mode.charAt(0).toUpperCase() + mode.slice(1));
+        setViewDropdownOpen(false);
+
+        if (mode === 'timeline') {
+            const targetK = 0.5;
+            targetTransform.current.x = 200;
+            targetTransform.current.y = height / 2;
+            targetTransform.current.k = targetK; 
+        } else {
+            targetTransform.current.x = width / 2;
+            targetTransform.current.y = height / 2;
+            targetTransform.current.k = 1;
+            nodes.forEach(n => {
+                n.vx += (Math.random() - 0.5) * 50;
+            });
+        }
+    };
+    
+    let animFrameId: number;
+    let time = 0;
+    
+    const applyPhysics = () => {
+        const repulsion = 150;
+        const springLen = 60;
+        const springK = 0.005;
+        const damping = 0.8;
+        const mode = currentView.toLowerCase();
+
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                const n1 = nodes[i];
+                const n2 = nodes[j];
+                const dx = n1.x - n2.x;
+                const dy = n1.y - n2.y;
+                let distSq = dx * dx + dy * dy;
+                if (distSq === 0) distSq = 1;
+                if (distSq < 50000) {
+                    const dist = Math.sqrt(distSq);
+                    const force = repulsion / distSq;
+                    const fx = (dx / dist) * force;
+                    const fy = (dy / dist) * force;
+                    n1.vx += fx;
+                    n1.vy += fy;
+                    n2.vx -= fx;
+                    n2.vy -= fy;
+                }
+            }
+        }
+
+        for (const link of links) {
+            const dx = link.target.x - link.source.x;
+            const dy = link.target.y - link.source.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const force = (dist - springLen) * springK * (mode === 'timeline' ? 0.02 : 1);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            link.source.vx += fx;
+            link.source.vy += fy;
+            link.target.vx -= fx;
+            link.target.vy -= fy;
+        }
+
+        for (const n of nodes) {
+            if (mode === 'graph') {
+                n.vx -= n.x * 0.001;
+                n.vy -= n.y * 0.001;
+            } else if (mode === 'timeline') {
+                n.vx += (n.timelineX - n.x) * 0.08;
+                n.vy += (n.timelineY - n.y) * 0.08;
+            }
+
+            n.vx *= damping;
+            n.vy *= damping;
+            n.x += n.vx;
+            n.y += n.vy;
+        }
+    };
+    
+    const draw = (t: number) => {
+        const tr = transform.current;
+        const tt = targetTransform.current;
+        const mode = currentView.toLowerCase();
+        
+        tr.x += (tt.x - tr.x) * 0.15;
+        tr.y += (tt.y - tr.y) * 0.15;
+        tr.k += (tt.k - tr.k) * 0.15;
+        
+        ctx.clearRect(0, 0, width, height);
+        ctx.save();
+        ctx.translate(tr.x, tr.y);
+        ctx.scale(tr.k, tr.k);
+
+        // Draw Links in Graph Mode
+        if (mode === 'graph') {
+          ctx.lineWidth = 0.5 / tr.k;
+          for (const link of links) {
+              ctx.beginPath();
+              ctx.moveTo(link.source.x, link.source.y);
+              ctx.lineTo(link.target.x, link.target.y);
+
+              if (link.source === hoveredNode || link.target === hoveredNode || link.source === localSelectedNode || link.target === localSelectedNode) {
+                  const gradient = ctx.createLinearGradient(link.source.x, link.source.y, link.target.x, link.target.y);
+                  gradient.addColorStop(0, link.source.color || 'rgba(142, 142, 147, 0.8)');
+                  gradient.addColorStop(1, link.target.color || 'rgba(142, 142, 147, 0.8)');
+                  ctx.strokeStyle = gradient;
+                  ctx.lineWidth = 2.0 / tr.k;
+              } else if (link.source.isHub && link.target.isHub) {
+                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                  ctx.lineWidth = 1.5 / tr.k;
+              } else {
+                  ctx.strokeStyle = 'rgba(142, 142, 147, 0.4)';
+                  ctx.lineWidth = 1.0 / tr.k;
+              }
+              ctx.stroke();
+          }
+        }
+        
+        // Draw Timeline Mode
+        if (mode === 'timeline') {
+            const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+            const TIMELINE_BASE_Y = 0;
+
+            if (timelineEvents.length > 0) {
+              // Baseline axis line
+              ctx.beginPath();
+              const minX = -100;
+              const maxX = (timelineEvents.length - 1) * 160 + 300;
+              ctx.moveTo(minX, TIMELINE_BASE_Y);
+              ctx.lineTo(maxX, TIMELINE_BASE_Y);
+              ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.35)';
+              ctx.lineWidth = 2.5 / tr.k;
+              ctx.stroke();
+
+              // Connectors to nodes with real dates
+              for (const n of nodes) {
+                if (n.hasRealDate) {
+                  ctx.beginPath();
+                  ctx.moveTo(n.x, TIMELINE_BASE_Y);
+                  ctx.lineTo(n.x, n.y);
+                  ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)';
+                  ctx.lineWidth = 1.5 / tr.k;
+                  ctx.stroke();
+                }
+              }
+
+              // Timeline date labels & tick marks
+              ctx.fillStyle = isLightMode ? '#52525b' : '#a1a1aa';
+              ctx.font = `600 ${14 / tr.k}px Inter, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'top';
+              
+              for (const ev of timelineEvents) {
+                  ctx.beginPath();
+                  ctx.moveTo(ev.x, TIMELINE_BASE_Y - 8 / tr.k);
+                  ctx.lineTo(ev.x, TIMELINE_BASE_Y + 8 / tr.k);
+                  ctx.strokeStyle = isLightMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.5)';
+                  ctx.lineWidth = 2 / tr.k;
+                  ctx.stroke();
+
+                  ctx.fillText(ev.dateStr, ev.x, TIMELINE_BASE_Y + 24 / tr.k);
+              }
+            } else {
+              ctx.fillStyle = isLightMode ? '#71717a' : '#a1a1aa';
+              ctx.font = `500 ${16 / tr.k}px Inter, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('No timeline event timestamps available in database for these graph records.', 0, 0);
+            }
+        }
+
+        // Render Empty State if 0 DB records
+        if (nodes.length === 0) {
+          const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+          ctx.fillStyle = isLightMode ? '#52525b' : '#a1a1aa';
+          ctx.font = `600 ${18 / tr.k}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('No partnership graph records found in workspace.', 0, -10);
+          ctx.font = `400 ${14 / tr.k}px Inter, sans-serif`;
+          ctx.fillStyle = isLightMode ? '#a1a1aa' : '#71717a';
+          ctx.fillText('Add competitors or run partnership discovery to generate graph nodes.', 0, 20);
+        }
+
+        // Draw Nodes
+        for (const n of nodes) {
+            const scaledRadius = n.radius / Math.max(tr.k * 0.5, 0.8);
+            const isActive = n === localSelectedNode || n === hoveredNode;
+
+            if (n.isHub && mode === 'graph') {
+                ctx.save();
+                ctx.translate(n.x, n.y);
+                ctx.rotate(t * 0.5 + n.orbitOffset);
+                ctx.beginPath();
+                ctx.arc(0, 0, scaledRadius + 8 / tr.k, 0, Math.PI * 1.5);
+                ctx.strokeStyle = isActive ? n.color : 'rgba(142, 142, 147, 0.4)';
+                ctx.lineWidth = 1.5 / tr.k;
+                ctx.setLineDash([4 / tr.k, 4 / tr.k]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.rotate(-t * 0.8);
+                ctx.beginPath();
+                ctx.arc(0, 0, scaledRadius + 14 / tr.k, Math.PI * 0.5, Math.PI * 2);
+                ctx.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.5)' : 'rgba(142, 142, 147, 0.2)';
+                ctx.lineWidth = 1 / tr.k;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            const screenX = n.x * tr.k + tr.x;
+            const screenY = n.y * tr.k + tr.y;
+            const screenR = scaledRadius * tr.k;
+            if (screenX + screenR + 250 < 0 || screenX - screenR - 250 > width || screenY + screenR + 150 < 0 || screenY - screenR - 150 > height) {
+                continue; 
+            }
+
+            const pImg = preloadedImages[n.cacheKey || n.domain];
+
+            if (pImg && (pImg.canvas || pImg.img)) {
+                const imgSource = pImg.canvas || pImg.img;
+                if (isActive) {
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                    ctx.shadowBlur = 20 * tr.k;
+                    ctx.drawImage(imgSource, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(imgSource, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
+                }
+                
+                ctx.beginPath();
+                if (n.type === 'company') {
+                    const size = scaledRadius * 2;
+                    if((ctx as any).roundRect) (ctx as any).roundRect(n.x - scaledRadius, n.y - scaledRadius, size, size, scaledRadius * 0.35);
+                    else ctx.rect(n.x - scaledRadius, n.y - scaledRadius, size, size);
+                } else {
+                    ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
+                }
+                ctx.strokeStyle = isActive ? '#ffffff' : (n.isHub ? n.color : 'rgba(142, 142, 147, 0.4)');
+                ctx.lineWidth = (isActive ? 2.5 : 1.0) / tr.k;
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                if (n.type === 'company') {
+                    const size = scaledRadius * 2;
+                    if((ctx as any).roundRect) (ctx as any).roundRect(n.x - scaledRadius, n.y - scaledRadius, size, size, scaledRadius * 0.35);
+                    else ctx.rect(n.x - scaledRadius, n.y - scaledRadius, size, size);
+                } else {
+                    ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
+                }
+                ctx.fillStyle = isActive ? '#ffffff' : n.color;
+                
+                if (isActive) {
+                    ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                    ctx.shadowBlur = 20 * tr.k;
+                }
+                
+                ctx.fill();
+                
+                if (isActive) {
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+        ctx.restore();
+    };
+
+    const loop = () => {
+        time = performance.now() * 0.001;
+        applyPhysics();
+        const mode = currentView.toLowerCase();
+        for (const n of nodes) {
+            const baseR = mode === 'timeline' ? 14 : n.baseRadius;
+            const targetRadius = (n === hoveredNode || n === localSelectedNode) ? baseR * 1.25 : baseR;
+            n.radius += (targetRadius - n.radius) * 0.2;
+        }
+        draw(time);
+        setZoom(Math.round(transform.current.k * 100));
+        animFrameId = requestAnimationFrame(loop);
+    };
+    loop();
+
+    const onMouseDown = (e: MouseEvent) => {
+        if ((e.target as Element).closest('.command-wrapper') || (e.target as Element).closest('#mascot-img')) {
+            return;
+        }
+        if (e.button === 2) return; 
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left - transform.current.x) / transform.current.k;
+        const mouseY = (e.clientY - rect.top - transform.current.y) / transform.current.k;
+
+        localSelectedNode = null;
+        let minDist = Infinity;
+
+        for (const n of nodes) {
+            const dx = n.x - mouseX;
+            const dy = n.y - mouseY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < n.radius + 15 && dist < minDist) {
+                localSelectedNode = n;
+                minDist = dist;
+            }
+        }
+
+        if (localSelectedNode) {
+            setSelectedNode(localSelectedNode);
+            setCommandActive(true);
+            setSidebarCollapsed(false);
+            return;
+        }
+
+        isDragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left - transform.current.x) / transform.current.k;
+        const mouseY = (e.clientY - rect.top - transform.current.y) / transform.current.k;
+
+        if (!isDragging) {
+            hoveredNode = null;
+            let minDist = Infinity;
+            for (const n of nodes) {
+                const dx = n.x - mouseX;
+                const dy = n.y - mouseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < n.radius + 15 && dist < minDist) {
+                    hoveredNode = n;
+                    minDist = dist;
+                }
+            }
+            canvas.style.cursor = hoveredNode ? 'pointer' : (isDragging ? 'grabbing' : 'grab');
+        }
+
+        if (!isDragging) return;
+        targetTransform.current.x += e.clientX - lastX;
+        targetTransform.current.y += e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+
+        transform.current.x = targetTransform.current.x;
+        transform.current.y = targetTransform.current.y;
+    };
+
+    const onMouseUp = () => { isDragging = false; };
+    const onMouseLeave = () => { isDragging = false; };
+
+    const onWheel = (e: WheelEvent) => {
+        if (
+            (e.target as Element).closest('.command-wrapper') ||
+            (e.target as Element).closest('#mascot-img') ||
+            (e.target as Element).closest('.chat-window')
+        ) {
+            return;
+        }
+        e.preventDefault();
+
+        const zoomAmount = Math.exp(e.deltaY * -0.002);
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const newK = Math.min(Math.max(targetTransform.current.k * zoomAmount, 0.1), 8);
+        const actualZoom = newK / targetTransform.current.k;
+
+        targetTransform.current.x = mouseX - (mouseX - targetTransform.current.x) * actualZoom;
+        targetTransform.current.y = mouseY - (mouseY - targetTransform.current.y) * actualZoom;
+        targetTransform.current.k = newK;
+    };
+
+    const zoomIn = () => {
+        const newK = Math.min(targetTransform.current.k * 1.5, 8);
+        zoomToCenter(newK);
+    };
+    const zoomOut = () => {
+        const newK = Math.max(targetTransform.current.k / 1.5, 0.1);
+        zoomToCenter(newK);
+    };
+    const zoomToCenter = (newK: number) => {
+        const actualZoom = newK / targetTransform.current.k;
+        const mouseX = width / 2;
+        const mouseY = height / 2;
+        targetTransform.current.x = mouseX - (mouseX - targetTransform.current.x) * actualZoom;
+        targetTransform.current.y = mouseY - (mouseY - targetTransform.current.y) * actualZoom;
+        targetTransform.current.k = newK;
+    };
+
+    const resetView = () => {
+        targetTransform.current.x = width / 2;
+        targetTransform.current.y = height / 2;
+        targetTransform.current.k = 1;
+    };
+
+    (window as any).zoomIn = zoomIn;
+    (window as any).zoomOut = zoomOut;
+    (window as any).resetView = resetView;
+
+    const onDoubleClick = (e: MouseEvent) => {
+        if ((e.target as Element).closest('.command-wrapper') || (e.target as Element).closest('#mascot-img')) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left - transform.current.x) / transform.current.k;
+        const mouseY = (e.clientY - rect.top - transform.current.y) / transform.current.k;
+
+        let clickedNode = null;
+        let minDist = Infinity;
+        for (const n of nodes) {
+            const dx = n.x - mouseX;
+            const dy = n.y - mouseY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < n.radius + 15 && dist < minDist) {
+                clickedNode = n;
+                minDist = dist;
+            }
+        }
+        if (clickedNode && (clickedNode.type === 'company' || clickedNode.isHub)) {
+            const screenR = (clickedNode.radius / Math.max(transform.current.k * 0.5, 0.8)) * transform.current.k;
+            const screenX = clickedNode.x * transform.current.k + transform.current.x - screenR;
+            const screenY = clickedNode.y * transform.current.k + transform.current.y - screenR;
+            const startW = screenR * 2;
+            const isRound = clickedNode.type !== 'company';
+            router.push(`/company/${clickedNode.domain || clickedNode.label}?startX=${screenX}&startY=${screenY}&startW=${startW}&round=${isRound}`);
+        }
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    container.addEventListener('dblclick', onDoubleClick);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    container.addEventListener('mouseleave', onMouseLeave);
+    container.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+        cancelAnimationFrame(animFrameId);
+        window.removeEventListener('resize', handleResize);
+        container.removeEventListener('mousedown', onMouseDown);
+        container.removeEventListener('dblclick', onDoubleClick);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        container.removeEventListener('mouseleave', onMouseLeave);
+        container.removeEventListener('wheel', onWheel);
+    };
+  }, [currentView, loading, dbGraphData, dbCompetitors, router]);
+
+  return (
+    <div className="main-content skeleton-target" id="graphContainer" ref={containerRef}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+            <canvas id="obsidianCanvas" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}></canvas>
+        </div>
+
+        <div className="main-header">
+            <h1>Partnerships</h1>
+            <div className="view-toggle" id="viewToggleBtn" style={{ position: 'relative' }} onClick={() => setViewDropdownOpen(!viewDropdownOpen)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+                <span>View: <span>{currentView}</span></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4 }}>
+                    <polyline points="6 9 12 15 18 9" />
+                </svg>
+                {viewDropdownOpen && (
+                  <div className="view-dropdown show" id="viewDropdown">
+                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('graph'); }}>Graph</div>
+                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('timeline'); }}>Timeline</div>
+                  </div>
+                )}
+            </div>
+        </div>
+
+        <div className="bottom-right-controls">
+            <div className="br-pill">
+                <button className="icon-btn" onClick={() => (window as any).zoomOut()}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                </button>
+                <div className="divider"></div>
+                <button className="icon-btn" onClick={() => (window as any).zoomIn()}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                </button>
+            </div>
+            <div className="br-pill br-zoom" id="zoom-indicator" onClick={() => (window as any).resetView()}>{zoom}%</div>
+            <button className="br-circle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+            </button>
+        </div>
+
+        <PromptField 
+            selectedNode={selectedNode}
+            setSelectedNode={setSelectedNode}
+            commandActive={commandActive}
+            setCommandActive={setCommandActive}
+            setSidebarCollapsed={setSidebarCollapsed}
+            onThinkingChange={setIsThinking}
+        />
+
+
+        <div className={`v0-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`} onMouseDown={(e) => e.stopPropagation()}>
+            <div className="v0-sidebar-header">
+                <button className="v0-toggle-btn" onClick={() => setSidebarCollapsed(true)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <circle cx="8" cy="12" r="2" fill="black" />
+                        <circle cx="16" cy="12" r="2" fill="black" />
+                    </svg>
+                </button>
+            </div>
+            <div className="v0-sidebar-content">
+                <div className="v0-action-bar">
+                    <div className="v0-avatar"></div>
+                    <span className="v0-action-text">replicate this</span>
+                    <div className="v0-action-icons">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div className="v0-context-section">
+                    <div className="v0-section-title">provided:</div>
+                    <ul className="v0-context-list">
+                        <li>
+                            <strong><span>{selectedNode?.label || 'Node'}</span>:</strong>
+                            <span> This screen captures the futuristic, visionary aesthetic with a blue grid background, glowing compass, and cloud elements.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div className="v0-prompt-suggestion">
+                    What would you like to refine or add to this design?
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+}

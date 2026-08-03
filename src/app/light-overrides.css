@@ -1,0 +1,265 @@
+/*
+ * LIGHT MODE OVERRIDES
+ * !important declarations override inline styles.
+ * Scoped to [data-theme="light"] so dark mode is untouched.
+ */
+
+/* ─── BASE: all text inside main-content ──────────────────────────── */
+/* Catch generic white / near-white text */
+[data-theme="light"] .main-content h1,
+[data-theme="light"] .main-content h2,
+[data-theme="light"] .main-content h3 {
+  color: var(--text-primary) !important;
+}
+
+/* ─── HEADER SECTION ──────────────────────────────────────────────── */
+/* Logo icon box */
+[data-theme="light"] .company-logo-box,
+[data-theme="light"] .dash-logo-box {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* ─── STATS BAR ───────────────────────────────────────────────────── */
+[data-theme="light"] .section-divider {
+  border-color: var(--border-color) !important;
+}
+/* Stat value (big number) */
+[data-theme="light"] .section-divider span[style],
+[data-theme="light"] .stat-value {
+  color: var(--text-primary) !important;
+}
+/* Stat label & change */
+[data-theme="light"] .stat-label,
+[data-theme="light"] .stat-change {
+  color: var(--text-secondary) !important;
+}
+
+/* ─── OPP / PERFORMANCE PANEL ─────────────────────────────────────── */
+[data-theme="light"] .opp-perf-panel {
+  border-color: var(--border-color) !important;
+  background: var(--card-bg) !important;
+}
+[data-theme="light"] .opp-perf-panel > div {
+  border-color: var(--border-color) !important;
+}
+/* All text inside the panel */
+[data-theme="light"] .opp-perf-panel div[style*="color: 'white'"],
+[data-theme="light"] .opp-perf-panel div[style],
+[data-theme="light"] .opp-perf-panel span[style] {
+  color: var(--text-primary) !important;
+}
+/* Item names */
+[data-theme="light"] .opp-item-name { color: var(--text-primary) !important; }
+[data-theme="light"] .opp-item-meta { color: var(--text-secondary) !important; }
+/* Row separators */
+[data-theme="light"] .opp-perf-panel [style*="rgba(255,255,255,0.04)"] {
+  border-color: var(--border-color) !important;
+}
+/* Expanded detail text */
+[data-theme="light"] .opp-expanded-text { color: var(--text-secondary) !important; }
+
+/* ─── CHART SECTION ───────────────────────────────────────────────── */
+[data-theme="light"] .chart-toolbar-pill {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .chart-toolbar-pill button {
+  color: var(--text-secondary) !important;
+}
+/* Recharts axis ticks & lines */
+[data-theme="light"] .recharts-cartesian-axis-tick text {
+  fill: var(--text-secondary) !important;
+}
+[data-theme="light"] .recharts-cartesian-axis line,
+[data-theme="light"] .recharts-cartesian-axis path {
+  stroke: var(--border-color) !important;
+}
+/* Tooltip */
+[data-theme="light"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+/* Chart expanded highlight bg */
+[data-theme="light"] [style*="rgba(255,255,255,0.02)"] {
+  background: var(--card-bg) !important;
+}
+/* Chart legend row */
+[data-theme="light"] .chart-legend-row { color: var(--text-secondary) !important; }
+
+/* ─── MY CAMPAIGNS ────────────────────────────────────────────────── */
+[data-theme="light"] .sort-pill {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+[data-theme="light"] .sort-pill span { color: var(--text-primary) !important; }
+
+/* Campaign folder — light mode white aesthetic */
+[data-theme="light"] .folder-back {
+  background: linear-gradient(135deg, #ffffff, #fafafa) !important;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme="light"] .folder-back::after {
+  background: #ffffff !important;
+}
+[data-theme="light"] .folder-front {
+  background: rgba(228, 228, 231, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.02) !important;
+}
+[data-theme="light"] .folder-front .logo { color: var(--text-primary) !important; }
+
+/* Campaign info box */
+[data-theme="light"] .camp-info-box {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .camp-info-box .camp-metric { color: var(--text-primary) !important; }
+[data-theme="light"] .camp-info-box .camp-meta   { color: var(--text-secondary) !important; }
+
+/* Progress bar track */
+[data-theme="light"] .progress-track {
+  background: var(--border-color) !important;
+}
+
+/* Platform badge */
+[data-theme="light"] .camp-info-box span[style*="rgba(255,255,255,0.06)"] {
+  background: var(--item-hover) !important;
+}
+
+/* Campaign expanded breakdown */
+[data-theme="light"] [style*="rgba(255,255,255,0.02)"] {
+  background: var(--card-bg) !important;
+}
+[data-theme="light"] [style*="rgba(255,255,255,0.06)"],
+[data-theme="light"] [style*="rgba(255,255,255,0.04)"],
+[data-theme="light"] [style*="rgba(255,255,255,0.05)"] {
+  border-color: var(--border-color) !important;
+}
+
+/* ─── GROWTH GAPS ─────────────────────────────────────────────────── */
+[data-theme="light"] .gap-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
+}
+[data-theme="light"] .gap-card-title,
+[data-theme="light"] .gap-card > div[style*="fontWeight: 600"] {
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .gap-card > div[style*="color: '#d4d4d8'"],
+[data-theme="light"] .gap-card-desc {
+  color: var(--text-secondary) !important;
+}
+/* Expanded gap details */
+[data-theme="light"] .gap-card [style*="color: '#a1a1aa'"] {
+  color: var(--text-secondary) !important;
+}
+[data-theme="light"] .gap-card [style*="color: '#d4d4d8'"] {
+  color: var(--text-secondary) !important;
+}
+[data-theme="light"] .gap-card [style*="borderTop"] {
+  border-color: var(--border-color) !important;
+}
+
+/* Section dividers (Growth Gaps / Reviews borders) */
+[data-theme="light"] [style*="borderTop: '1px solid rgba(255,255,255,0.05)'"] {
+  border-color: var(--border-color) !important;
+}
+/* Scroll track */
+[data-theme="light"] .scroll-track { background: var(--border-color) !important; }
+
+/* ─── REVIEWS ──────────────────────────────────────────────────────── */
+[data-theme="light"] .filter-pill-group {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .filter-pill-group button {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .review-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
+}
+[data-theme="light"] .review-card .review-text   { color: var(--text-secondary) !important; }
+[data-theme="light"] .review-card .review-author { color: var(--text-primary) !important; }
+[data-theme="light"] .review-card .review-date   { color: var(--text-secondary) !important; }
+
+/* Star empties */
+[data-theme="light"] .review-card svg path[fill="#3f3f46"] {
+  fill: var(--border-color) !important;
+}
+
+/* Reply input */
+[data-theme="light"] .review-card input {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Speech bubble tail */
+[data-theme="light"] .review-card svg path[fill="#18181b"],
+[data-theme="light"] .company-review-card svg path[fill="#18181b"] {
+  fill: var(--card-bg) !important;
+}
+[data-theme="light"] .review-card svg path[stroke],
+[data-theme="light"] .company-review-card svg path[stroke] {
+  stroke: var(--border-color) !important;
+}
+
+/* ─── COMPANY [domain] PAGE ───────────────────────────────────────── */
+[data-theme="light"] .company-logo-box {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .company-desc-box {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+[data-theme="light"] .company-sort-pill {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+[data-theme="light"] .company-sort-pill span { color: var(--text-primary) !important; }
+
+[data-theme="light"] .company-gap-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .company-gap-title { color: var(--text-primary) !important; }
+[data-theme="light"] .company-gap-desc  { color: var(--text-secondary) !important; }
+
+[data-theme="light"] .company-review-card {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .company-camp-info {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Company page folder cards */
+[data-theme="light"] .company-camp-info > div:first-child {
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .company-camp-meta { color: var(--text-secondary) !important; }
+
+/* ─── COMPETITORS PAGE ────────────────────────────────────────────── */
+[data-theme="light"] .competitors-header h1 { color: var(--text-primary) !important; }
+[data-theme="light"] .competitors-header div { color: var(--text-secondary) !important; }
+[data-theme="light"] .competitors-search {
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .competitors-search input { color: var(--text-primary) !important; }
+
+/* ─── SIDEBAR bottom sections (Stats/Growth/Reviews labels) ─────── */
+[data-theme="light"] .main-content [style*="color: '#3f3f46'"] {
+  color: var(--border-color) !important;
+}
