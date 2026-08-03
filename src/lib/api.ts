@@ -74,10 +74,19 @@ export async function apiFetch<T>(
       }
     }
     if (!res.ok) {
-      const errMsg =
-        data && typeof data === "object" && "detail" in data
-          ? String((data as { detail: unknown }).detail)
-          : res.statusText;
+      let errMsg = res.statusText || `HTTP ${res.status} Error`;
+      if (data && typeof data === "object" && "detail" in data) {
+        const detail = (data as { detail: unknown }).detail;
+        if (typeof detail === "string") {
+          errMsg = detail;
+        } else if (Array.isArray(detail)) {
+          errMsg = detail.map((d) => (typeof d === "object" && d !== null ? (d.msg || JSON.stringify(d)) : String(d))).join(", ");
+        } else if (typeof detail === "object" && detail !== null) {
+          errMsg = (detail as any).msg || JSON.stringify(detail);
+        } else {
+          errMsg = String(detail);
+        }
+      }
       emitLog({
         type: "api",
         method: init?.method || "GET",

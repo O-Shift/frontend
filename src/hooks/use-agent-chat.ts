@@ -249,6 +249,13 @@ export function useAgentChat(initialConversationId?: string | null) {
           }
 
           if (event.type === 'tool_result') {
+            const dataObj = event.data as Record<string, unknown>;
+            const toolExecuted = (dataObj?.tool as string) || '';
+            if (typeof window !== 'undefined' && toolExecuted) {
+              window.dispatchEvent(
+                new CustomEvent('oshift:tool_executed', { detail: { tool: toolExecuted } })
+              );
+            }
             setActiveTool(null);
             continue;
           }

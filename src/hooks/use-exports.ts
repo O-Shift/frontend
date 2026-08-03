@@ -12,6 +12,12 @@ import {
   SlackExportOut,
 } from '@/types/entities';
 
+export interface TestDestinationResponse {
+  ok: boolean;
+  status_code?: number;
+  message: string;
+}
+
 export function useExports(initialMonth?: string) {
   const currentYYYYMM = new Date().toISOString().slice(0, 7);
 
@@ -24,6 +30,7 @@ export function useExports(initialMonth?: string) {
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [isExportingSlack, setIsExportingSlack] = useState(false);
+  const [isTestingDest, setIsTestingDest] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch destinations
@@ -50,7 +57,7 @@ export function useExports(initialMonth?: string) {
     setIsLoadingJobs(false);
   }, []);
 
-  // Fetch audit log entries by month (month is REQUIRED by backend endpoint)
+  // Fetch audit log entries by month
   const fetchLogs = useCallback(async (month: string) => {
     setIsLoadingLogs(true);
     setError(null);
@@ -63,7 +70,7 @@ export function useExports(initialMonth?: string) {
     setIsLoadingLogs(false);
   }, []);
 
-  // Create export destination (admin)
+  // Create export destination
   const createDestination = useCallback(async (payload: DestinationIn) => {
     setError(null);
     const res = await apiFetch<DestinationOut>('/exports/destinations', {
@@ -79,6 +86,42 @@ export function useExports(initialMonth?: string) {
     }
   }, []);
 
+  // Delete export destination (optimistic)
+  const deleteDestination = useCallback(
+    async (id: string) => {
+      setError(null);
+      setDestinations((prev) => prev.filter((d) => d.id !== id));
+      const res = await apiFetch(`/exports/destinations/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        setError(res.error);
+        await fetchDestinations();
+      }
+    },
+    [fetchDestinations]
+  );
+
+  // Test destination payload connection
+  const testDestination = useCallback(async (destinationType: string, config: Record<string, any>) => {
+    setIsTestingDest(true);
+    setError(null);
+    const res = await apiFetch<TestDestinationResponse>('/exports/test-destination', {
+      method: 'POST',
+      body: JSON.stringify({
+        destination_type: destinationType,
+        config: config,
+      }),
+    });
+    setIsTestingDest(false);
+    if (res.ok) {
+      return res.data;
+    } else {
+      setError(res.error);
+      return { ok: false, message: res.error };
+    }
+  }, []);
+
   // Export brief to Slack
   const exportBriefToSlack = useCallback(
     async (payload: SlackExportIn) => {
@@ -89,7 +132,7 @@ export function useExports(initialMonth?: string) {
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        await fetchJobs(); // Refresh jobs list
+        await fetchJobs();
         setIsExportingSlack(false);
         return res.data;
       } else {
@@ -121,8 +164,11 @@ export function useExports(initialMonth?: string) {
     isLoadingJobs,
     isLoadingLogs,
     isExportingSlack,
+    isTestingDest,
     error,
     createDestination,
+    deleteDestination,
+    testDestination,
     exportBriefToSlack,
     refreshDestinations: fetchDestinations,
     refreshJobs: fetchJobs,

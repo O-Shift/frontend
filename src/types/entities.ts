@@ -85,9 +85,10 @@ export interface AutomationSchedule {
   cron_expr: string;
   workflow_type: string;
   is_active: boolean;
+  last_run_at?: string | null;
   next_run_at?: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ScheduleCreate {
@@ -108,14 +109,14 @@ export interface ScheduleUpdate {
 // ---------------------------------------------------------------------------
 
 export interface DestinationIn {
-  destination_type: 'slack' | 'notion' | 'webhook';
+  destination_type: 'slack' | 'discord' | 'notion' | 'webhook' | string;
   name: string;
   config: Record<string, unknown>;
 }
 
 export interface DestinationOut {
   id: string;
-  destination_type: 'slack' | 'notion' | 'webhook';
+  destination_type: 'slack' | 'discord' | 'notion' | 'webhook' | string;
   name: string;
   config: Record<string, unknown>;
 }
