@@ -1,7 +1,7 @@
 // oshift/src/app/chat/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAgentChat } from '@/hooks/use-agent-chat';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
@@ -19,7 +19,7 @@ import {
   Loader2,
 } from 'lucide-react';
 
-export default function ChatPage() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q');
 
@@ -293,5 +293,13 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex h-full items-center justify-center text-xs text-[var(--text-secondary)]">Loading chat...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }

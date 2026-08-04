@@ -88,8 +88,9 @@ export default function OpportunitiesPage() {
     setLoading(true);
     setError(null);
     const res = await fetchOpportunities();
-    if (res.ok && res.data.items) {
-      const mapped = res.data.items.map((op: Opportunity) => {
+    if (res.ok) {
+      const items = res.data?.items || [];
+      const mapped = items.map((op: Opportunity) => {
         const af = op.analysis_fields || {};
         const highlights = Array.isArray(af.highlights) && af.highlights.length > 0
           ? af.highlights
