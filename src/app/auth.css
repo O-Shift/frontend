@@ -642,3 +642,13 @@
   from { opacity: 0; transform: translateY(-10px) scaleY(0.9); }
   to { opacity: 1; transform: translateY(0) scaleY(1); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-content,
+  .auth-right,
+  .auth-wave-container {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}

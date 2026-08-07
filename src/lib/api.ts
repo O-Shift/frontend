@@ -281,7 +281,6 @@ export interface SenseReview {
   metadata?: Record<string, any> | null;
 }
 
-
 export interface ScrapeTriggerResponse {
   run: {
     id: string;
@@ -320,7 +319,6 @@ export async function getCompetitorAggregatedMetrics(
   range: "1m" | "3m" | "6m" | "1y" = "6m",
   granularity: "day" | "week" | "month" = "month"
 ): Promise<ApiResult<AggregatedMetricsResponse>> {
-
   return apiFetch<AggregatedMetricsResponse>(
     `/competitors/${id}/signals/aggregated?metric=${metric}&range=${range}&granularity=${granularity}`
   );
@@ -358,6 +356,113 @@ export async function triggerCompetitorScrape(
 export async function deleteCompetitor(id: string): Promise<ApiResult<void>> {
   return apiFetch<void>(`/competitors/${id}`, {
     method: "DELETE",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Opportunities Domain Types & Helper APIs
+// ---------------------------------------------------------------------------
+
+export interface OpportunityHighlight {
+  text: string;
+  citations: string[];
+}
+
+export interface OpportunityGapBullet {
+  text: string;
+  citations: string[];
+  companies: string[];
+}
+
+export interface OpportunityAnalysisFields {
+  topComplaint?: string;
+  rootCause?: string;
+  gapIdentified?: string;
+  opportunityText?: string;
+  earlyWarning?: string;
+  quickWin?: string;
+  highlights?: OpportunityHighlight[];
+  gapBullets?: OpportunityGapBullet[];
+  [key: string]: unknown;
+}
+
+export interface Opportunity {
+  id: string;
+  workspace_id: string;
+  company_id?: string | null;
+  competitor_id?: string | null;
+  title: string;
+  description: string;
+  opportunity_type:
+    | "market_expansion"
+    | "product_innovation"
+    | "partnership"
+    | "content"
+    | "pricing"
+    | "positioning"
+    | "other";
+  effort: "low" | "medium" | "high" | "Low" | "Medium" | "High";
+  impact: "low" | "medium" | "high" | "Low" | "Medium" | "High";
+  priority_score?: number | string | null;
+  priority_reasoning?: string | null;
+  analysis_fields?: OpportunityAnalysisFields;
+  related_gap_ids?: string[];
+  status: "new" | "reviewing" | "approved" | "in_progress" | "completed" | "rejected";
+  expires_at?: string | null;
+  detected_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OpportunityListResponse {
+  items: Opportunity[];
+  total: number;
+}
+
+export async function fetchOpportunities(params?: {
+  competitor_id?: string;
+  status?: string;
+  opportunity_type?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ApiResult<OpportunityListResponse>> {
+  const query = new URLSearchParams();
+  if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.status) query.set("status", params.status);
+  if (params?.opportunity_type) query.set("opportunity_type", params.opportunity_type);
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.offset) query.set("offset", String(params.offset));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<OpportunityListResponse>(`/opportunities${queryString}`);
+}
+
+export async function generateOpportunities(): Promise<ApiResult<Opportunity[]>> {
+  return apiFetch<Opportunity[]>("/opportunities/generate", {
+    method: "POST",
+  });
+}
+
+export async function updateOpportunityStatus(
+  id: string,
+  status: Opportunity["status"]
+): Promise<ApiResult<Opportunity>> {
+  return apiFetch<Opportunity>(`/opportunities/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function deleteOpportunity(id: string): Promise<ApiResult<void>> {
+  return apiFetch<void>(`/opportunities/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function triggerPipeline(): Promise<ApiResult<{ run_id: string; status: string }>> {
+  return apiFetch<{ run_id: string; status: string }>("/automation/trigger", {
+    method: "POST",
+    body: JSON.stringify({ workflow_type: "oshift-pipeline-v1" }),
   });
 }
 

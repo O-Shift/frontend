@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ExternalLink } from 'lucide-react';
@@ -18,75 +17,55 @@ export default function ChatMarkdown({ content }: ChatMarkdownProps) {
   }
 
   return (
-    <div className="chat-markdown-container text-xs md:text-sm leading-relaxed overflow-x-auto">
+    <div className="chat-markdown-container text-sm leading-relaxed overflow-x-auto">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           table: ({ children }) => (
-            <div className="my-2.5 w-full overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)] shadow-sm">
-              <table className="w-full text-left border-collapse text-xs">{children}</table>
+            <div className="my-3 w-full overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
+              <table className="w-full text-left border-collapse text-xs md:text-sm">{children}</table>
             </div>
           ),
           thead: ({ children }) => (
-            <thead className="bg-white/5 border-b border-[var(--border-color)] font-semibold text-[var(--text-primary)]">
+            <thead className="border-b border-[var(--border-color)] font-semibold text-[var(--text-primary)]">
               {children}
             </thead>
           ),
-          tbody: ({ children }) => (
-            <tbody className="divide-y divide-[var(--border-color)]/60">
-              {children}
-            </tbody>
-          ),
-          tr: ({ children }) => (
-            <tr className="hover:bg-white/5 transition-colors">
-              {children}
-            </tr>
-          ),
+          tbody: ({ children }) => <tbody className="divide-y divide-[var(--border-color)]">{children}</tbody>,
+          tr: ({ children }) => <tr>{children}</tr>,
           th: ({ children }) => (
-            <th className="px-3 py-2 font-semibold uppercase tracking-wider text-[var(--text-secondary)] whitespace-nowrap text-[11px]">
-              {children}
-            </th>
+            <th className="px-3 py-2 font-semibold whitespace-nowrap text-[var(--text-secondary)]">{children}</th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-2 align-top text-[var(--text-primary)] leading-relaxed">
-              {children}
-            </td>
+            <td className="px-3 py-2 align-top text-[var(--text-primary)] leading-relaxed">{children}</td>
           ),
           p: ({ children }) => (
-            <p className="leading-relaxed mb-2 last:mb-0 text-[var(--text-primary)]">
-              {children}
-            </p>
+            <p className="leading-relaxed mb-3 last:mb-0 text-[var(--text-primary)]">{children}</p>
           ),
           ul: ({ children }) => (
-            <ul className="list-disc list-outside ml-4 space-y-1 mb-2 last:mb-0 text-[var(--text-primary)]">
+            <ul className="list-disc list-outside ml-5 space-y-1 mb-3 last:mb-0 text-[var(--text-primary)]">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-outside ml-4 space-y-1 mb-2 last:mb-0 text-[var(--text-primary)]">
+            <ol className="list-decimal list-outside ml-5 space-y-1 mb-3 last:mb-0 text-[var(--text-primary)]">
               {children}
             </ol>
           ),
-          li: ({ children }) => (
-            <li className="leading-relaxed pl-0.5">{children}</li>
-          ),
+          li: ({ children }) => <li className="leading-relaxed pl-0.5">{children}</li>,
           h1: ({ children }) => (
-            <h1 className="text-base font-bold mt-3 mb-1.5 first:mt-0 text-[var(--text-primary)] border-b border-[var(--border-color)] pb-1">
+            <h1 className="text-lg font-bold mt-4 mb-2 first:mt-0 text-[var(--text-primary)] border-b border-[var(--border-color)] pb-1">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-sm font-semibold mt-3 mb-1.5 first:mt-0 text-[var(--text-primary)]">
-              {children}
-            </h2>
+            <h2 className="text-base font-semibold mt-3 mb-2 first:mt-0 text-[var(--text-primary)]">{children}</h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-xs font-semibold mt-2.5 mb-1 first:mt-0 text-[var(--text-primary)]">
-              {children}
-            </h3>
+            <h3 className="text-sm font-semibold mt-3 mb-1.5 first:mt-0 text-[var(--text-primary)]">{children}</h3>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="border-l-3 border-[var(--accent)] pl-3 py-1 my-2 bg-[var(--accent)]/10 rounded-r-md italic text-[var(--text-primary)]">
+            <blockquote className="border-l-4 border-[var(--accent)] pl-3 py-1 my-3 italic text-[var(--text-secondary)]">
               {children}
             </blockquote>
           ),
@@ -96,7 +75,7 @@ export default function ChatMarkdown({ content }: ChatMarkdownProps) {
             if (isInline) {
               return (
                 <code
-                  className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[11px] text-[var(--accent)] font-medium break-all"
+                  className="px-1.5 py-0.5 rounded-md bg-[var(--card-bg-alt)] font-mono text-xs text-[var(--accent)] break-all"
                   {...props}
                 >
                   {children}
@@ -104,13 +83,13 @@ export default function ChatMarkdown({ content }: ChatMarkdownProps) {
               );
             }
             return (
-              <div className="my-2.5 rounded-lg overflow-hidden border border-[var(--border-color)] bg-black/40">
-                {match && (
-                  <div className="px-3 py-1 bg-white/5 text-[var(--text-secondary)] text-[10px] font-mono border-b border-[var(--border-color)]">
+              <div className="my-3 rounded-lg overflow-hidden border border-[var(--border-color)] bg-[var(--card-bg-alt)]">
+                {match ? (
+                  <div className="px-3 py-1 text-[var(--text-secondary)] text-[11px] font-mono border-b border-[var(--border-color)]">
                     {match[1]}
                   </div>
-                )}
-                <pre className="p-2.5 text-[var(--text-primary)] text-[11px] font-mono overflow-x-auto">
+                ) : null}
+                <pre className="p-3 text-[var(--text-primary)] text-xs font-mono overflow-x-auto">
                   <code className={className} {...props}>
                     {children}
                   </code>

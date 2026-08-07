@@ -159,7 +159,13 @@ function LogoBlock() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="auth-left">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="auth-left" style={{ minHeight: '100vh', color: '#1a1a1a' }}>
+          Loading…
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

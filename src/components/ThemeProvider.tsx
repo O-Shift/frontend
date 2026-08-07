@@ -15,7 +15,6 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('oshift-theme') as Theme | null;
@@ -23,7 +22,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const resolved = stored ?? preferred;
     setTheme(resolved);
     document.documentElement.setAttribute('data-theme', resolved);
-    setMounted(true);
   }, []);
 
   const toggle = () => {
@@ -34,9 +32,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return next;
     });
   };
-
-  // Prevent flash: render children only after mount
-  if (!mounted) return null;
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>

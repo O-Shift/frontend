@@ -23,7 +23,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="app-window">
             <Sidebar />
-            {children}
+            <main className="flex-1 h-full overflow-y-auto overflow-x-hidden min-w-0">
+                {children}
+            </main>
         </div>
     );
 }

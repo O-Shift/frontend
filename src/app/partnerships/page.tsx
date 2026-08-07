@@ -851,8 +851,8 @@ export default function PartnershipsPage() {
                 </svg>
                 {viewDropdownOpen && (
                   <div className="view-dropdown show" id="viewDropdown">
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('graph'); }}>Graph</div>
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('timeline'); }}>Timeline</div>
+                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Graph'); setViewDropdownOpen(false); }}>Graph</div>
+                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Timeline'); setViewDropdownOpen(false); }}>Timeline</div>
                   </div>
                 )}
             </div>

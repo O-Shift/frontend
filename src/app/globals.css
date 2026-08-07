@@ -95,6 +95,14 @@ body {
   box-sizing: border-box;
 }
 
+body:has(.auth-root) {
+  display: block;
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+  background-color: #fcfcf7;
+}
+
 /* App Window Frame */
 .app-window {
   display: flex;
