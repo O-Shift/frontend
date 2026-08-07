@@ -139,8 +139,13 @@ The goal for the 404 page was to transform a standard error screen into a memora
   - Stripped all fallback dictionaries and synthetic fallback reviews from [backend/app/competitors/enrichment.py](file:///C:/dev/OShift/OShift/backend/app/competitors/enrichment.py). Customer reviews are ONLY persisted if grounded with verified external URLs (`rev_url.startswith("http")`).
   - Stripped synthetic fallback campaign creation from [backend/app/insights/campaigns.py](file:///C:/dev/OShift/OShift/backend/app/insights/campaigns.py).
 - **Empirical Verification**:
-  - Pytest full backend unit test suite: **421 passed, 1 skipped** in 206.1s.
-  - Frontend production build (`npm run build`): **23/23 static routes compiled 100% cleanly** in 10.2s.
+  ## 14. Git Merge Conflict Resolution & Verification
+- **Conflict Summary**: Merged incoming branch `origin/master` (commit `7f59b46bc750fe5c0d080853d364a0b0fdc831b4`) into `master`. Resolved unmerged paths in `src/lib/api.ts` and `src/app/onboarding/step-2/page.tsx`.
+- **Favored Incoming Edits & Retained Local Features**:
+  - Removed obsolete `src/app/onboarding/step-2/page.tsx` as deleted by incoming edits (consolidated onboarding flow in `src/app/onboarding/page.tsx`).
+  - Merged both `Competitor` domain helpers/types (local) and `Opportunity` domain helpers/types + `triggerPipeline` (incoming) into `src/lib/api.ts` cleanly to preserve full API support for both modules.
+- **Verification**: Ran production build (`npm run build`) to ensure all routes, components, and hooks compile cleanly with zero TypeScript or Turbopack errors.
+
 
 
 
