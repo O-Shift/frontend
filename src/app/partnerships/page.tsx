@@ -333,8 +333,20 @@ export default function PartnershipsPage() {
       });
     }
 
-    // Node size is the summed weight of a node's incident edges, normalised
-    // into the size band the graph already used so relative sizes carry meaning.
+    // Node size carries one real measurement, never a random draw.
+    //
+    // The preferred metric is the summed weight of a node's incident edges,
+    // normalised into the size band the graph already used. But nothing in the
+    // backend writes graph_relationships.weight yet — app/agent/tools/
+    // partnerships.py inserts (workspace_id, source_id, target_id, rel_type,
+    // metadata) and no job backfills it — so on every real workspace today
+    // that map comes back empty. The fallback is therefore degree: how many
+    // partnerships the node actually has. That is present in the data right
+    // now, and it is what node size gets read as anyway.
+    //
+    // The two are never mixed. A graph with any weighted edge is scaled purely
+    // by weight, otherwise purely by degree; blending them would put two
+    // different units on one axis and make the sizes mean nothing.
     //
     // Edges are matched to entities exactly the way the link pass below matches
     // them: by id first, then by lowercased name.
@@ -344,42 +356,43 @@ export default function PartnershipsPage() {
       if (e.name) entityIdByKey.set(String(e.name).toLowerCase(), e.id);
     }
 
-    // Presence in this map is the "has a real measurement" flag. Only edges
-    // carrying a number are summed, so a node absent from it had nothing
-    // recorded, while a node mapped to 0 has a genuine zero-strength total.
     const summedWeight = new Map<string, number>();
+    const degree = new Map<string, number>();
     for (const edge of dbGraphData?.edges ?? []) {
-      const w = edge.weight;
-      if (typeof w !== 'number' || !Number.isFinite(w)) continue;
       const srcId = entityIdByKey.get(edge.source) ?? entityIdByKey.get((edge.source_name || '').toLowerCase());
       const tgtId = entityIdByKey.get(edge.target) ?? entityIdByKey.get((edge.target_name || '').toLowerCase());
       if (srcId && srcId === tgtId) continue; // self-loops are dropped from the links too
+      const w = edge.weight;
+      const weighted = typeof w === 'number' && Number.isFinite(w);
       for (const id of [srcId, tgtId]) {
         if (!id) continue;
-        summedWeight.set(id, (summedWeight.get(id) ?? 0) + w);
+        degree.set(id, (degree.get(id) ?? 0) + 1);
+        if (weighted) summedWeight.set(id, (summedWeight.get(id) ?? 0) + (w as number));
       }
     }
 
-    let maxSummedWeight = 0;
-    for (const total of summedWeight.values()) {
-      if (total > maxSummedWeight) maxSummedWeight = total;
+    // Presence in the chosen map is the "has a real measurement" flag, so a
+    // node totalling a genuine 0 stays distinct from one with nothing recorded.
+    const sizeBy = summedWeight.size > 0 ? summedWeight : degree;
+    let maxSize = 0;
+    for (const total of sizeBy.values()) {
+      if (total > maxSize) maxSize = total;
     }
 
     for (let i = 0; i < rawEntities.length; i++) {
       const entity = rawEntities[i];
       const isHub = entity.isHub;
-      // A node with no weighted edge keeps the seeded size. That is the normal
-      // path, not a degraded one: the column is nullable and unwritten today,
-      // so on most workspaces every node lands here and the graph still reads
-      // as it always has.
-      const total = summedWeight.get(entity.id);
+      // A node with nothing recorded sits at the band floor rather than taking
+      // a random size: an unconnected node genuinely is the smallest thing in
+      // the graph, and a fixed floor stops it re-sizing on every render.
+      const total = sizeBy.get(entity.id);
       const strength = total === undefined
         ? null
-        : maxSummedWeight > 0
-          ? Math.min(1, Math.max(0, total / maxSummedWeight))
+        : maxSize > 0
+          ? Math.min(1, Math.max(0, total / maxSize))
           : 0;
       const value = strength === null
-        ? (isHub ? 150 + Math.random() * 2000 : 15 + Math.random() * 50)
+        ? (isHub ? 150 : 15)
         : (isHub ? 150 + strength * 2000 : 15 + strength * 50);
       const radius = isHub ? 12 + Math.sqrt(value) * 0.25 : 6 + Math.sqrt(value) * 0.4;
       const cacheKey = entity.id || `${entity.name}_${i}`;
