@@ -175,7 +175,7 @@ not-found.tsx             cur  435  new  476
 2. **Traps learned the hard way — do not repeat these:**
    - Some routers register endpoints via `router.add_api_route(...)` in a **loop** (e.g. `app/insights/`), not `@router.get` decorators. A grep for `@router.get` will **miss real endpoints**. Read the router module properly.
    - Tables use **double-prefixed** names: `core.core_workspaces`, `insights.insights_gaps`. Exceptions: `signals.signals`, `alerts.alerts`.
-   - `campaigns.campaigns` is a **dead table** — zero readers/writers. Campaigns actually live in `insights.insights_gaps WHERE layer='campaign'`.
+   - `campaigns.campaigns` is the real campaigns table and is what `/v1/campaigns` reads. It was previously dead — zero readers/writers, while the routes read `insights.insights_gaps WHERE layer='campaign'` instead — but the backend was re-pointed at it. `insights_gaps` still holds AI-synthesised gap rows, which are a different thing. Note `campaigns.campaigns` has no `confidence` column, so the API returns null there.
    - **Never invent a field.** If the DB has no budget/spend/ROI/reply-state column, do not fake it. Either drop the UI element or mark it with the existing `SampleBadge` pattern from `src/app/page.tsx` and leave a code comment naming the missing backend.
 3. If an endpoint genuinely does not exist, **do not build a backend router.** Keep the UI element, render it from a clearly-labelled placeholder, comment why, and report it.
 4. Follow `src/hooks/use-dashboard.ts` as the reference hook: per-rail `{items, loading, error}` state, `Promise.all`, each rail settles independently so one failing endpoint can't blank the page, `refresh()` via a nonce in the effect deps.
