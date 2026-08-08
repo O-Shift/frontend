@@ -31,13 +31,26 @@ export interface PinnedCompetitor {
     hasNews: boolean;
 }
 
+/**
+ * Membership is keyed on `competitor_id`, never on `domain`.
+ *
+ * extractDomain() answers '' for a competitor with no website, so every
+ * websiteless competitor in a workspace shares the key ''. Keyed on domain,
+ * isPinned('') would report all of them pinned as soon as any one of them was,
+ * and unpin('') would delete whichever happened to sit first in the array
+ * rather than the one the user asked to remove. competitor_id is unique, and it
+ * is already what pin() dedupes on and what every watchlist endpoint takes — so
+ * keying on it removes a translation step instead of adding one. `domain` stays
+ * on PinnedCompetitor as the display/route concern it is.
+ */
 interface PinnedContextType {
     pinned: PinnedCompetitor[];
     /** Persists to the watchlist. Resolves false when the write failed. */
     pin: (comp: PinnedCompetitor) => Promise<boolean>;
-    /** Persists to the watchlist. Resolves false when the write failed. */
-    unpin: (domain: string) => Promise<boolean>;
-    isPinned: (domain: string) => boolean;
+    /** Takes a competitor_id. Persists. Resolves false when the write failed. */
+    unpin: (competitorId: string) => Promise<boolean>;
+    /** Takes a competitor_id, not a domain. */
+    isPinned: (competitorId: string) => boolean;
     loading: boolean;
     /** Last read/write failure. Never thrown — the sidebar must still render. */
     error: string | null;
@@ -173,8 +186,8 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     );
 
     const unpin = useCallback(
-        async (domain: string): Promise<boolean> => {
-            const index = pinned.findIndex(p => p.domain === domain);
+        async (competitorId: string): Promise<boolean> => {
+            const index = pinned.findIndex(p => p.competitor_id === competitorId);
             if (index === -1) return true;
             const target = pinned[index];
 
@@ -207,7 +220,7 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     );
 
     const isPinned = useCallback(
-        (domain: string) => pinned.some(p => p.domain === domain),
+        (competitorId: string) => pinned.some(p => p.competitor_id === competitorId),
         [pinned],
     );
 
