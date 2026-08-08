@@ -119,9 +119,9 @@ function campaignPostCount(c: Campaign): number {
     return c.posts?.length ?? 0;
 }
 function confidenceLabel(c: number | null | undefined): string {
-    const n = typeof c === 'number' ? c : 0;
-    if (n >= 70) return 'High confidence';
-    if (n >= 40) return 'Medium confidence';
+    if (typeof c !== 'number') return 'Not scored';
+    if (c >= 70) return 'High confidence';
+    if (c >= 40) return 'Medium confidence';
     return 'Low confidence';
 }
 
@@ -354,15 +354,15 @@ export default function DashboardPage() {
                                                 </div>
                                             </motion.div>
                                             <motion.div variants={childVariants} custom={direction} className="flex flex-col">
-                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Confidence</span>
-                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)]">{activeCamp.confidence}%</span>
-                                                <div className={`flex items-center gap-1 text-xs font-medium mt-1.5 ${activeCamp.confidence >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                    {activeCamp.confidence >= 70 ? <SolidArrowUp /> : <SolidArrowDown />} {confidenceLabel(activeCamp.confidence)}
+                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Progress</span>
+                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)]">{activeCamp.progress === null ? '—' : `${activeCamp.progress}%`}</span>
+                                                <div className={`flex items-center gap-1 text-xs font-medium mt-1.5 ${activeCamp.progress !== null && activeCamp.progress >= 70 ? 'text-emerald-500' : 'text-[var(--text-secondary)]'}`}>
+                                                    {activeCamp.progress !== null && activeCamp.progress >= 70 ? <SolidArrowUp /> : null} {activeCamp.progress === null ? 'Not recorded' : 'Recorded'}
                                                 </div>
                                             </motion.div>
                                             <motion.div variants={childVariants} custom={direction} className="flex flex-col">
                                                 <span className="text-xs text-[var(--text-secondary)] mb-1.5">Status</span>
-                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)] capitalize">Active</span>
+                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)] capitalize">{activeCamp.status ?? '—'}</span>
                                             </motion.div>
                                         </div>
                                     </div>
