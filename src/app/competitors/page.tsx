@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { apiFetch } from '@/lib/api';
+import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
 
 interface Competitor {
@@ -71,6 +72,21 @@ export default function CompetitorsPage() {
   const [query, setQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const router = useRouter();
+
+  // Aliased: this page already owns a `loading`/`error` pair for the competitor
+  // list, which is a separate request from the watchlist.
+  const {
+    pin,
+    unpin,
+    isPinned,
+    loading: pinnedLoading,
+    error: pinnedError,
+  } = usePinned();
+
+  // competitor_ids with a pin write in flight. The context updates optimistically,
+  // so the icon flips before the request lands; without this a double-click would
+  // fire the opposite write against a state the server has not acknowledged yet.
+  const [pinPending, setPinPending] = useState<ReadonlySet<string>>(() => new Set());
 
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [commandActive, setCommandActive] = useState(false);
@@ -159,6 +175,50 @@ export default function CompetitorsPage() {
       setCompetitors((prev) => prev.filter((c) => c.id !== id));
     } else {
       alert(res.error || 'Failed to delete competitor');
+    }
+  };
+
+  const handleTogglePin = async (company: Competitor, e: React.MouseEvent) => {
+    // The whole card is a click target that routes to /company/[domain], so
+    // without this the toggle would navigate away mid-write. Same guard the
+    // delete button above uses; preventDefault keeps the <button> inert beyond
+    // this handler.
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Nothing is known about membership until the watchlist has been read, and
+    // a second write for the same competitor must wait for the first.
+    if (pinnedLoading || pinPending.has(company.id)) return;
+
+    const domain = extractDomain(company.website);
+    const wasPinned = isPinned(company.id);
+
+    setPinPending((prev) => new Set(prev).add(company.id));
+
+    const ok = wasPinned
+      ? await unpin(company.id)
+      : await pin({
+          competitor_id: company.id,
+          domain,
+          // Normalised the same way PinnedContext normalises a watchlist row it
+          // read back, so the sidebar label does not change on the next reload.
+          name: company.name || domain || 'Unnamed competitor',
+          logo: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+          hasNews: false,
+        });
+
+    setPinPending((prev) => {
+      const next = new Set(prev);
+      next.delete(company.id);
+      return next;
+    });
+
+    if (!ok) {
+      // pin/unpin never throw; they record the reason on the context's `error`,
+      // which the banner renders. The banner is at the top of a scrolling grid
+      // and this card may be well below it, so write failures also alert — the
+      // same way handleDeleteCompetitor reports its own.
+      alert(wasPinned ? 'Failed to unpin this competitor.' : 'Failed to pin this competitor.');
     }
   };
 
@@ -259,6 +319,16 @@ export default function CompetitorsPage() {
           </div>
         )}
 
+        {/* The pinned context reports failures on `error` and never throws, so a
+            watchlist that failed to load would otherwise leave every pin control
+            silently inert with no explanation. This is the only surface a read
+            failure has; write failures additionally alert from handleTogglePin. */}
+        {pinnedError && (
+          <div className="card" style={{ padding: '16px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: 14, width: '100%', maxWidth: 1000, marginBottom: 32 }}>
+            Pinned competitors: {pinnedError}
+          </div>
+        )}
+
         {loading ? (
           <div style={{
             display: 'grid',
@@ -343,6 +413,20 @@ export default function CompetitorsPage() {
               const pattern = getPattern(i, c1, c2);
               const initial = (company.name || domain || 'C').charAt(0).toUpperCase();
 
+              // Keyed on the competitor id, never on `domain`: extractDomain
+              // answers '' for a competitor with no website, so a domain-keyed
+              // check would mark every websiteless competitor pinned as soon as
+              // one of them was.
+              const companyPinned = isPinned(company.id);
+              const pinBusy = pinPending.has(company.id);
+              // While the watchlist is still loading, `companyPinned` is false
+              // only because nothing has been read yet. Offering an active
+              // "pin" control there would state a membership we do not know, so
+              // it stays disabled and dimmed until the read resolves.
+              const pinDisabled = pinnedLoading || pinBusy;
+              const pinIdleBg = companyPinned ? 'rgba(245, 158, 11, 0.85)' : 'rgba(0, 0, 0, 0.4)';
+              const pinIdleFg = companyPinned ? '#ffffff' : 'rgba(255,255,255,0.8)';
+
               return (
                 <div
                   key={company.id}
@@ -389,6 +473,72 @@ export default function CompetitorsPage() {
                   }}
                 >
                   <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 80px rgba(0,0,0,0.2)', pointerEvents: 'none' }} />
+
+                  {/* PIN BUTTON */}
+                  <button
+                    type="button"
+                    onClick={(evt) => handleTogglePin(company, evt)}
+                    // aria-disabled rather than the native `disabled`: a disabled
+                    // button never runs our handler, and browsers disagree about
+                    // whether the click still bubbles — where it does, it would
+                    // reach the card and navigate. Letting the handler always run
+                    // means stopPropagation() is guaranteed, and it re-checks the
+                    // same condition before writing anything.
+                    aria-disabled={pinDisabled}
+                    title={
+                      pinnedLoading
+                        ? 'Loading pinned competitors...'
+                        : companyPinned
+                          ? 'Unpin from sidebar'
+                          : 'Pin to sidebar'
+                    }
+                    aria-label={companyPinned ? `Unpin ${company.name}` : `Pin ${company.name}`}
+                    aria-pressed={pinnedLoading ? undefined : companyPinned}
+                    style={{
+                      position: 'absolute',
+                      top: 14,
+                      right: 48,
+                      zIndex: 20,
+                      background: pinIdleBg,
+                      backdropFilter: 'blur(8px)',
+                      color: pinIdleFg,
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 6,
+                      width: 28,
+                      height: 28,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 14,
+                      cursor: pinDisabled ? 'not-allowed' : 'pointer',
+                      opacity: pinDisabled ? 0.45 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(btn) => {
+                      if (pinDisabled) return;
+                      btn.currentTarget.style.background = 'rgba(245, 158, 11, 0.8)';
+                      btn.currentTarget.style.color = '#ffffff';
+                    }}
+                    onMouseLeave={(btn) => {
+                      if (pinDisabled) return;
+                      btn.currentTarget.style.background = pinIdleBg;
+                      btn.currentTarget.style.color = pinIdleFg;
+                    }}
+                  >
+                    {/* Bookmark, filled once pinned so the state reads without hovering. */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill={companyPinned ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </button>
 
                   {/* DELETE BUTTON */}
                   <button
