@@ -50,7 +50,7 @@ export default function IntelligenceBriefing() {
 
     const nextStep = () => {
         if (step < 7) setStep(step + 1);
-        else router.push('/dashboard');
+        else router.push('/');
     };
 
     const prevStep = () => {
@@ -487,7 +487,7 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Edit setup</button>
-                    <button className="ob-btn-primary" onClick={() => simulateProcessing(['Activating Oshift...', 'Preparing first snapshot...'], () => router.push('/dashboard'), true)}>
+                    <button className="ob-btn-primary" onClick={() => simulateProcessing(['Activating Oshift...', 'Preparing first snapshot...'], () => router.push('/'), true)}>
                         Activate Oshift <FiChevronRight />
                     </button>
                 </div>
