@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
 import { apiFetch, updateOpportunityStatus, type Campaign, type SenseReview } from '@/lib/api';
+import { extractDomain } from '@/lib/utils/domain';
 
 const brandColor1 = '#FF5A00';
 const brandColor2 = '#64748b';
@@ -129,20 +130,6 @@ interface Competitor {
     id: string;
     name: string;
     website: string;
-}
-
-// The /company/[domain] route resolves a competitor by substring-matching the
-// segment against competitor.website, so the segment must be a bare hostname.
-function extractDomain(website: string): string {
-    if (!website) return '';
-    try {
-        const urlStr = website.startsWith('http://') || website.startsWith('https://')
-            ? website
-            : `https://${website}`;
-        return new URL(urlStr).hostname.replace(/^www\./, '');
-    } catch {
-        return website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-    }
 }
 
 export default function DashboardPage() {

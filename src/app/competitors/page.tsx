@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { apiFetch } from '@/lib/api';
+import { extractDomain } from '@/lib/utils/domain';
 
 interface Competitor {
   id: string;
@@ -13,18 +14,6 @@ interface Competitor {
   website: string;
   description?: string | null;
   created_at?: string;
-}
-
-function extractDomain(website: string): string {
-  if (!website) return '';
-  try {
-    const urlStr = website.startsWith('http://') || website.startsWith('https://')
-      ? website
-      : `https://${website}`;
-    return new URL(urlStr).hostname.replace(/^www\./, '');
-  } catch {
-    return website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-  }
 }
 
 function getBrandColors(domain: string) {

@@ -134,7 +134,7 @@ export default function Sidebar() {
                         {competitorsExpanded && pinned && pinned.length > 0 && (
                             <div className={`flex flex-col mt-1 mb-2 ${collapsed ? 'items-center gap-2' : 'pl-4 ml-4 border-l border-[var(--border-color)]'}`}>
                                 {pinned.map(comp => (
-                                    <Link key={comp.domain} href={`/company/${comp.domain}`} className={`flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] rounded-md transition-colors relative ${collapsed ? 'p-1' : 'py-2 px-3'}`}>
+                                    <Link key={comp.competitor_id} href={`/company/${comp.domain}`} className={`flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] rounded-md transition-colors relative ${collapsed ? 'p-1' : 'py-2 px-3'}`}>
                                         <div className="relative shrink-0 flex items-center justify-center w-5 h-5">
                                             <img src={comp.logo} alt={comp.name} className="w-full h-full object-cover rounded border border-[var(--border-color)]" />
                                             {comp.hasNews && (
