@@ -343,7 +343,7 @@ export interface CampaignPost {
   captured_at: string | null;
 }
 
-/** Written by insights/campaigns.py as insights_gaps rows with layer='campaign'. */
+/** Free-form jsonb on a campaigns.campaigns row. */
 export interface CampaignMetadata {
   post_count?: number;
   date_range?: string | { start?: string; end?: string } | null;
@@ -352,29 +352,56 @@ export interface CampaignMetadata {
   [key: string]: unknown;
 }
 
+/** A row of campaigns.campaigns. `title` is the table's `name` column. */
 export interface Campaign {
   id: string;
+  workspace_id: string;
   competitor_id: string | null;
+  company_id: string | null;
+  owner_type: string | null;
   title: string;
   description: string | null;
-  confidence: number;
+  cluster: string | null;
+  identified_target: string | null;
+  style: string | null;
+  status: string | null;
+  platforms: string[];
+  themes: string[];
+  signal_ids: string[];
+  start_date: string | null;
+  end_date: string | null;
   detected_at: string | null;
+  budget_usd: number | null;
+  spent_usd: number | null;
+  progress: number | null;
+  roi: number | null;
+  /** Always null: campaigns.campaigns has no confidence column. */
+  confidence: number | null;
+  platform_metrics: Record<string, unknown>;
   metadata: CampaignMetadata;
+  created_at: string | null;
+  updated_at: string | null;
   posts: CampaignPost[];
 }
 
 export async function fetchCampaigns(params?: {
   owner_type?: "competitor" | "self";
   competitor_id?: string;
+  status?: string;
   limit?: number;
 }): Promise<ApiResult<Campaign[]>> {
   const query = new URLSearchParams();
   if (params?.owner_type) query.set("owner_type", params.owner_type);
   if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.status) query.set("status", params.status);
   if (params?.limit) query.set("limit", String(params.limit));
 
   const queryString = query.toString() ? `?${query.toString()}` : "";
   return apiFetch<Campaign[]>(`/campaigns${queryString}`);
+}
+
+export async function fetchCampaign(id: string): Promise<ApiResult<Campaign>> {
+  return apiFetch<Campaign>(`/campaigns/${id}`);
 }
 
 export interface Workspace {
