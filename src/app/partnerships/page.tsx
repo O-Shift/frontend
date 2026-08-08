@@ -30,6 +30,12 @@ interface DBGraphEdge {
   source_type?: string;
   target_name?: string;
   target_type?: string;
+  /**
+   * graph.graph_relationships.weight — relationship strength. Nullable, and
+   * nothing writes it today, so null is the common case rather than the rare
+   * one. A real 0 is a meaningful strength and is not the same as null.
+   */
+  weight?: number | null;
   metadata?: any;
 }
 
@@ -327,10 +333,54 @@ export default function PartnershipsPage() {
       });
     }
 
+    // Node size is the summed weight of a node's incident edges, normalised
+    // into the size band the graph already used so relative sizes carry meaning.
+    //
+    // Edges are matched to entities exactly the way the link pass below matches
+    // them: by id first, then by lowercased name.
+    const entityIdByKey = new Map<string, string>();
+    for (const e of rawEntities) {
+      if (e.id) entityIdByKey.set(String(e.id), e.id);
+      if (e.name) entityIdByKey.set(String(e.name).toLowerCase(), e.id);
+    }
+
+    // Presence in this map is the "has a real measurement" flag. Only edges
+    // carrying a number are summed, so a node absent from it had nothing
+    // recorded, while a node mapped to 0 has a genuine zero-strength total.
+    const summedWeight = new Map<string, number>();
+    for (const edge of dbGraphData?.edges ?? []) {
+      const w = edge.weight;
+      if (typeof w !== 'number' || !Number.isFinite(w)) continue;
+      const srcId = entityIdByKey.get(edge.source) ?? entityIdByKey.get((edge.source_name || '').toLowerCase());
+      const tgtId = entityIdByKey.get(edge.target) ?? entityIdByKey.get((edge.target_name || '').toLowerCase());
+      if (srcId && srcId === tgtId) continue; // self-loops are dropped from the links too
+      for (const id of [srcId, tgtId]) {
+        if (!id) continue;
+        summedWeight.set(id, (summedWeight.get(id) ?? 0) + w);
+      }
+    }
+
+    let maxSummedWeight = 0;
+    for (const total of summedWeight.values()) {
+      if (total > maxSummedWeight) maxSummedWeight = total;
+    }
+
     for (let i = 0; i < rawEntities.length; i++) {
       const entity = rawEntities[i];
       const isHub = entity.isHub;
-      const value = isHub ? 150 + Math.random() * 2000 : 15 + Math.random() * 50;
+      // A node with no weighted edge keeps the seeded size. That is the normal
+      // path, not a degraded one: the column is nullable and unwritten today,
+      // so on most workspaces every node lands here and the graph still reads
+      // as it always has.
+      const total = summedWeight.get(entity.id);
+      const strength = total === undefined
+        ? null
+        : maxSummedWeight > 0
+          ? Math.min(1, Math.max(0, total / maxSummedWeight))
+          : 0;
+      const value = strength === null
+        ? (isHub ? 150 + Math.random() * 2000 : 15 + Math.random() * 50)
+        : (isHub ? 150 + strength * 2000 : 15 + strength * 50);
       const radius = isHub ? 12 + Math.sqrt(value) * 0.25 : 6 + Math.sqrt(value) * 0.4;
       const cacheKey = entity.id || `${entity.name}_${i}`;
 
