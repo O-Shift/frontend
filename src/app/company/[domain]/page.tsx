@@ -178,6 +178,7 @@ function CompanyPageContent() {
     }));
 
     const displayCampaigns = backendCampaigns.map((c, i) => ({
+        id: c.id,
         name: c.title,
         date: c.detected_at ? new Date(c.detected_at).toLocaleDateString() : "Active",
         metric: String(c.metadata?.metric ?? "N/A"),
@@ -436,7 +437,7 @@ function CompanyPageContent() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         {displayCampaigns.length === 0 && <div className="text-sm text-[var(--text-secondary)] col-span-full">No campaigns found.</div>}
                         {displayCampaigns.map((camp, i) => (
-                            <div key={i} onDoubleClick={() => router.push(`/campaigns/${i}`)} className="flex flex-col items-center cursor-pointer p-3 bg-[var(--card-bg-alt)] border border-[var(--border-color)] rounded-lg hover:bg-[var(--item-hover)] transition-colors">
+                            <div key={camp.id || i} onDoubleClick={() => { if (camp.id) router.push(`/campaigns/${camp.id}`); }} title={camp.id ? undefined : 'Campaign id missing — cannot open this campaign'} className={`flex flex-col items-center p-3 bg-[var(--card-bg-alt)] border border-[var(--border-color)] rounded-lg hover:bg-[var(--item-hover)] transition-colors ${camp.id ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                                 <div className="scene mb-3 scale-90 origin-top">
                                     <div className="deck-wrapper" title={camp.name}>
                                         <div className="cards">
