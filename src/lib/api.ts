@@ -263,7 +263,7 @@ export async function deleteOpportunity(id: string): Promise<ApiResult<void>> {
 export async function triggerPipeline(): Promise<ApiResult<{ run_id: string; status: string }>> {
   return apiFetch<{ run_id: string; status: string }>("/automation/trigger", {
     method: "POST",
-    body: JSON.stringify({ workflow_type: "oshift-pipeline-v1" }),
+    body: JSON.stringify({ workflow_type: "oshift/crawlers.run" }),
   });
 }
 
