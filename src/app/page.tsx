@@ -9,13 +9,6 @@ import { apiFetch, updateOpportunityStatus, type Campaign, type SenseReview } fr
 const brandColor1 = '#FF5A00';
 const brandColor2 = '#64748b';
 
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
-const chartData = months.map((m, i) => ({
-    name: m, 
-    views: [310, 520, 180, 390, 560, 240, 430, 610, 280, 470][i],
-    engagement: [4.8, 6.2, 3.1, 5.5, 7.0, 3.8, 5.4, 7.5, 4.0, 6.0][i]
-}));
-
 const SolidArrowUp = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
         <polygon points="12 3 4 11 10 11 10 21 14 21 14 11 20 11 12 3" />
@@ -36,15 +29,16 @@ const StatusPill = ({ status }: { status: string }) => {
     );
 };
 
-function SampleBadge({ title }: { title: string }) {
-    return (
-        <span
-            title={title}
-            className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md text-[var(--text-secondary)] bg-transparent border border-[var(--border-color)] whitespace-nowrap ml-2"
-        >
-            Sample data
-        </span>
-    );
+// GET /company/analytics returns "YYYY-MM-DD" bucket starts. The XAxis wants the
+// short label; parse the parts rather than `new Date(s)` so the bucket is not
+// shifted a day by the viewer's timezone.
+function monthLabel(timestamp: string): string {
+    const [year, month] = timestamp.split('-').map(Number);
+    if (!year || !month) return timestamp;
+    return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-US', {
+        month: 'short',
+        timeZone: 'UTC',
+    });
 }
 
 // --- Helper Functions from current ---
@@ -158,7 +152,7 @@ export default function DashboardPage() {
     const [direction, setDirection] = useState(1);
     const reviewsScrollRef = useRef<HTMLDivElement>(null);
 
-    const { opportunities, opportunitiesTotal, gaps, reviews, campaigns, workspace, user, refreshing, refresh } = useDashboard();
+    const { opportunities, opportunitiesTotal, gaps, reviews, campaigns, analytics, company, workspace, user, refreshing, refresh } = useDashboard();
 
     // Gaps carry competitor_id, not a website. The watchlist is the only place
     // that maps one to the other, so it is fetched once for gap navigation.
@@ -185,6 +179,34 @@ export default function DashboardPage() {
         }
         return byId;
     }, [competitors]);
+
+    // Nulls are carried through as null, never coalesced to 0: the endpoint sends
+    // null for "no snapshot recorded this metric", and Recharts draws a gap for it
+    // (connectNulls is unset). Zero-filling would render a collection outage as
+    // real zero traffic.
+    const chartData = useMemo(
+        () =>
+            analytics.items.map((point) => ({
+                name: monthLabel(point.timestamp),
+                views: point.views,
+                engagement: point.engagement_rate,
+            })),
+        [analytics.items],
+    );
+
+    // A series whose every bucket is null was never recorded — the chart frame
+    // would otherwise be empty with no explanation of why.
+    const seriesRecorded = useMemo(
+        () => ({
+            views: analytics.items.some((p) => p.views !== null),
+            engagement: analytics.items.some((p) => p.engagement_rate !== null),
+        }),
+        [analytics.items],
+    );
+
+    const analyticsEmptyNote = company.missing
+        ? 'Complete onboarding to start collecting analytics for your company.'
+        : 'No analytics snapshots collected yet.';
 
     const scrollList = (dir: 'left' | 'right') => {
         if (reviewsScrollRef.current) {
@@ -383,17 +405,17 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-center mb-8">
                             <div className="flex items-center">
                                 <h3 className="text-base font-medium text-[var(--text-primary)]">Historical analytics</h3>
-                                <SampleBadge title="Placeholder data" />
                             </div>
+                            <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Last 6 months</span>
                         </div>
                         <div className="flex flex-col gap-14">
-                            {[
-                                { key: 'views', dataKey: 'views', label: 'Total Views (K)', color: brandColor1 },
+                            {([
+                                { key: 'views', dataKey: 'views', label: 'Total Views', color: brandColor1 },
                                 { key: 'engagement', dataKey: 'engagement', label: 'Engagement Rate (%)', color: brandColor2 },
-                            ].map(({ key, dataKey, label, color }) => (
+                            ] as const).map(({ key, dataKey, label, color }) => (
                                 <div
                                     key={key}
-                                    onClick={() => setActiveChart(activeChart === key ? null : (key as any))}
+                                    onClick={() => setActiveChart(activeChart === key ? null : key)}
                                     className={`flex flex-col cursor-pointer transition-all duration-300 ${activeChart === key ? 'h-[280px]' : 'h-[100px] opacity-60 hover:opacity-100'}`}
                                 >
                                     <div className="flex items-center gap-2 mb-4">
@@ -401,6 +423,15 @@ export default function DashboardPage() {
                                         <h4 className="text-sm font-medium text-[var(--text-primary)]">{label}</h4>
                                     </div>
                                     <div className="flex-1 w-full h-full min-h-0 relative -left-4">
+                                        {analytics.loading ? (
+                                            <div className="flex items-center h-full pl-4 text-sm text-[var(--text-secondary)]">Loading analytics...</div>
+                                        ) : analytics.error ? (
+                                            <div className="flex items-center h-full pl-4 text-sm text-[var(--text-secondary)]">Analytics unavailable: {analytics.error}</div>
+                                        ) : chartData.length === 0 ? (
+                                            <div className="flex items-center h-full pl-4 text-sm text-[var(--text-secondary)]">{analyticsEmptyNote}</div>
+                                        ) : !seriesRecorded[key] ? (
+                                            <div className="flex items-center h-full pl-4 text-sm text-[var(--text-secondary)]">Not recorded in any snapshot for this period.</div>
+                                        ) : (
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                                                 <defs>
@@ -412,14 +443,15 @@ export default function DashboardPage() {
                                                 {activeChart === key && <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" opacity={0.6} />}
                                                 <XAxis dataKey="name" stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} />
                                                 {activeChart === key && <YAxis stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} />}
-                                                <Tooltip 
-                                                    contentStyle={{ backgroundColor: 'var(--bg-main-alt)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', boxShadow: 'none' }} 
-                                                    itemStyle={{ color, fontWeight: 500 }} 
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: 'var(--bg-main-alt)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', boxShadow: 'none' }}
+                                                    itemStyle={{ color, fontWeight: 500 }}
                                                     cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }}
                                                 />
                                                 <Area type="linear" dataKey={dataKey} stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#gradient-${key})`} activeDot={{ r: 4, fill: color, strokeWidth: 0 }} dot={{ r: 3, fill: color, strokeWidth: 0 }} />
                                             </AreaChart>
                                         </ResponsiveContainer>
+                                        )}
                                     </div>
                                 </div>
                             ))}

@@ -5,11 +5,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
   fetchCampaigns,
+  fetchCompany,
+  fetchCompanyAnalytics,
   fetchGaps,
   fetchOpportunities,
   fetchReviews,
   fetchWorkspaces,
   type Campaign,
+  type Company,
+  type CompanyAnalyticsPoint,
   type InsightGap,
   type Opportunity,
   type SenseReview,
@@ -33,12 +37,26 @@ export interface DashboardUser {
   email: string | null;
 }
 
+/**
+ * The workspace's own company. `missing` is a 404 from GET /company — the row
+ * does not exist because onboarding has not run. That is an empty state and is
+ * deliberately kept out of `error`, which is reserved for real failures.
+ */
+export interface CompanyProfile {
+  company: Company | null;
+  loading: boolean;
+  missing: boolean;
+  error: string | null;
+}
+
 export interface DashboardData {
   opportunities: Rail<Opportunity>;
   opportunitiesTotal: number;
   gaps: Rail<InsightGap>;
   reviews: Rail<SenseReview>;
   campaigns: Rail<Campaign>;
+  analytics: Rail<CompanyAnalyticsPoint>;
+  company: CompanyProfile;
   workspace: Workspace | null;
   user: DashboardUser | null;
   refreshing: boolean;
@@ -51,6 +69,13 @@ export function useDashboard(): DashboardData {
   const [gaps, setGaps] = useState<Rail<InsightGap>>(emptyRail);
   const [reviews, setReviews] = useState<Rail<SenseReview>>(emptyRail);
   const [campaigns, setCampaigns] = useState<Rail<Campaign>>(emptyRail);
+  const [analytics, setAnalytics] = useState<Rail<CompanyAnalyticsPoint>>(emptyRail);
+  const [company, setCompany] = useState<CompanyProfile>({
+    company: null,
+    loading: true,
+    missing: false,
+    error: null,
+  });
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [user, setUser] = useState<DashboardUser | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,15 +111,19 @@ export function useDashboard(): DashboardData {
       setGaps((r) => ({ ...r, loading: true }));
       setReviews((r) => ({ ...r, loading: true }));
       setCampaigns((r) => ({ ...r, loading: true }));
+      setAnalytics((r) => ({ ...r, loading: true }));
+      setCompany((c) => ({ ...c, loading: true }));
 
       // Each rail settles independently — one failing endpoint must not blank
       // the whole dashboard.
-      const [oppRes, gapRes, revRes, campRes, wsRes] = await Promise.all([
+      const [oppRes, gapRes, revRes, campRes, wsRes, anaRes, compRes] = await Promise.all([
         fetchOpportunities({ limit: 8 }),
         fetchGaps({ limit: 12 }),
         fetchReviews({ limit: 40 }),
         fetchCampaigns({ limit: 8 }),
         fetchWorkspaces(),
+        fetchCompanyAnalytics({ range: '6m', granularity: 'month' }),
+        fetchCompany(),
       ]);
 
       if (cancelled) return;
@@ -124,6 +153,20 @@ export function useDashboard(): DashboardData {
           : { items: [], loading: false, error: campRes.error },
       );
 
+      setAnalytics(
+        anaRes.ok
+          ? { items: anaRes.data?.points ?? [], loading: false, error: null }
+          : { items: [], loading: false, error: anaRes.error },
+      );
+
+      if (compRes.ok) {
+        setCompany({ company: compRes.data ?? null, loading: false, missing: false, error: null });
+      } else if (compRes.status === 404) {
+        setCompany({ company: null, loading: false, missing: true, error: null });
+      } else {
+        setCompany({ company: null, loading: false, missing: false, error: compRes.error });
+      }
+
       if (wsRes.ok && Array.isArray(wsRes.data)) {
         const activeId =
           typeof window !== 'undefined'
@@ -147,6 +190,8 @@ export function useDashboard(): DashboardData {
     gaps,
     reviews,
     campaigns,
+    analytics,
+    company,
     workspace,
     user,
     refreshing,
