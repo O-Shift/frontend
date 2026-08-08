@@ -12,7 +12,7 @@ function CompanyPile({ companies }: { companies: string[] }) {
   const extra = companies.length - 3;
 
   return (
-    <span 
+    <span
       style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 12, verticalAlign: 'middle', cursor: 'pointer' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -64,6 +64,52 @@ function CompanyPile({ companies }: { companies: string[] }) {
   );
 }
 
+function SampleBadge({ title }: { title: string }) {
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      background: 'transparent',
+      color: 'var(--text-secondary)',
+      border: '1px solid var(--border-color)',
+      borderRadius: '4px',
+      padding: '2px 6px',
+      fontSize: '10px',
+      fontWeight: 'bold',
+      marginLeft: '8px',
+      textTransform: 'uppercase'
+    }}>
+      {title}
+    </span>
+  );
+}
+
+function SeamlessBackground({ slideIndex, totalSlides }: { slideIndex: number, totalSlides: number }) {
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+      <motion.div
+        animate={{ x: `-${slideIndex * (100 / totalSlides)}%` }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          height: '100%',
+          width: `${totalSlides * 100}vw`,
+          display: 'flex',
+          opacity: 'var(--bg-pattern-opacity)',
+        }}
+      >
+        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '-5%', top: '-30%', width: '220vh', transform: 'rotate(85deg)' }} />
+        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '25%', bottom: '-40%', width: '250vh', transform: 'rotate(-60deg)' }} />
+        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '55%', top: '-50%', width: '240vh', transform: 'rotate(115deg)' }} />
+        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '72%', bottom: '-20%', width: '280vh', transform: 'rotate(-25deg)' }} />
+        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '90%', top: '-35%', width: '260vh', transform: 'rotate(145deg)' }} />
+      </motion.div>
+    </div>
+  );
+}
+
 export default function OpportunitiesPage() {
   const [opportunitiesList, setOpportunitiesList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +119,7 @@ export default function OpportunitiesPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<{ type: 'desc' | 'gap', id: number } | null>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const [selectedNode, setSelectedNode] = useState(null);
   const [commandActive, setCommandActive] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -99,8 +145,8 @@ export default function OpportunitiesPage() {
         const gapBullets = Array.isArray(af.gapBullets) && af.gapBullets.length > 0
           ? af.gapBullets
           : Array.isArray((af as any).gap_bullets) && (af as any).gap_bullets.length > 0
-          ? (af as any).gap_bullets
-          : [{
+            ? (af as any).gap_bullets
+            : [{
               text: af.gapIdentified || (af as any).gap_identified || 'Market gap identified from DB competitor signals.',
               citations: ['Market Competitor Audit'],
               companies: ['stripe.com', 'slack.com', 'notion.so'],
@@ -152,7 +198,7 @@ export default function OpportunitiesPage() {
     setIsRunningPipeline(true);
     const res = await triggerPipeline();
     if (res.ok) {
-      alert('🚀 Full Ingest Pipeline triggered successfully! Background execution started.');
+      alert('Full Ingest Pipeline triggered successfully! Background execution started.');
       setTimeout(() => {
         loadData();
       }, 3000);
@@ -260,9 +306,9 @@ export default function OpportunitiesPage() {
     }
   };
 
-  const activeCitations: string[] = hoveredNode?.type === 'desc' 
+  const activeCitations: string[] = hoveredNode?.type === 'desc'
     ? slide?.highlights[hoveredNode.id]?.citations || []
-    : hoveredNode?.type === 'gap' 
+    : hoveredNode?.type === 'gap'
       ? slide?.gapBullets[hoveredNode.id]?.citations || []
       : [];
 
@@ -270,8 +316,9 @@ export default function OpportunitiesPage() {
 
   return (
     <>
-      <div className="main-content" style={{ overflowY: 'auto', padding: '60px', display: 'flex', flexDirection: 'column' }}>
-        
+      <div className="main-content" style={{ overflowY: 'auto', padding: '60px', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 10 }}>
+        <SeamlessBackground slideIndex={slideIndex} totalSlides={Math.max(1, opportunitiesList.length)} />
+
         {/* Top Header Action Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1200, width: '100%', margin: '0 auto 30px auto' }}>
           <div>
@@ -288,7 +335,7 @@ export default function OpportunitiesPage() {
                 color: 'var(--text-primary)',
                 border: '1px solid var(--border-color)',
                 padding: '10px 18px',
-                borderRadius: 8,
+                borderRadius: 6,
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: isRunningPipeline ? 'not-allowed' : 'pointer',
@@ -299,17 +346,17 @@ export default function OpportunitiesPage() {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
               }}
             >
-              {isRunningPipeline ? 'Triggering Pipeline...' : '🚀 Run Ingest Pipeline'}
+              {isRunningPipeline ? 'Triggering Pipeline...' : 'Run Ingest Pipeline'}
             </button>
             <button
               onClick={handleGenerate}
               disabled={isGenerating}
               style={{
-                background: 'var(--accent)',
-                color: '#fff',
-                border: 'none',
+                background: 'var(--card-bg)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
                 padding: '10px 18px',
-                borderRadius: 8,
+                borderRadius: 6,
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: isGenerating ? 'not-allowed' : 'pointer',
@@ -317,10 +364,10 @@ export default function OpportunitiesPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
               }}
             >
-              {isGenerating ? 'Synthesizing AI Opportunities...' : '✨ Generate AI Opportunities'}
+              {isGenerating ? 'Synthesizing...' : 'Generate Opportunities'}
             </button>
           </div>
         </div>
@@ -348,7 +395,7 @@ export default function OpportunitiesPage() {
                 background: 'var(--accent)',
                 color: '#fff',
                 padding: '12px 24px',
-                borderRadius: 8,
+                borderRadius: 6,
                 fontWeight: 600,
                 fontSize: 14,
                 textDecoration: 'none'
@@ -375,29 +422,29 @@ export default function OpportunitiesPage() {
                   color: 'var(--text-primary)',
                   border: '1px solid var(--border-color)',
                   padding: '12px 24px',
-                  borderRadius: 8,
+                  borderRadius: 6,
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
-                {isRunningPipeline ? 'Triggering Pipeline...' : '🚀 Run Ingest Pipeline'}
+                {isRunningPipeline ? 'Triggering Pipeline...' : 'Run Ingest Pipeline'}
               </button>
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
                 style={{
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  border: 'none',
+                  background: 'var(--card-bg)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
                   padding: '12px 24px',
-                  borderRadius: 8,
+                  borderRadius: 6,
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
-                {isGenerating ? 'Synthesizing...' : 'Generate AI Opportunities'}
+                {isGenerating ? 'Synthesizing...' : 'Synthesize Opportunities'}
               </button>
             </div>
           </div>
@@ -406,7 +453,7 @@ export default function OpportunitiesPage() {
         {/* Real DB Data Content */}
         {!loading && !error && slide && (
           <AnimatePresence mode="wait">
-            <motion.div 
+            <motion.div
               key={slideIndex}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -427,32 +474,32 @@ export default function OpportunitiesPage() {
                   </p>
 
                   <div style={{ display: 'flex', gap: 60 }}>
-                    
+
                     {/* Left Side: Gaps & Effort/Impact */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 32, position: 'relative', zIndex: 10 }}>
                       {/* Gaps Section */}
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                          <h2 className="skeleton-target" style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-secondary)', margin: 0 }}>Gap(s)</h2>
+                          <h2 className="skeleton-target" style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-secondary)', margin: 0 }}>Gap(s) <SampleBadge title="Mock data" /></h2>
                         </div>
                         <ul className="skeleton-target" style={{ margin: 0, paddingLeft: 16, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
                           {slide.gapBullets.map((bullet: any, i: number) => {
                             const isHovered = hoveredNode?.type === 'gap' && hoveredNode?.id === i;
                             return (
-                              <li 
-                                key={i} 
-                                style={{ 
+                              <li
+                                key={i}
+                                style={{
                                   marginBottom: 10,
                                   color: isHovered ? 'var(--accent)' : 'inherit',
                                   transition: 'color 0.2s',
                                   position: 'relative'
                                 }}
                               >
-                                <span 
+                                <span
                                   onMouseEnter={() => handleMouseEnter('gap', i)}
                                   onMouseLeave={handleMouseLeave}
-                                  style={{ 
-                                    borderBottom: isHovered ? '2px solid var(--accent)' : '1px dashed rgba(255,255,255,0.2)', 
+                                  style={{
+                                    borderBottom: isHovered ? '2px solid var(--accent)' : '1px dashed rgba(255,255,255,0.2)',
                                     transition: 'border-color 0.2s',
                                     cursor: 'pointer'
                                   }}
@@ -489,17 +536,17 @@ export default function OpportunitiesPage() {
                             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                             onMouseEnter={keepHoverActive}
                             onMouseLeave={handleMouseLeave}
-                            style={{ 
-                              position: 'absolute', 
-                              top: 0, 
-                              left: 0, 
-                              width: 320, 
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: 320,
                               background: 'var(--card-bg)',
                               border: '1px solid var(--border-color)',
                               borderRadius: 16,
                               padding: 24,
                               boxShadow: '0 20px 40px var(--shadow-color)',
-                              zIndex: 100 
+                              zIndex: 100
                             }}
                           >
                             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 16 }}>Source Citations</h3>
@@ -517,22 +564,22 @@ export default function OpportunitiesPage() {
                                 const isExternal = true;
 
                                 return (
-                                  <a 
-                                    key={i} 
+                                  <a
+                                    key={i}
                                     href={url}
                                     target={isExternal ? "_blank" : "_self"}
                                     rel="noopener noreferrer"
                                     title={title}
-                                    style={{ 
+                                    style={{
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'space-between',
-                                      padding: '12px 16px', 
-                                      border: '1px solid var(--border-color)', 
-                                      borderRadius: 8, 
-                                      background: 'var(--card-bg-alt)', 
-                                      color: 'var(--text-primary)', 
-                                      fontSize: 13, 
+                                      padding: '12px 16px',
+                                      border: '1px solid var(--border-color)',
+                                      borderRadius: 8,
+                                      background: 'var(--card-bg-alt)',
+                                      color: 'var(--text-primary)',
+                                      fontSize: 13,
                                       fontWeight: 500,
                                       textDecoration: 'none',
                                       transition: 'border-color 0.2s, background 0.2s'
@@ -561,17 +608,17 @@ export default function OpportunitiesPage() {
 
               {/* RIGHT COLUMN: Data Report - 3D Vertical Accordion (Exact oshift-master implementation) */}
               <div style={{ flexShrink: 0, width: 340, position: 'relative', zIndex: 10, perspective: 2500, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
-                <motion.div 
+                <motion.div
                   className="skeleton-target"
-                  animate={{ 
-                    rotateX: foldState === 2 ? 0 : 25, 
-                    rotateY: foldState === 2 ? 0 : -15, 
+                  animate={{
+                    rotateX: foldState === 2 ? 0 : 25,
+                    rotateY: foldState === 2 ? 0 : -15,
                     rotateZ: foldState === 2 ? 0 : -2,
-                    y: foldState === 2 ? 0 : -30 
+                    y: foldState === 2 ? 0 : -30
                   }}
                   transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
-                  style={{ 
-                    transformStyle: 'preserve-3d', 
+                  style={{
+                    transformStyle: 'preserve-3d',
                     width: '100%',
                     position: 'relative',
                     pointerEvents: 'none'
@@ -580,30 +627,30 @@ export default function OpportunitiesPage() {
                   {/* Floating "Click to Expand" Hint */}
                   <motion.div
                     initial={false}
-                    animate={{ 
-                      opacity: foldState === 0 && isAccordionHovered ? 1 : 0, 
-                      y: foldState === 0 && isAccordionHovered ? -20 : 0 
+                    animate={{
+                      opacity: foldState === 0 && isAccordionHovered ? 1 : 0,
+                      y: foldState === 0 && isAccordionHovered ? -20 : 0
                     }}
                     transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
                     style={{ position: 'absolute', top: -30, left: 0, right: 0, textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, pointerEvents: 'none' }}
                   >
                     Click to Expand
                   </motion.div>
-                  
+
                   {/* Panel 1 (Always Visible Base) */}
-                  <motion.div 
+                  <motion.div
                     onClick={() => setFoldState((s) => (s + 1) % 2)}
                     onMouseEnter={(e) => { e.stopPropagation(); setIsAccordionHovered(true); setHoveredPanel(1); }}
                     onMouseLeave={(e) => { e.stopPropagation(); setIsAccordionHovered(false); setHoveredPanel(null); }}
-                    animate={{ 
+                    animate={{
                       rotateX: foldState === 0 ? (isAccordionHovered ? -5 : 5) : foldState === 1 ? (invertFolds ? -15 : 15) : 0,
                       marginBottom: foldState === 1 ? 400 : 0
                     }}
                     transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
-                    style={{ 
+                    style={{
                       transformOrigin: 'top center',
                       transformStyle: 'preserve-3d',
-                      background: 'var(--card-bg)', 
+                      background: 'var(--card-bg)',
                       position: 'relative',
                       width: '100%',
                       padding: 24,
@@ -615,11 +662,11 @@ export default function OpportunitiesPage() {
                     }}
                   >
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 10, background: 'linear-gradient(to bottom, rgba(0,0,0,0.03) 0%, transparent 100%)', pointerEvents: 'none', zIndex: 10 }} />
-                    
+
                     <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-secondary)', fontWeight: 600, borderBottom: '1px solid var(--border-color)', paddingBottom: 12, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         Opportunity Analysis
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
                       </span>
                       {slide.priorityScore && (
                         <div style={{ fontSize: 10, fontFamily: 'monospace', letterSpacing: 0.5, color: slide.priorityScore === 'HIGH' ? 'var(--accent)' : 'var(--text-secondary)' }}>
@@ -631,7 +678,7 @@ export default function OpportunitiesPage() {
                     {slide.topComplaint && (
                       <div style={{ paddingBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                           Top Complaint
                         </div>
                         <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>{slide.topComplaint}</div>
@@ -651,7 +698,7 @@ export default function OpportunitiesPage() {
                       initial={false}
                       animate={{ rotateX: foldState === 0 ? (isAccordionHovered ? -165 : -175) : foldState === 1 ? (invertFolds ? 40 : -40) : 0 }}
                       transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
-                      style={{ 
+                      style={{
                         position: 'absolute', top: '100%', left: 0, right: 0,
                         transformOrigin: 'top center', transformStyle: 'preserve-3d',
                         background: 'var(--card-bg-alt)',
@@ -663,11 +710,11 @@ export default function OpportunitiesPage() {
                       }}
                     >
                       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 25, background: 'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.04) 8px, transparent 100%)', pointerEvents: 'none', zIndex: 10 }} />
-                      
+
                       {slide.rootCause && (
                         <div style={{ paddingBottom: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
                             Root Cause
                           </div>
                           <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>{slide.rootCause}</div>
@@ -681,7 +728,7 @@ export default function OpportunitiesPage() {
                         initial={false}
                         animate={{ rotateX: foldState === 0 ? (isAccordionHovered ? 165 : 175) : foldState === 1 ? (invertFolds ? -40 : 40) : 0 }}
                         transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
-                        style={{ 
+                        style={{
                           position: 'absolute', top: '100%', left: 0, right: 0,
                           transformOrigin: 'top center', transformStyle: 'preserve-3d',
                           background: 'var(--card-bg)',
@@ -692,11 +739,11 @@ export default function OpportunitiesPage() {
                         }}
                       >
                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 35, background: 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 6px, transparent 100%)', borderTop: foldState === 2 ? 'none' : '1.5px solid rgba(255,255,255,0.1)', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.02)', pointerEvents: 'none', zIndex: 10 }} />
-                        
+
                         {slide.opportunityText && (
                           <div style={{ paddingBottom: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                               Opportunity
                             </div>
                             <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>{slide.opportunityText}</div>
@@ -710,7 +757,7 @@ export default function OpportunitiesPage() {
                           initial={false}
                           animate={{ rotateX: foldState === 0 ? (isAccordionHovered ? -165 : -175) : foldState === 1 ? (invertFolds ? 40 : -40) : 0 }}
                           transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
-                          style={{ 
+                          style={{
                             position: 'absolute', top: '100%', left: 0, right: 0,
                             transformOrigin: 'top center', transformStyle: 'preserve-3d',
                             background: 'var(--card-bg-alt)',
@@ -721,7 +768,7 @@ export default function OpportunitiesPage() {
                           }}
                         >
                           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 45, background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.05) 12px, transparent 100%)', pointerEvents: 'none', zIndex: 10 }} />
-                          
+
                           {slide.earlyWarning && (
                             <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: 12, paddingBottom: 8 }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Trend Alert</div>
@@ -736,7 +783,7 @@ export default function OpportunitiesPage() {
                             initial={false}
                             animate={{ rotateX: foldState === 0 ? (isAccordionHovered ? 165 : 175) : foldState === 1 ? (invertFolds ? -40 : 40) : 0 }}
                             transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
-                            style={{ 
+                            style={{
                               position: 'absolute', top: '100%', left: 0, right: 0,
                               transformOrigin: 'top center', transformStyle: 'preserve-3d',
                               background: 'var(--card-bg)',
@@ -749,7 +796,7 @@ export default function OpportunitiesPage() {
                             }}
                           >
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 20, background: 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, transparent 100%)', pointerEvents: 'none', zIndex: 10 }} />
-                            
+
                             {slide.quickWin && (
                               <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: 12, marginBottom: 20 }}>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Quick Win</div>
@@ -763,7 +810,7 @@ export default function OpportunitiesPage() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               Suggest Plan
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                             </button>
 
                           </motion.div>
@@ -773,15 +820,15 @@ export default function OpportunitiesPage() {
                   </motion.div>
                 </motion.div>
               </div>
-              
+
               {/* NEXT ARROW */}
               {opportunitiesList.length > 1 && (
                 <div style={{ display: 'flex', alignItems: 'center', zIndex: 2 }}>
-                  <button 
+                  <button
                     onClick={nextSlide}
                     className="skeleton-target"
                     style={{ width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px var(--shadow-color)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--text-primary)'; e.currentTarget.style.color = 'var(--bg-body)'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--text-primary)'; e.currentTarget.style.color = 'var(--card-bg)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -796,13 +843,13 @@ export default function OpportunitiesPage() {
         )}
       </div>
 
-      <PromptField 
-          selectedNode={selectedNode}
-          setSelectedNode={setSelectedNode}
-          commandActive={commandActive}
-          setCommandActive={setCommandActive}
-          setSidebarCollapsed={setSidebarCollapsed}
-          onThinkingChange={setIsThinking}
+      <PromptField
+        selectedNode={selectedNode}
+        setSelectedNode={setSelectedNode}
+        commandActive={commandActive}
+        setCommandActive={setCommandActive}
+        setSidebarCollapsed={setSidebarCollapsed}
+        onThinkingChange={setIsThinking}
       />
 
     </>

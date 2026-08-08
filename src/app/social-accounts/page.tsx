@@ -76,28 +76,28 @@ export default function SocialAccountsPage() {
   const getPlatformIcon = (platform: SocialPlatform) => {
     switch (platform) {
       case 'instagram':
-        return <FaInstagram className="h-5 w-5 text-pink-500" />;
+        return <FaInstagram className="h-5 w-5 text-[var(--text-secondary)]" />;
       case 'linkedin':
-        return <FaLinkedin className="h-5 w-5 text-blue-500" />;
+        return <FaLinkedin className="h-5 w-5 text-[var(--text-secondary)]" />;
       case 'youtube':
-        return <FaYoutube className="h-5 w-5 text-red-500" />;
+        return <FaYoutube className="h-5 w-5 text-[var(--text-secondary)]" />;
       case 'facebook':
-        return <FaFacebook className="h-5 w-5 text-blue-600" />;
+        return <FaFacebook className="h-5 w-5 text-[var(--text-secondary)]" />;
       case 'tiktok':
-        return <FaTiktok className="h-5 w-5 text-purple-400" />;
+        return <FaTiktok className="h-5 w-5 text-[var(--text-secondary)]" />;
       case 'x':
       default:
-        return <FaXTwitter className="h-5 w-5 text-[var(--accent)]" />;
+        return <FaXTwitter className="h-5 w-5 text-[var(--text-secondary)]" />;
     }
   };
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto font-sans text-[var(--text-primary)]">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-6">
         <div>
           <div className="flex items-center gap-2">
-            <Share2 className="h-6 w-6 text-[var(--accent)]" />
+            <Share2 className="h-6 w-6 text-[var(--text-primary)]" />
             <h1 className="text-xl font-bold">Social Media Accounts</h1>
           </div>
           <p className="text-xs text-[var(--text-secondary)] mt-1">
@@ -109,10 +109,10 @@ export default function SocialAccountsPage() {
           <button
             onClick={() => collectAll()}
             disabled={isCollecting}
-            className="flex items-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white shadow transition hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-2 h-8 px-3 bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-semibold cursor-pointer disabled:opacity-50"
           >
             {isCollecting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <RefreshCw className="h-3.5 w-3.5" />
             )}
@@ -121,16 +121,17 @@ export default function SocialAccountsPage() {
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--bg-main)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--accent)] transition"
+            className="flex items-center gap-2 h-8 px-3 bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-semibold cursor-pointer"
           >
-            <Plus className="h-4 w-4 text-[var(--accent)]" /> Add Account
+            <Plus className="h-3.5 w-3.5" />
+            Add Account
           </button>
         </div>
       </div>
 
       {/* Collection Stats Toast / Alert */}
       {collectStats && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-400">
+        <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-transparent p-4 text-xs text-emerald-400">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>
@@ -142,14 +143,14 @@ export default function SocialAccountsPage() {
 
       {/* Error Alert */}
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-400">
+        <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-transparent p-4 text-xs text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Grid of Accounts */}
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-sm space-y-4">
+      <div className="rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Tracked Social Profiles ({accounts.length})</h2>
           <button
@@ -173,7 +174,7 @@ export default function SocialAccountsPage() {
             {accounts.map((acct) => (
               <div
                 key={acct.id}
-                className="flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-main)] p-4 text-xs space-y-3"
+                className="flex flex-col justify-between rounded-lg border border-[var(--border-color)] bg-[var(--bg-body)] p-4 text-xs space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -190,17 +191,17 @@ export default function SocialAccountsPage() {
 
                   <button
                     onClick={() => updateAccount(acct.id, { is_active: !acct.is_active })}
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${
+                    className={`h-7 px-2.5 text-[10px] font-semibold rounded-md border transition-all bg-[var(--card-bg)] hover:bg-[var(--item-hover)] shadow-sm cursor-pointer ${
                       acct.is_active
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                        ? 'border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        : 'border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     {acct.is_active ? 'Active' : 'Paused'}
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] pt-2 border-t border-[var(--border)]">
+                <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] pt-2 border-t border-[var(--border-color)]">
                   <div className="flex items-center gap-1 font-mono">
                     <Users className="h-3.5 w-3.5" />
                     <span>{acct.follower_count?.toLocaleString() ?? 0} followers</span>
@@ -208,7 +209,7 @@ export default function SocialAccountsPage() {
 
                   <button
                     onClick={() => deleteAccount(acct.id)}
-                    className="text-red-400 hover:text-red-300 p-1 transition"
+                    className="w-7 h-7 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                     title="Remove Account"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -223,7 +224,7 @@ export default function SocialAccountsPage() {
       {/* Add Account Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm">Add Social Media Account</h3>
               <button onClick={() => setIsAddModalOpen(false)}>
@@ -232,7 +233,7 @@ export default function SocialAccountsPage() {
             </div>
 
             {formError && (
-              <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+              <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-transparent p-3 text-xs text-red-400">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{formError}</span>
               </div>
@@ -244,7 +245,7 @@ export default function SocialAccountsPage() {
                 <select
                   value={formData.platform}
                   onChange={(e) => setFormData({ ...formData, platform: e.target.value as SocialPlatform })}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-main)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                  className="w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-body)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
                 >
                   <option value="x">X / Twitter</option>
                   <option value="instagram">Instagram</option>
@@ -262,7 +263,7 @@ export default function SocialAccountsPage() {
                   value={formData.handle}
                   onChange={(e) => setFormData({ ...formData, handle: e.target.value })}
                   placeholder="teslamotors"
-                  className="w-full font-mono rounded-xl border border-[var(--border)] bg-[var(--bg-main)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                  className="w-full font-mono rounded-md border border-[var(--border-color)] bg-[var(--bg-body)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
                 />
               </div>
 
@@ -273,7 +274,7 @@ export default function SocialAccountsPage() {
                   value={formData.display_name}
                   onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
                   placeholder="Tesla, Inc."
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-main)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                  className="w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-body)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
                 />
               </div>
 
@@ -284,7 +285,7 @@ export default function SocialAccountsPage() {
                   value={formData.follower_count}
                   onChange={(e) => setFormData({ ...formData, follower_count: Number(e.target.value) })}
                   placeholder="0"
-                  className="w-full font-mono rounded-xl border border-[var(--border)] bg-[var(--bg-main)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                  className="w-full font-mono rounded-md border border-[var(--border-color)] bg-[var(--bg-body)] px-3 py-2 text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
                 />
               </div>
 
@@ -292,14 +293,14 @@ export default function SocialAccountsPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 rounded-xl border border-[var(--border)] py-2 text-[var(--text-secondary)] font-medium"
+                  className="flex-1 h-8 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-[var(--accent)] py-2 font-semibold text-white shadow disabled:opacity-50"
+                  className="flex-1 h-8 flex items-center justify-center bg-[var(--text-primary)] text-[var(--card-bg)] border border-transparent hover:bg-[var(--text-secondary)] shadow-sm rounded-md transition-all text-sm font-semibold cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Add Account'}
                 </button>

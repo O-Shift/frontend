@@ -130,7 +130,7 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div className="skeleton-target" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+    <div className="page-canvas skeleton-target">
       <style>{`
         .campaign-node.blurred { filter: blur(8px) opacity(0.3); pointer-events: none; }
         .campaign-node.selected .cards { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
@@ -201,9 +201,9 @@ export default function CampaignsPage() {
           {/* Voronoi seams (bisector lines) */}
           {hoveredCluster && (
             <>
-              <line x1="0" y1="-1000" x2="0" y2="-177" stroke="#a1a1aa" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="4 4" />
-              <line x1="0" y1="-177" x2="-1500" y2="998" stroke="#a1a1aa" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="4 4" />
-              <line x1="0" y1="-177" x2="1500" y2="998" stroke="#a1a1aa" strokeOpacity="0.25" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="0" y1="-1000" x2="0" y2="-177" stroke="var(--border-color)" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="0" y1="-177" x2="-1500" y2="998" stroke="var(--border-color)" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1="0" y1="-177" x2="1500" y2="998" stroke="var(--border-color)" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="4 4" />
             </>
           )}
           {/* Dashed connection lines */}
@@ -212,8 +212,8 @@ export default function CampaignsPage() {
               key={`l${camp.id}`}
               x1={camp.x}         y1={camp.y}
               x2={camp.cluster.x} y2={camp.cluster.y}
-              stroke="#3f3f46"
-              strokeOpacity="0.25"
+              stroke="var(--border-color)"
+              strokeOpacity="0.3"
               strokeWidth="1.5"
               strokeDasharray="8 8"
             />
@@ -232,10 +232,11 @@ export default function CampaignsPage() {
               left: c.x, top: c.y,
               transform: 'translate(-50%, -50%)',
               fontSize: 44, fontWeight: 800,
-              color: hoveredCluster === c.id ? `${c.color}66` : 'rgba(255,255,255,0.04)',
+              color: hoveredCluster === c.id ? `${c.color}66` : 'var(--text-secondary)',
+              opacity: hoveredCluster === c.id ? 1 : 0.18,
               textTransform: 'uppercase', letterSpacing: 10,
               whiteSpace: 'nowrap', cursor: 'crosshair',
-              transition: 'color 0.3s ease',
+              transition: 'all 0.3s ease',
               userSelect: 'none',
               zIndex: 5,
             }}
@@ -365,26 +366,26 @@ export default function CampaignsPage() {
                       draggable={false}
                       style={{ 
                         width: 180, height: 180, objectFit: 'cover', borderRadius: 16, 
-                      border: '2px solid rgba(255,255,255,0.15)',
-                      transition: 'transform 0.3s'
+                        border: '2px solid var(--border-color)',
+                        transition: 'transform 0.3s'
                       }} 
                       onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05) translateY(-10px)')}
                       onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1) translateY(0)')}
                     />
                     <div style={{
-                      color: 'white', fontSize: 14, fontWeight: 600, background: 'rgba(0,0,0,0.6)',
-                      padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, background: 'var(--card-bg)',
+                      padding: '4px 12px', borderRadius: 20, border: '1px solid var(--border-color)',
                       backdropFilter: 'blur(4px)', marginTop: 12
                     }}>{dateStr}</div>
                     
                     {/* Vertical connecting line */}
-                    <div style={{ width: 2, height: lineH, background: '#3f3f46', marginTop: 8 }} />
+                    <div style={{ width: 2, height: lineH, background: 'var(--border-color)', marginTop: 8 }} />
                     
                     {/* Hollow intersection dot */}
                     <div style={{
                       width: 16, height: 16, borderRadius: '50%', 
-                      border: '2px solid #3f3f46',
-                      background: 'var(--bg, #0a0a0a)',
+                      border: '2px solid var(--border-color)',
+                      background: 'var(--card-bg)',
                       zIndex: 2, position: 'relative',
                       marginBottom: -8 // perfectly center on the bottom edge
                     }} />
@@ -396,7 +397,7 @@ export default function CampaignsPage() {
               <div style={{
                 position: 'absolute',
                 bottom: 63, left: 24, right: 24, height: 2,
-                background: '#3f3f46',
+                background: 'var(--border-color)',
                 zIndex: 1,
                 transformOrigin: 'left',
                 animation: animState === 'leaving'
@@ -410,29 +411,45 @@ export default function CampaignsPage() {
       </div>
 
       {/* ── Page header ────────────────────────────────────────── */}
-      <div className="main-header" style={{ pointerEvents: 'none', zIndex: 10 }}>
-        <h1>Campaigns</h1>
-        <div className="view-toggle" id="viewToggleBtn" style={{ pointerEvents: 'auto', position: 'relative' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className="page-header" style={{ position: 'absolute', top: 28, left: 28, zIndex: 10, pointerEvents: 'none', alignItems: 'center', marginBottom: 0, gap: 16 }}>
+        <div style={{ pointerEvents: 'auto' }}>
+          <h1 className="page-title">Campaigns</h1>
+        </div>
+        <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ position: 'relative' }}>
+            <button
+              className="btn-secondary card-sm"
+              id="viewToggleBtn"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12" />
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-            <span>View: <span>{currentView}</span></span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4 }}>
+              </svg>
+              <span>View:</span>
+              <span className="pill pill-accent">{currentView}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
                 <polyline points="6 9 12 15 18 9" />
-            </svg>
+              </svg>
+            </button>
             {isDropdownOpen && (
               <div className="view-dropdown show" id="viewDropdown">
-                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); }}>Clusters</div>
-                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); }}>Heatmap</div>
+                <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); }}>Clusters</div>
+                <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); }}>Heatmap</div>
               </div>
             )}
-        </div>
-        <div className="icon-btn" style={{ pointerEvents: 'auto' }} onClick={() => canvasRef.current?.resetView()}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
-          </svg>
+          </div>
+          <button
+            className="btn-secondary card-sm"
+            onClick={() => canvasRef.current?.resetView()}
+            title="Reset View"
+            style={{ padding: '8px 12px' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -450,8 +467,8 @@ export default function CampaignsPage() {
           <div className="v0-sidebar-header">
               <button className="v0-toggle-btn" onClick={() => setSidebarCollapsed(true)}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                      <circle cx="8" cy="12" r="2" fill="black" />
-                      <circle cx="16" cy="12" r="2" fill="black" />
+                      <circle cx="8" cy="12" r="2" fill="var(--text-primary)" />
+                      <circle cx="16" cy="12" r="2" fill="var(--text-primary)" />
                   </svg>
               </button>
           </div>

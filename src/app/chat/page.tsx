@@ -10,14 +10,15 @@ import {
   Plus,
   Send,
   Square,
-  Sparkles,
   Bot,
   User,
   Search,
   ChevronLeft,
   AlertCircle,
   Loader2,
+  Terminal,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -45,12 +46,10 @@ function ChatContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom of message list smoothly
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming, isThinking, activeTool]);
 
-  // Handle ?q= prompt parameter from URL
   useEffect(() => {
     if (initialQuery && !autoSentQuery && !isStreaming && !isLoading) {
       setAutoSentQuery(true);
@@ -73,34 +72,97 @@ function ChatContent() {
   };
 
   const filteredConversations = conversations.filter((c) =>
-    (c.title || 'Untitled Conversation').toLowerCase().includes(searchTerm.toLowerCase())
+    (c.title || 'Untitled Session').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] w-full overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-primary)] font-sans shadow-lg">
-      {/* Main Chat Window (Left Side) */}
-      <div className="flex flex-1 flex-col bg-[var(--bg-main)]">
+    <div className="flex-1 w-full flex flex-col md:flex-row bg-[var(--bg-main-alt)] p-4 md:p-6 gap-6 h-[calc(100vh-64px)] overflow-hidden">
+      {/* Sidebar */}
+      <div className="flex w-full md:w-72 flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl overflow-hidden shrink-0">
+        <div className="flex items-center justify-between p-5 border-b border-[var(--border-color)]">
+          <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-sm">
+            <Terminal className="h-4 w-4 text-[var(--text-primary)]" />
+            <h2>Sessions</h2>
+          </div>
+          <button
+            onClick={() => createConversation()}
+            className="flex items-center justify-center h-8 w-8 rounded border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition hover:bg-[var(--item-hover)]"
+            title="Start new conversation"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="p-4 pb-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--text-secondary)]" />
+            <input
+              type="text"
+              placeholder="Filter sessions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-main-alt)] pl-9 pr-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none transition focus:border-[var(--text-primary)]"
+            />
+          </div>
+        </div>
+
+        {/* Conversation List */}
+        <div className="flex-1 space-y-1 overflow-y-auto p-4 pt-2">
+          {conversations.length === 0 && isLoading ? (
+            <div className="flex items-center justify-center py-8 text-xs font-semibold text-[var(--text-secondary)]">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading...
+            </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="py-8 text-center text-xs font-semibold text-[var(--text-secondary)]">
+              No sessions
+            </div>
+          ) : (
+            filteredConversations.map((conv) => {
+              const isActive = conv.id === currentConversationId;
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => loadConversation(conv.id)}
+                  className={`group flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-all border ${
+                    isActive
+                      ? 'border-[var(--border-color)] bg-[var(--item-hover)] text-[var(--text-primary)]'
+                      : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-main-alt)]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="truncate font-medium">{conv.title || 'Untitled Session'}</span>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Main Chat Window */}
+      <div className="flex flex-1 flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl overflow-hidden relative shadow-sm">
         {/* Messages Feed */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
           {isLoading && messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
-              <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-3 shadow-sm">
-                <Loader2 className="h-7 w-7 animate-spin text-[var(--accent)]" />
-              </div>
-              <p className="text-xs text-[var(--text-secondary)] font-medium">Loading conversation messages...</p>
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--text-secondary)]" />
+              <p className="text-sm text-[var(--text-secondary)] font-medium">Initializing connection...</p>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto space-y-4">
-              <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-4">
-                <Bot className="h-10 w-10 text-[var(--accent)]" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-[var(--text-primary)]">OShift AI Intelligence Agent</h3>
-                <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                  Ask me to analyze your competitors, scrape market signals, update partnership graphs, or generate briefs.
+            <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto space-y-8">
+              <div className="border border-[var(--border-color)] bg-[var(--bg-main-alt)] p-8 rounded-lg shadow-sm">
+                <div className="w-12 h-12 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex items-center justify-center mx-auto mb-4">
+                    <Terminal className="h-6 w-6 text-[var(--text-primary)]" />
+                </div>
+                <h3 className="text-xl font-semibold tracking-tight text-[var(--text-primary)] mb-2">Intelligence Agent Ready</h3>
+                <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
+                  Await instructions. Analyze competitors, scrape market signals, update partnership graphs, or generate briefs.
                 </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full pt-2">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full pt-4">
                 {[
                   'Who are our active competitors?',
                   'Analyze recent market signals',
@@ -110,81 +172,79 @@ function ChatContent() {
                   <button
                     key={prompt}
                     onClick={() => sendMessage(prompt)}
-                    className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] p-3 text-left text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition shadow-sm"
+                    className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded text-left text-sm font-medium text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition shadow-sm"
                   >
-                    "{prompt}"
+                    {prompt}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            messages.map((msg) => {
-              const isUser = msg.role === 'user';
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex gap-3 max-w-3xl ${isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
-                >
+            <div className="max-w-4xl mx-auto w-full space-y-8">
+              {messages.map((msg) => {
+                const isUser = msg.role === 'user';
+                return (
                   <div
-                    className={`flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full text-xs font-bold shadow-sm ${
-                      isUser
-                        ? 'bg-[var(--accent)] text-white'
-                        : 'border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--accent)]'
-                    }`}
+                    key={msg.id}
+                    className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}
                   >
-                    {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                  </div>
+                    <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold tracking-wide">
+                      {isUser ? (
+                        <><span>You</span><User className="h-3.5 w-3.5" /></>
+                      ) : (
+                        <><div className="w-5 h-5 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex items-center justify-center"><Bot className="h-3 w-3 text-[var(--text-primary)]" /></div><span>Agent</span></>
+                      )}
+                    </div>
 
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-xs leading-relaxed ${
-                      isUser
-                        ? 'bg-[var(--accent)] text-white font-medium rounded-tr-none shadow'
-                        : 'border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)] rounded-tl-none shadow-sm'
-                    }`}
-                  >
-                    {isUser ? (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
-                    ) : (
-                      <ChatMarkdown content={msg.content} />
-                    )}
+                    <div
+                      className={`relative w-full max-w-3xl p-5 text-sm leading-relaxed rounded-lg shadow-sm border ${
+                        isUser
+                          ? 'border-[var(--border-color)] bg-[var(--bg-main-alt)] text-[var(--text-primary)] rounded-tr-sm'
+                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)] rounded-tl-sm'
+                      }`}
+                    >
+                      {isUser ? (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      ) : (
+                        <ChatMarkdown content={msg.content} />
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
 
           {/* Thinking Indicator */}
           {isThinking && (
-            <div className="flex items-center gap-3 max-w-3xl mr-auto pl-1">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--accent)] shadow-sm">
-                <Bot className="h-4 w-4 animate-bounce" />
+            <div className="max-w-4xl mx-auto w-full flex flex-col items-start gap-2">
+              <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold tracking-wide">
+                <div className="w-5 h-5 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex items-center justify-center"><Bot className="h-3 w-3 text-[var(--text-primary)]" /></div><span>System Processing</span>
               </div>
-              <div className="flex items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] px-4 py-2.5 text-xs text-[var(--text-secondary)] shadow-sm">
-                <span className="font-medium text-[var(--accent)]">Thinking</span>
-                <span className="flex space-x-1 items-center ml-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-ping" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-ping delay-150" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-ping delay-300" />
-                </span>
+              <div className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded-lg rounded-tl-sm text-sm flex items-center gap-3 shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin text-[var(--text-secondary)]" />
+                <span className="text-[var(--text-secondary)] font-medium">Analyzing data streams...</span>
               </div>
             </div>
           )}
 
-          {/* User-Friendly Tool Status Badge */}
+          {/* Active Tool Badge */}
           {activeTool && (
-            <div className="flex items-center gap-2 max-w-3xl mr-auto pl-11">
-              <div className="flex items-center gap-2 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3.5 py-1.5 text-xs text-[var(--accent)] font-medium shadow-sm">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>{activeTool}</span>
+            <div className="max-w-4xl mx-auto w-full flex flex-col items-start gap-2 mt-4">
+              <div className="border border-[var(--border-color)] bg-[var(--card-bg-alt)] px-4 py-2 rounded text-xs font-medium flex items-center gap-2 shadow-sm">
+                <Terminal className="h-3.5 w-3.5 text-[var(--text-primary)]" />
+                <span className="text-[var(--text-secondary)]">Executing: <span className="text-[var(--text-primary)]">{activeTool}</span></span>
               </div>
             </div>
           )}
 
           {/* Error Banner */}
           {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400 max-w-3xl mx-auto">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
+            <div className="max-w-4xl mx-auto w-full">
+              <div className="border border-red-500/30 bg-[var(--card-bg)] p-4 rounded-md text-sm flex items-center gap-3 text-[var(--text-primary)]">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                <span className="font-medium">{error}</span>
+              </div>
             </div>
           )}
 
@@ -192,104 +252,42 @@ function ChatContent() {
         </div>
 
         {/* Input Bar */}
-        <div className="border-t border-[var(--border-color)] bg-[var(--card-bg)] p-3 md:p-4">
-          <div className="relative flex items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] focus-within:border-[var(--accent)] transition">
+        <div className="p-4 md:p-6 pt-0 bg-[var(--card-bg)]">
+          <div className="max-w-4xl mx-auto relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-main-alt)] rounded-xl focus-within:border-[var(--text-secondary)] transition shadow-sm">
             <textarea
               ref={inputRef}
-              rows={1}
+              rows={2}
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask the competitive intelligence agent..."
-              className="w-full resize-none bg-transparent px-4 py-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none"
+              placeholder="Ask the intelligence agent..."
+              className="w-full resize-none bg-transparent px-5 py-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none"
             />
 
-            <div className="flex items-center gap-2 pr-3">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-color)]">
+              <div className="text-xs font-medium text-[var(--text-secondary)]">
+                Press Enter to submit
+              </div>
               {isStreaming ? (
                 <button
                   onClick={stop}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition"
-                  title="Stop generating"
+                  className="flex items-center gap-2 px-4 py-1.5 rounded bg-[var(--card-bg-alt)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition"
                 >
-                  <Square className="h-4 w-4 fill-current" />
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                  <span>Halt</span>
                 </button>
               ) : (
                 <button
                   onClick={handleSend}
                   disabled={!inputVal.trim()}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-white disabled:opacity-40 hover:opacity-90 transition active:scale-95"
-                  title="Send message"
+                  className="flex items-center gap-2 px-4 py-1.5 rounded bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:bg-[var(--text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
-                  <Send className="h-4 w-4" />
+                  <span>Send</span>
+                  <Send className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Conversations History Sidebar (Right Side) */}
-      <div className="flex w-72 flex-col border-l border-[var(--border-color)] bg-[var(--bg-sidebar)] p-3">
-        <div className="flex items-center justify-between pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[var(--accent)]" />
-            <h2 className="font-semibold text-sm">AI Conversations</h2>
-          </div>
-          <button
-            onClick={() => createConversation()}
-            className="flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white transition hover:opacity-90 active:scale-95"
-            title="Start new conversation"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>New</span>
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[var(--text-secondary)]" />
-          <input
-            type="text"
-            placeholder="Search conversations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none focus:border-[var(--accent)] transition"
-          />
-        </div>
-
-        {/* Conversation List */}
-        <div className="flex-1 space-y-1 overflow-y-auto pr-1">
-          {conversations.length === 0 && isLoading ? (
-            <div className="flex items-center justify-center py-8 text-xs text-[var(--text-secondary)]">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Loading history...
-            </div>
-          ) : filteredConversations.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[var(--text-secondary)]">
-              No conversations found
-            </div>
-          ) : (
-            filteredConversations.map((conv) => {
-              const isActive = conv.id === currentConversationId;
-              return (
-                <button
-                  key={conv.id}
-                  onClick={() => loadConversation(conv.id)}
-                  className={`group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition-all ${
-                    isActive
-                      ? 'bg-[var(--accent)]/15 text-[var(--accent)] font-semibold border border-[var(--accent)]/30 shadow-sm'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--item-hover)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                    <span className="truncate">{conv.title || 'Untitled Conversation'}</span>
-                  </div>
-                  <ChevronLeft className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition" />
-                </button>
-              );
-            })
-          )}
         </div>
       </div>
     </div>
@@ -298,7 +296,11 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="flex h-full items-center justify-center text-xs text-[var(--text-secondary)]">Loading chat...</div>}>
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center bg-[var(--bg-main-alt)]">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--text-secondary)]" />
+      </div>
+    }>
       <ChatContent />
     </Suspense>
   );

@@ -83,7 +83,7 @@ export default function LogPanel() {
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-[var(--accent)]" />
           <span className="font-semibold text-sm text-[var(--text-primary)]">System Activity Log</span>
-          <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]">
+          <span className="rounded-full bg-transparent px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]">
             {filteredLogs.length}
           </span>
         </div>
@@ -186,8 +186,8 @@ export default function LogPanel() {
                       <span
                         className={`rounded px-1.5 py-0.5 text-[10px] font-bold font-mono ${
                           isError
-                            ? 'bg-red-500/10 text-red-400'
-                            : 'bg-emerald-500/10 text-emerald-400'
+                            ? 'bg-transparent text-red-400'
+                            : 'bg-transparent text-emerald-400'
                         }`}
                       >
                         {log.status}

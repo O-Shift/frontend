@@ -240,7 +240,7 @@ export default function AutomationsPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight">Automated Schedules & Workflows</h1>
             {userTimezone && (
-              <span className="rounded-full bg-[var(--accent)]/15 border border-[var(--accent)]/30 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--accent)]">
+              <span className="rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]">
                 {userTimezone}
               </span>
             )}
@@ -255,14 +255,14 @@ export default function AutomationsPage() {
               refreshRuns();
               refreshSchedules();
             }}
-            className="flex items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2 text-xs font-medium hover:border-[var(--accent)] transition"
+            className="flex items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--border-color)]/10 transition"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Sync</span>
           </button>
           <button
             onClick={() => setShowScheduleModal(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-xs font-bold text-white shadow-md hover:opacity-90 transition active:scale-95"
+            className="flex items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Create Automated Schedule</span>
@@ -272,24 +272,24 @@ export default function AutomationsPage() {
 
       {/* Banners */}
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-400">
+        <div className="flex items-center gap-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-3.5 text-xs text-[var(--text-primary)]">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {triggerSuccessToast && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-400">
+        <div className="flex items-center gap-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-3.5 text-xs text-[var(--text-primary)]">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{triggerSuccessToast}</span>
         </div>
       )}
 
       {/* HERO SECTION 1: Automated Schedules List */}
-      <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-sm space-y-4">
+      <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-[var(--accent)]" />
+            <Clock className="h-5 w-5 text-[var(--text-primary)]" />
             <div>
               <h2 className="font-bold text-sm">Active Automated Schedules</h2>
               <p className="text-[11px] text-[var(--text-secondary)]">
@@ -299,7 +299,7 @@ export default function AutomationsPage() {
           </div>
           <button
             onClick={() => setShowScheduleModal(true)}
-            className="text-xs text-[var(--accent)] hover:underline font-bold"
+            className="text-xs text-[var(--text-primary)] hover:underline font-bold"
           >
             + New Schedule
           </button>
@@ -312,7 +312,7 @@ export default function AutomationsPage() {
           </div>
         ) : schedules.length === 0 ? (
           <div className="py-12 text-center space-y-3">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-md bg-[var(--card-bg)] text-[var(--text-primary)] border border-[var(--border-color)]">
               <Calendar className="h-6 w-6" />
             </div>
             <h3 className="font-semibold text-sm">No Active Schedules Configured</h3>
@@ -321,7 +321,7 @@ export default function AutomationsPage() {
             </p>
             <button
               onClick={() => setShowScheduleModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90 transition"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition"
             >
               <Plus className="h-4 w-4" />
               <span>Schedule First Task</span>
@@ -335,17 +335,17 @@ export default function AutomationsPage() {
               return (
                 <div
                   key={sched.id}
-                  className={`flex flex-col justify-between rounded-xl border p-4 transition-all ${
+                  className={`flex flex-col justify-between rounded-md border p-4 transition-all ${
                     sched.is_active
-                      ? 'border-[var(--accent)]/40 bg-[var(--bg-main)] shadow-sm'
-                      : 'border-[var(--border-color)] bg-[var(--bg-main)]/50 opacity-70'
+                      ? 'border-[var(--border-color)] bg-[var(--card-bg)]'
+                      : 'border-[var(--border-color)] bg-[var(--card-bg)] opacity-70'
                   }`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-bold text-xs text-[var(--text-primary)]">{sched.name}</h3>
-                        <p className="text-[11px] font-semibold text-[var(--accent)] mt-0.5">
+                        <p className="text-[11px] font-semibold text-[var(--text-secondary)] mt-0.5">
                           {humanLabel}
                         </p>
                       </div>
@@ -358,14 +358,14 @@ export default function AutomationsPage() {
                           title={sched.is_active ? 'Pause Schedule' : 'Activate Schedule'}
                         >
                           {sched.is_active ? (
-                            <ToggleRight className="h-6 w-6 text-emerald-400" />
+                            <ToggleRight className="h-6 w-6 text-[var(--text-primary)]" />
                           ) : (
-                            <ToggleLeft className="h-6 w-6 text-zinc-500" />
+                            <ToggleLeft className="h-6 w-6 text-[var(--text-secondary)]" />
                           )}
                         </button>
                         <button
                           onClick={() => deleteSchedule(sched.id)}
-                          className="rounded-lg p-1 text-[var(--text-secondary)] hover:bg-red-500/10 hover:text-red-400 transition"
+                          className="rounded-lg p-1 text-[var(--text-secondary)] hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)] transition"
                           title="Delete Schedule"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -373,7 +373,7 @@ export default function AutomationsPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-lg bg-[var(--card-bg)] p-2.5 text-[11px] space-y-1 border border-[var(--border-color)]">
+                    <div className="rounded-md bg-[var(--card-bg)] p-2.5 text-[11px] space-y-1 border border-[var(--border-color)]">
                       <div className="flex items-center justify-between text-[var(--text-secondary)]">
                         <span>Workflow:</span>
                         <span className="font-medium text-[var(--text-primary)]">
@@ -383,7 +383,7 @@ export default function AutomationsPage() {
                       {sched.next_run_at && (
                         <div className="flex items-center justify-between text-[var(--text-secondary)]">
                           <span>Next Run:</span>
-                          <span className="font-medium text-emerald-400">
+                          <span className="font-medium text-[var(--text-primary)]">
                             {new Date(sched.next_run_at).toLocaleString([], {
                               month: 'short',
                               day: 'numeric',
@@ -399,7 +399,7 @@ export default function AutomationsPage() {
 
                   <div className="mt-3 flex items-center justify-between pt-2 border-t border-[var(--border-color)] text-[10px] text-[var(--text-secondary)]">
                     <span>
-                      Status: {sched.is_active ? '🟢 Active' : '⚪ Paused'}
+                      Status: {sched.is_active ? 'Active' : 'Paused'}
                     </span>
                     {sched.last_run_at && (
                       <span>
@@ -417,10 +417,10 @@ export default function AutomationsPage() {
       {/* SECTION 2: Pipeline Execution History */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Runs Table (2 cols) */}
-        <div className="lg:col-span-2 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-sm space-y-4">
+        <div className="lg:col-span-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
             <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-[var(--accent)]" />
+              <Zap className="h-4 w-4 text-[var(--text-primary)]" />
               <h2 className="font-semibold text-sm">Execution History & Logs</h2>
             </div>
             <span className="text-xs text-[var(--text-secondary)]">Auto-syncing every 5s</span>
@@ -447,7 +447,7 @@ export default function AutomationsPage() {
                     <th className="py-2.5 px-3 text-right">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border-color)]/60">
+                <tbody className="divide-y divide-[var(--border-color)]">
                   {runs.map((run) => {
                     const isSelected = selectedRunId === run.id;
                     const isRunning = run.status === 'running';
@@ -457,21 +457,15 @@ export default function AutomationsPage() {
                         key={run.id}
                         onClick={() => fetchSteps(run.id)}
                         className={`cursor-pointer transition-colors ${
-                          isSelected ? 'bg-[var(--accent)]/10 font-medium' : 'hover:bg-white/5'
+                          isSelected ? 'bg-[var(--border-color)]/10 font-medium' : 'hover:bg-[var(--border-color)]/5'
                         }`}
                       >
-                        <td className="py-3 px-3 font-mono text-[11px] text-[var(--accent)]">
+                        <td className="py-3 px-3 font-mono text-[11px] text-[var(--text-primary)]">
                           {run.id.slice(0, 8)}...
                         </td>
                         <td className="py-3 px-3">
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                              isRunning
-                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                : isFailed
-                                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            }`}
+                            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)]`}
                           >
                             {isRunning && <Loader2 className="h-3 w-3 animate-spin" />}
                             {run.status.toUpperCase()}
@@ -496,7 +490,7 @@ export default function AutomationsPage() {
                             : '—'}
                         </td>
                         <td className="py-3 px-3 text-right">
-                          <ChevronRight className="h-4 w-4 inline opacity-60" />
+                          <ChevronRight className="h-4 w-4 inline text-[var(--text-secondary)]" />
                         </td>
                       </tr>
                     );
@@ -510,14 +504,14 @@ export default function AutomationsPage() {
         {/* Step Timing Drawer Column */}
         <div>
           {selectedRunId ? (
-            <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-sm space-y-3">
+            <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-5 space-y-3">
               <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
                 <h3 className="font-semibold text-xs text-[var(--text-primary)]">
                   Step Breakdown ({selectedRunId.slice(0, 8)})
                 </h3>
                 <button
                   onClick={() => fetchSteps(selectedRunId)}
-                  className="text-[11px] text-[var(--accent)] hover:underline"
+                  className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
                 >
                   Reload
                 </button>
@@ -537,16 +531,16 @@ export default function AutomationsPage() {
                   {selectedRunSteps.map((step, idx) => (
                     <div
                       key={idx}
-                      className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)] p-2.5 text-xs space-y-1"
+                      className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-2.5 text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-[var(--text-primary)]">{step.step_name}</span>
-                        <span className="font-mono text-[10px] text-[var(--accent)]">
+                        <span className="font-mono text-[10px] text-[var(--text-secondary)]">
                           {step.duration_ms}ms
                         </span>
                       </div>
                       {step.error && (
-                        <p className="text-[10px] text-red-400 bg-red-500/10 p-1.5 rounded font-mono break-all">
+                        <p className="text-[10px] text-[var(--text-primary)] bg-[var(--card-bg)] border border-[var(--border-color)] p-1.5 rounded font-mono break-all">
                           {step.error}
                         </p>
                       )}
@@ -556,7 +550,7 @@ export default function AutomationsPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-sm text-center text-xs text-[var(--text-secondary)] py-12">
+            <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-5 text-center text-xs text-[var(--text-secondary)] py-12">
               Select any execution row on the left to view detailed step timing breakdowns.
             </div>
           )}
@@ -564,10 +558,10 @@ export default function AutomationsPage() {
       </div>
 
       {/* SECTION 3: Manual Instant Triggering (Collapsible Accordion) */}
-      <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm overflow-hidden">
+      <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] overflow-hidden">
         <button
           onClick={() => setShowManualSection(!showManualSection)}
-          className="w-full flex items-center justify-between p-4 bg-[var(--bg-main)]/50 hover:bg-[var(--bg-main)] transition text-left"
+          className="w-full flex items-center justify-between p-4 bg-[var(--card-bg)] hover:bg-[var(--border-color)]/5 transition text-left"
         >
           <div className="flex items-center gap-2">
             <Sliders className="h-4 w-4 text-[var(--text-secondary)]" />
@@ -580,7 +574,7 @@ export default function AutomationsPage() {
               </span>
             </div>
           </div>
-          <ChevronRight className={`h-4 w-4 transition-transform ${showManualSection ? 'rotate-90' : ''}`} />
+          <ChevronRight className={`h-4 w-4 text-[var(--text-secondary)] transition-transform ${showManualSection ? 'rotate-90' : ''}`} />
         </button>
 
         {showManualSection && (
@@ -598,18 +592,18 @@ export default function AutomationsPage() {
                     <div
                       key={wf.id}
                       onClick={() => setSelectedWorkflow(wf.id)}
-                      className={`cursor-pointer rounded-xl border p-3.5 transition-all ${
+                      className={`cursor-pointer rounded-md border p-3.5 transition-all ${
                         isSelected
-                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-sm'
-                          : 'border-[var(--border-color)] bg-[var(--bg-main)] hover:border-[var(--text-secondary)]/50'
+                          ? 'border-[var(--text-primary)] bg-[var(--card-bg)]'
+                          : 'border-[var(--border-color)] bg-[var(--card-bg)] hover:border-[var(--text-secondary)]/50'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`} />
+                          <Icon className={`h-4 w-4 ${isSelected ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`} />
                           <span className="font-semibold text-xs text-[var(--text-primary)]">{wf.name}</span>
                         </div>
-                        <span className="rounded-full bg-[var(--accent)]/20 px-2 py-0.5 text-[10px] font-medium text-[var(--accent)]">
+                        <span className="rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
                           {wf.badge}
                         </span>
                       </div>
@@ -629,7 +623,7 @@ export default function AutomationsPage() {
                 {selectedChain.length > 0 && (
                   <button
                     onClick={() => setSelectedChain([])}
-                    className="text-[11px] text-[var(--accent)] hover:underline"
+                    className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
                   >
                     Clear Filter ({selectedChain.length})
                   </button>
@@ -642,13 +636,13 @@ export default function AutomationsPage() {
                     <button
                       key={st.id}
                       onClick={() => toggleStepChain(st.id)}
-                      className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                      className={`rounded-md border px-2.5 py-1.5 text-xs font-medium transition ${
                         isChained
-                          ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-sm'
-                          : 'border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)]'
+                          ? 'border-[var(--text-primary)] bg-[var(--card-bg)] text-[var(--text-primary)]'
+                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      {isChained ? `✓ ${st.label}` : `+ ${st.label}`}
+                      {isChained ? `+ ${st.label}` : `+ ${st.label}`}
                     </button>
                   );
                 })}
@@ -662,7 +656,7 @@ export default function AutomationsPage() {
                   type="checkbox"
                   checked={isVerbose}
                   onChange={(e) => setIsVerbose(e.target.checked)}
-                  className="rounded border-[var(--border-color)] accent-[var(--accent)]"
+                  className="rounded border-[var(--border-color)] bg-[var(--card-bg)] accent-[var(--text-primary)]"
                 />
                 <span>Verbose Execution Logging</span>
               </label>
@@ -670,7 +664,7 @@ export default function AutomationsPage() {
               <button
                 onClick={handleTrigger}
                 disabled={isTriggering}
-                className="flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-50 shadow-md active:scale-95"
+                className="flex items-center gap-2 rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-5 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition disabled:opacity-50 active:scale-95"
               >
                 {isTriggering ? (
                   <>
@@ -692,15 +686,15 @@ export default function AutomationsPage() {
       {/* User-Friendly Schedule Creator Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-2xl space-y-5">
+          <div className="w-full max-w-lg rounded-md border border-[var(--border-color)] bg-black p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
               <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-[var(--accent)]" />
+                <Calendar className="h-5 w-5 text-[var(--text-primary)]" />
                 <h2 className="font-bold text-base">Schedule Automated Task</h2>
               </div>
               <button
                 onClick={() => setShowScheduleModal(false)}
-                className="text-xs text-[var(--text-secondary)] hover:text-white"
+                className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
               >
                 ✕
               </button>
@@ -716,7 +710,7 @@ export default function AutomationsPage() {
                 placeholder="e.g. Daily Evening Intelligence Sweep"
                 value={scheduleName}
                 onChange={(e) => setScheduleName(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                className="w-full rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
               />
             </div>
 
@@ -728,10 +722,10 @@ export default function AutomationsPage() {
               <select
                 value={scheduleWorkflow}
                 onChange={(e) => setScheduleWorkflow(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                className="w-full rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition appearance-none"
               >
                 {WORKFLOW_TYPES.map((wf) => (
-                  <option key={wf.id} value={wf.id}>
+                  <option key={wf.id} value={wf.id} className="bg-black text-[var(--text-primary)]">
                     {wf.name}
                   </option>
                 ))}
@@ -754,10 +748,10 @@ export default function AutomationsPage() {
                     key={freq.id}
                     type="button"
                     onClick={() => setScheduleFrequency(freq.id as any)}
-                    className={`rounded-xl border py-2 px-3 text-xs font-semibold transition ${
+                    className={`rounded-md border py-2 px-3 text-xs font-semibold transition ${
                       scheduleFrequency === freq.id
-                        ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-sm'
-                        : 'border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-secondary)] hover:text-white'
+                        ? 'border-[var(--text-primary)] bg-[var(--card-bg)] text-[var(--text-primary)]'
+                        : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     {freq.label}
@@ -774,14 +768,14 @@ export default function AutomationsPage() {
                 </label>
                 <div className="grid grid-cols-7 gap-1">
                   {DAYS_OF_WEEK.map((d) => (
-                    <button
+                     <button
                       key={d.id}
                       type="button"
                       onClick={() => setSelectedWeeklyDay(d.id)}
-                      className={`rounded-lg border py-1.5 text-xs font-medium transition ${
+                      className={`rounded-md border py-1.5 text-xs font-medium transition ${
                         selectedWeeklyDay === d.id
-                          ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
-                          : 'border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-secondary)]'
+                          ? 'border-[var(--text-primary)] bg-[var(--card-bg)] text-[var(--text-primary)]'
+                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
                       {d.label.slice(0, 3)}
@@ -798,7 +792,7 @@ export default function AutomationsPage() {
                   Execution Time (Your Local Timezone):
                 </label>
                 {userTimezone && (
-                  <span className="text-[10px] font-mono text-[var(--accent)]">
+                  <span className="text-[10px] font-mono text-[var(--text-secondary)]">
                     {userTimezone}
                   </span>
                 )}
@@ -807,16 +801,16 @@ export default function AutomationsPage() {
                 type="time"
                 value={scheduleTime}
                 onChange={(e) => setScheduleTime(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)] font-mono"
+                className="w-full rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
               />
             </div>
 
             {/* Human Readable Summary Box */}
-            <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-3.5 flex items-center gap-2 text-xs">
-              <Info className="h-4 w-4 text-[var(--accent)] shrink-0" />
+            <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-3.5 flex items-center gap-2 text-xs">
+              <Info className="h-4 w-4 text-[var(--text-primary)] shrink-0" />
               <span className="text-[var(--text-secondary)]">
                 Will run:{' '}
-                <strong className="text-[var(--accent)]">
+                <strong className="text-[var(--text-primary)]">
                   {formatCronToHuman(computeCronFromUserSelection())}
                 </strong>
               </span>
@@ -827,7 +821,7 @@ export default function AutomationsPage() {
               <button
                 type="button"
                 onClick={() => setShowScheduleModal(false)}
-                className="rounded-xl border border-[var(--border-color)] px-4 py-2 text-xs font-semibold hover:bg-white/5 transition"
+                className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-5 py-2.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition"
               >
                 Cancel
               </button>
@@ -835,7 +829,7 @@ export default function AutomationsPage() {
                 type="button"
                 onClick={handleCreateSchedule}
                 disabled={!scheduleName.trim()}
-                className="rounded-xl bg-[var(--accent)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-40"
+                className="rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-5 py-2.5 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition disabled:opacity-50 active:scale-95"
               >
                 Save Schedule
               </button>

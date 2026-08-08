@@ -3,17 +3,24 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
+import { usePinned } from '@/context/PinnedContext';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    const [competitorsExpanded, setCompetitorsExpanded] = useState(true);
     const pathname = usePathname();
     const { theme, toggle } = useTheme();
+    const { pinned } = usePinned();
 
     return (
         <div className={`sidebar ${collapsed ? 'collapsed' : ''}`} id="appSidebar">
             <div className="sidebar-header">
                 <div className="logo-area">
-                    OShift
+                    <img
+                        src="/orange logo.png"
+                        alt="OShift"
+                        className="sidebar-logo"
+                    />
                 </div>
                 <div className="sidebar-header-actions">
                     {/* Theme toggle */}
@@ -54,19 +61,6 @@ export default function Sidebar() {
             </div>
 
             <div className="sidebar-scroll-area">
-                <Link href="/competitors" style={{ textDecoration: 'none' }}>
-                    <div className="search-box" style={{ cursor: 'pointer' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-                        <input type="text" placeholder="Search..." style={{ pointerEvents: 'none' }} />
-                        <div className="shortcut">
-                            <div className="key">⌘</div>
-                            <div className="key">F</div>
-                        </div>
-                    </div>
-                </Link>
 
                 <div className="nav-section">
                     <Link href="/" className={`nav-item ${pathname === '/' ? 'active' : ''}`}>
@@ -100,14 +94,6 @@ export default function Sidebar() {
                         </svg>
                         Partnerships
                     </Link>
-                    <Link href="/competitors" className={`nav-item ${pathname === '/competitors' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                            <polyline points="2 12 12 17 22 12" />
-                            <polyline points="2 17 12 22 22 17" />
-                        </svg>
-                        Competitors
-                    </Link>
                     <Link href="/campaigns" className={`nav-item ${pathname === '/campaigns' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10" />
@@ -116,6 +102,51 @@ export default function Sidebar() {
                         </svg>
                         Campaigns
                     </Link>
+
+                    <div className="flex flex-col">
+                        <div
+                            className={`nav-item justify-between w-full ${pathname.startsWith('/competitors') || pathname.startsWith('/company') ? 'active' : ''} ${!collapsed ? 'pr-1' : ''}`}
+                        >
+                            <Link href="/competitors" className="flex items-center gap-3 flex-1 h-full" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                                    <polyline points="2 12 12 17 22 12" />
+                                    <polyline points="2 17 12 22 22 17" />
+                                </svg>
+                                {!collapsed && <span>Competitors</span>}
+                            </Link>
+                            {!collapsed && (
+                                <div
+                                    className="p-1.5 cursor-pointer hover:bg-[var(--item-hover-alt)] rounded-md flex items-center justify-center transition-colors"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCompetitorsExpanded(!competitorsExpanded); }}
+                                >
+                                    <svg
+                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${competitorsExpanded ? 'rotate-90' : ''}`}
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                    >
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Nested Competitors List */}
+                        {competitorsExpanded && pinned && pinned.length > 0 && (
+                            <div className={`flex flex-col mt-1 mb-2 ${collapsed ? 'items-center gap-2' : 'pl-4 ml-4 border-l border-[var(--border-color)]'}`}>
+                                {pinned.map(comp => (
+                                    <Link key={comp.domain} href={`/company/${comp.domain}`} className={`flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] rounded-md transition-colors relative ${collapsed ? 'p-1' : 'py-2 px-3'}`}>
+                                        <div className="relative shrink-0 flex items-center justify-center w-5 h-5">
+                                            <img src={comp.logo} alt={comp.name} className="w-full h-full object-cover rounded border border-[var(--border-color)]" />
+                                            {comp.hasNews && (
+                                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-[var(--bg-main-alt)] z-10" />
+                                            )}
+                                        </div>
+                                        {!collapsed && <span className="truncate">{comp.name}</span>}
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="nav-section">
@@ -140,6 +171,10 @@ export default function Sidebar() {
                         </svg>
                         Social Accounts
                     </Link>
+                </div>
+
+                <div className="nav-section">
+                    <div className="nav-label">OTHER</div>
                     <Link href="/settings" className={`nav-item ${pathname === '/settings' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="3" />
@@ -150,25 +185,25 @@ export default function Sidebar() {
                 </div>
 
                 <div className="sidebar-bottom">
-                <Link href="/profile" style={{ textDecoration: 'none' }}>
-                    <div className={`user-profile ${pathname === '/profile' ? 'active' : ''}`}>
-                        <div className="avatar"></div>
-                        <div className="user-info">
-                            <div className="user-name">Vasil S.</div>
-                            <div className="user-email">vasil@pshift.com</div>
+                    <Link href="/profile" style={{ textDecoration: 'none' }}>
+                        <div className={`user-profile ${pathname === '/profile' ? 'active' : ''}`}>
+                            <div className="avatar"></div>
+                            <div className="user-info">
+                                <div className="user-name">Vasil S.</div>
+                                <div className="user-email">vasil@pshift.com</div>
+                            </div>
+                            <div className="chevron-up-down">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="18 15 12 9 6 15" />
+                                </svg>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </div>
                         </div>
-                        <div className="chevron-up-down">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="18 15 12 9 6 15" />
-                            </svg>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="6 9 12 15 18 9" />
-                            </svg>
-                        </div>
-                    </div>
-                </Link>
+                    </Link>
+                </div>
             </div>
-        </div>
         </div>
     );
 }

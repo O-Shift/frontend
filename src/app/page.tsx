@@ -1,788 +1,535 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
-import PromptField from '@/components/PromptField';
-import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis, ReferenceLine } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { useDashboard, type Rail } from '@/hooks/use-dashboard';
+import { updateOpportunityStatus, type Campaign, type SenseReview } from '@/lib/api';
 
-// CSS variable helpers for inline styles
-const C = {
-  text: 'var(--text-primary)',
-  sub: 'var(--text-secondary)',
-  card: 'var(--card-bg-alt)',
-  border: 'var(--border-color)',
-  divider: 'rgba(0,0,0,0.06)',
-} as const;
+const brandColor1 = '#FF5A00';
+const brandColor2 = '#64748b';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+const chartData = months.map((m, i) => ({
+    name: m, 
+    views: [310, 520, 180, 390, 560, 240, 430, 610, 280, 470][i],
+    engagement: [4.8, 6.2, 3.1, 5.5, 7.0, 3.8, 5.4, 7.5, 4.0, 6.0][i]
+}));
 
-// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
-// BACKEND: ⚠️ NO EQUIVALENT — OShift tracks competitor intelligence, not creator analytics (platformData)
-const platformData: Record<string, any[]> = {
-    all: months.map((m, i) => ({
-        name: m, audience: [42, 68, 31, 55, 72, 38, 59, 81, 44, 63][i],
-        projected: [45, 48, 50, 52, 54, 55, 57, 58, 60, 61][i],
-        views: [310, 520, 180, 390, 560, 240, 430, 610, 280, 470][i],
-        engagement: [4.8, 6.2, 3.1, 5.5, 7.0, 3.8, 5.4, 7.5, 4.0, 6.0][i]
-    })),
-    youtube: months.map((m, i) => ({
-        name: m, audience: [32, 48, 22, 39, 51, 28, 42, 55, 30, 44][i],
-        projected: [30, 32, 34, 36, 38, 39, 40, 41, 42, 43][i],
-        views: [210, 340, 130, 260, 370, 170, 290, 390, 190, 310][i],
-        engagement: [4.0, 5.2, 2.8, 4.6, 5.8, 3.2, 4.9, 6.1, 3.5, 5.0][i]
-    })),
-    tiktok: months.map((m, i) => ({
-        name: m, audience: [52, 72, 38, 65, 80, 45, 68, 88, 50, 73][i],
-        projected: [48, 51, 54, 57, 60, 63, 66, 68, 70, 72][i],
-        views: [320, 520, 210, 460, 600, 280, 480, 650, 300, 510][i],
-        engagement: [5.8, 7.5, 4.0, 6.8, 8.2, 4.5, 6.5, 8.5, 5.0, 7.2][i]
-    })),
-    instagram: months.map((m, i) => ({
-        name: m, audience: [38, 52, 28, 47, 58, 32, 50, 62, 34, 48][i],
-        projected: [35, 37, 39, 41, 43, 44, 45, 46, 47, 48][i],
-        views: [240, 360, 160, 310, 420, 200, 340, 460, 220, 370][i],
-        engagement: [4.4, 5.8, 3.2, 5.0, 6.2, 3.5, 5.2, 6.5, 3.8, 5.5][i]
-    })),
-    podcast: months.map((m, i) => ({
-        name: m, audience: [22, 34, 16, 30, 38, 20, 32, 42, 24, 35][i],
-        projected: [20, 22, 24, 26, 28, 29, 30, 31, 32, 33][i],
-        views: [110, 190, 80, 170, 220, 100, 180, 250, 120, 200][i],
-        engagement: [3.2, 4.6, 2.4, 4.0, 5.0, 2.8, 4.2, 5.4, 3.0, 4.5][i]
-    }))
+const SolidArrowUp = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+        <polygon points="12 3 4 11 10 11 10 21 14 21 14 11 20 11 12 3" />
+    </svg>
+);
+
+const SolidArrowDown = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+        <polygon points="12 21 4 13 10 13 10 3 14 3 14 13 20 13 12 21" />
+    </svg>
+);
+
+const StatusPill = ({ status }: { status: string }) => {
+    return (
+        <span className="text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)] px-1.5 py-0.5 rounded-sm uppercase tracking-wider">
+            {status}
+        </span>
+    );
 };
 
-// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
-// BACKEND: ⚠️ NO EQUIVALENT — opportunities table doesn't exist in OShift
-const opportunities = [
-    { name: "Brand Deal — Nike", desc: "Product placement opportunity", value: 15, priority: "high", platform: "ig", expiresIn: 12, badge: false },
-    { name: "Podcast Collab", desc: "The Joe Rogan Experience", value: 50, priority: "high", platform: "podcast", expiresIn: 5, badge: false },
-    { name: "Sponsorship — Raycon", desc: "90-day exclusive offer", value: 8, priority: "medium", platform: "yt", expiresIn: 30, badge: true }
-];
-
-// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
-// BACKEND: ⚠️ NO EQUIVALENT — perfItems are creator performance metrics, not tracked in OShift
-const perfItems = [
-    { name: "Summer Creator Fund", metric: "+15%", progress: 64, target: "5M views", trend: "up", badge: false },
-    { name: "Tech Reviewers Push", metric: "2.4M", progress: 100, target: "2.4M views", trend: "flat", badge: false },
-    { name: "Podcast Sponsorships", metric: "-5%", progress: 30, target: "$20K revenue", trend: "down", badge: true }
-];
-
-// BACKEND: ⚠️ NO EQUIVALENT — needs design decision
-// BACKEND: ⚠️ NO EQUIVALENT — campaigns table doesn't exist
-const campaigns = [
-    {
-        name: "Summer Creator Fund", date: "Jun 2026", metric: "+15% Engagement", status: "Active",
-        color: "#8B5CF6", budget: 25, spent: 16, progress: 64, platforms: ["yt", "ig", "tiktok"],
-        imgs: ['https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80'],
-        platformMetrics: [
-            { platform: "YouTube", views: "1.2M", engagement: "4.8%" },
-            { platform: "Instagram", views: "850K", engagement: "5.2%" },
-            { platform: "TikTok", views: "1.8M", engagement: "6.1%" }
-        ]
-    },
-    {
-        name: "Tech Reviewers Push", date: "May 2026", metric: "2.4M Views", status: "Completed",
-        color: "#6366F1", budget: 15, spent: 14.2, progress: 100, platforms: ["yt"],
-        imgs: ['https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=300&q=80', 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300&q=80', 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=300&q=80'],
-        platformMetrics: [
-            { platform: "YouTube", views: "2.4M", engagement: "3.2%" }
-        ]
-    },
-    {
-        name: "Podcast Sponsorships", date: "Apr 2026", metric: "-5% ROI", status: "Underperforming",
-        color: "#A855F7", budget: 10, spent: 8, progress: 30, platforms: ["podcast"],
-        imgs: ['https://images.unsplash.com/photo-1517649763962-0c623066013b?w=300&q=80', 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=300&q=80', 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=300&q=80'],
-        platformMetrics: [
-            { platform: "Podcast", views: "420K", engagement: "2.1%" }
-        ]
-    }
-];
-
-// BACKEND: insights.insights_gaps
-// BACKEND: insights.insights_gaps — SELECT title, description, severity, suggested_action, benchmark
-const gaps = [
-    { title: "Gen-Z Reach", desc: "Low engagement compared to peers on TikTok.", severity: "high", action: "Launch short-form vertical video series targeting 18-24 demographic", benchmark: "Peers avg 2.3x higher" },
-    { title: "Sponsorship ROI", desc: "Diminishing returns on major influencer campaigns.", severity: "medium", action: "Diversify into micro-influencer partnerships with higher conversion rates", benchmark: "Micro-influencers avg 3.5% higher ROI" },
-    { title: "Sentiment Dip", desc: "Recent PR issues affected overall trust scores.", severity: "low", action: "Publish behind-the-scenes content and community AMA to rebuild trust", benchmark: "Trust scores down 12% vs last quarter" }
-];
-
-// BACKEND: sense.sense_reviews
-// BACKEND: sense.sense_reviews — SELECT user, text, stars, sentiment, response_status
-const reviews = [
-    { user: "Karan", date: "1 week ago", text: "Incredible ecosystem integration. Nothing else comes close to this level of polish.", stars: 5, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop", responseStatus: "replied", sentiment: "positive" },
-    { user: "Sarah", date: "3 weeks ago", text: "Prices keep going up but the core product hasn't improved much. Really frustrating.", stars: 2, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop", responseStatus: "pending", sentiment: "critical" },
-    { user: "Catherine", date: "10 days ago", text: "The new update completely fixed my workflow issues. They respond in a timely manner.", stars: 5, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop", responseStatus: "replied", sentiment: "positive" },
-    { user: "Peter", date: "2 weeks ago", text: "Customer service took 3 days to respond to a critical billing error. Unacceptable.", stars: 1, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop", responseStatus: "ignored", sentiment: "critical" },
-    { user: "Maya", date: "5 days ago", text: "Good product but the mobile app needs work. Keeps crashing on iOS.", stars: 3, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop", responseStatus: "pending", sentiment: "neutral" }
-];
-
-const brandColor1 = '#C4841D';
-const brandColor2 = '#A16207';
-
-const platformLabels: Record<string, string> = { yt: "YT", ig: "IG", tiktok: "TT", podcast: "PC" };
-const platformFullLabels: Record<string, string> = { all: "All", youtube: "YouTube", tiktok: "TikTok", instagram: "Instagram", podcast: "Podcast" };
-
-function Sparkline({ data, color, height = 20 }: { data: number[]; color: string; height?: number }) {
-    const w = 60;
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-    const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${height - ((v - min) / range) * height}`).join(' ');
+function SampleBadge({ title }: { title: string }) {
     return (
-        <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} style={{ flexShrink: 0 }}>
-            <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} />
-        </svg>
+        <span
+            title={title}
+            className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md text-[var(--text-secondary)] bg-transparent border border-[var(--border-color)] whitespace-nowrap ml-2"
+        >
+            Sample data
+        </span>
     );
 }
 
-function TrendArrow({ trend }: { trend: 'up' | 'down' | 'flat' }) {
-    if (trend === 'flat') return <span style={{ color: '#a1a1aa', fontSize: 12 }}>&rarr;</span>;
-    return <span style={{ color: '#a1a1aa', fontSize: 12 }}>{trend === 'up' ? '\u2191' : '\u2193'}</span>;
+// --- Helper Functions from current ---
+function relativeTime(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return '—';
+    const diff = Date.now() - t;
+    const day = 86_400_000;
+    if (diff < 60_000) return 'just now';
+    if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
+    if (diff < day) return `${Math.round(diff / 3_600_000)}h ago`;
+    if (diff < 7 * day) return `${Math.round(diff / day)}d ago`;
+    if (diff < 30 * day) return `${Math.round(diff / (7 * day))}w ago`;
+    if (diff < 365 * day) return `${Math.round(diff / (30 * day))}mo ago`;
+    return `${Math.round(diff / (365 * day))}y ago`;
 }
-
-function PriorityDot({ level }: { level: string }) {
-    const opacity: Record<string, string> = { high: '1', medium: '0.6', low: '0.3' };
-    return <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: brandColor1, opacity: opacity[level] || 0.3, marginRight: 6 }} />;
+function shortDate(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
-
-const dateRanges = ['1M', '3M', '6M', '1Y'];
-const chartMetrics = ['audience', 'views', 'engagement'];
-const chartTitles: Record<string, string> = { audience: 'Audience Growth (%)', views: 'Views (K)', engagement: 'Engagement Rate (%)' };
-const chartColors: Record<string, string> = { audience: brandColor1, views: brandColor2, engagement: '#d4d4d8' };
-const platforms = ['all', 'youtube', 'tiktok', 'instagram', 'podcast'];
-
-const reviewFilters = ['All', 'Positive', 'Critical', 'Needs Reply'];
+function daysUntil(iso: string | null | undefined): number | null {
+    if (!iso) return null;
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return null;
+    return Math.ceil((t - Date.now()) / 86_400_000);
+}
+function priorityBucket(score: number | string | null | undefined): 'high' | 'medium' | 'low' {
+    const n = typeof score === 'string' ? Number(score) : score;
+    if (typeof n !== 'number' || Number.isNaN(n)) return 'low';
+    if (n >= 70) return 'high';
+    if (n >= 40) return 'medium';
+    return 'low';
+}
+function normalizeSentiment(rev: SenseReview): 'positive' | 'neutral' | 'critical' {
+    const s = (rev.sentiment ?? '').toLowerCase();
+    if (s === 'positive' || s === 'pos' || s === 'good') return 'positive';
+    if (s === 'negative' || s === 'critical' || s === 'neg' || s === 'bad') return 'critical';
+    if (s === 'neutral' || s === 'mixed') return 'neutral';
+    const r = rev.rating ?? 0;
+    if (r >= 4) return 'positive';
+    if (r > 0 && r <= 2) return 'critical';
+    return 'neutral';
+}
+function reviewAuthor(rev: SenseReview): string {
+    const meta = rev.metadata as Record<string, unknown> | null | undefined;
+    for (const key of ['author', 'author_name', 'reviewer', 'reviewer_name', 'user', 'username']) {
+        const v = meta?.[key];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return 'Anonymous';
+}
+function hashString(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+}
+function deckGradient(seed: string, layer: number): string {
+    const h = (hashString(seed) + layer * 43) % 360;
+    return `linear-gradient(145deg, hsl(${h} 42% 24%), hsl(${(h + 45) % 360} 48% 13%))`;
+}
+function campaignDate(c: Campaign): string {
+    const dr = c.metadata?.date_range;
+    if (typeof dr === 'string' && dr.trim()) return dr;
+    if (dr && typeof dr === 'object') {
+        const s = shortDate(dr.start);
+        const e = shortDate(dr.end);
+        if (s && e) return s === e ? s : `${s} – ${e}`;
+        if (s ?? e) return (s ?? e) as string;
+    }
+    return shortDate(c.detected_at) ?? '—';
+}
+function campaignPostCount(c: Campaign): number {
+    const n = c.metadata?.post_count;
+    if (typeof n === 'number') return n;
+    return c.posts?.length ?? 0;
+}
+function confidenceLabel(c: number | null | undefined): string {
+    const n = typeof c === 'number' ? c : 0;
+    if (n >= 70) return 'High confidence';
+    if (n >= 40) return 'Medium confidence';
+    return 'Low confidence';
+}
 
 export default function DashboardPage() {
     const router = useRouter();
+    const [activeChart, setActiveChart] = useState<'views' | 'engagement' | null>('views');
+    const [campaignIdx, setCampaignIdx] = useState(0);
+    const [direction, setDirection] = useState(1);
+    const reviewsScrollRef = useRef<HTMLDivElement>(null);
 
-    const [selectedNode, setSelectedNode] = useState<any>(null);
-    const [commandActive, setCommandActive] = useState(false);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-    const [isThinking, setIsThinking] = useState(false);
-
-    useEffect(() => {
-        document.body.classList.toggle('is-thinking-active', isThinking);
-        return () => document.body.classList.remove('is-thinking-active');
-    }, [isThinking]);
-
-    useEffect(() => {
-        const onEsc = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setCommandActive(false);
-                setSidebarCollapsed(true);
-            }
-        };
-        window.addEventListener('keydown', onEsc);
-        return () => window.removeEventListener('keydown', onEsc);
-    }, []);
-
-    const [activeChart, setActiveChart] = useState<string | null>(null);
-    const [selectedPlatform, setSelectedPlatform] = useState('all');
-    const [selectedRange, setSelectedRange] = useState('6M');
-    const [expandedCampaign, setExpandedCampaign] = useState<number | null>(null);
-    const [expandedOpp, setExpandedOpp] = useState<number | null>(null);
-    const [expandedPerf, setExpandedPerf] = useState<number | null>(null);
-    const [expandedGap, setExpandedGap] = useState<number | null>(null);
-    const [reviewFilter, setReviewFilter] = useState('All');
-    const [replyText, setReplyText] = useState<Record<number, string>>({});
-    const [replyOpen, setReplyOpen] = useState<number | null>(null);
-
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStartX, setDragStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
+    const { opportunities, opportunitiesTotal, gaps, reviews, campaigns, workspace, user, refreshing, refresh } = useDashboard();
 
     const scrollList = (dir: 'left' | 'right') => {
-        if (scrollRef.current) {
-            const amount = 344;
-            scrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+        if (reviewsScrollRef.current) {
+            reviewsScrollRef.current.scrollBy({ left: dir === 'left' ? -344 : 344, behavior: 'smooth' });
         }
     };
 
-    const handlePointerDown = (e: React.PointerEvent) => {
-        if (!scrollRef.current) return;
-        setIsDragging(true);
-        setDragStartX(e.pageX - scrollRef.current.offsetLeft);
-        setScrollLeft(scrollRef.current.scrollLeft);
-        scrollRef.current.style.cursor = 'grabbing';
+    const nextCampaign = () => {
+        if (campaigns.items.length === 0) return;
+        setDirection(1);
+        setCampaignIdx((prev) => (prev + 1) % campaigns.items.length);
     };
 
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isDragging || !scrollRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - scrollRef.current.offsetLeft;
-        const walk = (x - dragStartX) * 2;
-        scrollRef.current.scrollLeft = scrollLeft - walk;
+    const prevCampaign = () => {
+        if (campaigns.items.length === 0) return;
+        setDirection(-1);
+        setCampaignIdx((prev) => (prev - 1 + campaigns.items.length) % campaigns.items.length);
     };
 
-    const handlePointerUp = () => {
-        setIsDragging(false);
-        if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
+    const containerVariants: any = {
+        hidden: (dir: number) => ({}),
+        visible: { transition: { staggerChildren: 0.1 } },
+        exit: (dir: number) => ({ transition: { staggerChildren: 0.05, staggerDirection: -1 } })
     };
 
-    const gapsScrollRef = useRef<HTMLDivElement>(null);
-    const [isGapsDragging, setIsGapsDragging] = useState(false);
-    const [gapsDragStartX, setGapsDragStartX] = useState(0);
-    const [gapsScrollLeft, setGapsScrollLeft] = useState(0);
-
-    const scrollGaps = (dir: 'left' | 'right') => {
-        if (gapsScrollRef.current) {
-            const amount = 344;
-            gapsScrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-        }
+    const childVariants: any = {
+        hidden: (dir: number) => ({ opacity: 0, x: dir > 0 ? 30 : -30 }),
+        visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
+        exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -30 : 30, transition: { duration: 0.2 } })
     };
 
-    const handleGapsPointerDown = (e: React.PointerEvent) => {
-        if (!gapsScrollRef.current) return;
-        setIsGapsDragging(true);
-        setGapsDragStartX(e.pageX - gapsScrollRef.current.offsetLeft);
-        setGapsScrollLeft(gapsScrollRef.current.scrollLeft);
-        gapsScrollRef.current.style.cursor = 'grabbing';
-    };
+    const stats = useMemo(() => {
+        const rated = reviews.items.filter((r) => typeof r.rating === 'number' && r.rating > 0);
+        const avgRating = rated.length ? (rated.reduce((sum, r) => sum + (r.rating ?? 0), 0) / rated.length) : 0;
+        const highPriority = opportunities.items.filter((o) => priorityBucket(o.priority_score) === 'high').length;
+        const urgentGaps = gaps.items.filter((g) => g.layer === 'alarm_for_us').length;
+        
+        return [
+            { label: 'Open Opportunities', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>, value: opportunities.loading ? '—' : String(opportunitiesTotal), change: `${highPriority} high priority`, trend: 'up', context: 'across all sources' },
+            { label: 'Growth Gaps', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, value: gaps.loading ? '—' : String(gaps.items.length), change: `${urgentGaps} urgent`, trend: 'down', context: 'requires action' },
+            { label: 'Avg Rating', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, value: reviews.loading ? '—' : avgRating.toFixed(1), change: `${rated.length} rated`, trend: 'up', context: 'from tracked sources' },
+        ];
+    }, [opportunities, opportunitiesTotal, gaps, campaigns, reviews]);
 
-    const handleGapsPointerMove = (e: React.PointerEvent) => {
-        if (!isGapsDragging || !gapsScrollRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - gapsScrollRef.current.offsetLeft;
-        const walk = (x - gapsDragStartX) * 2;
-        gapsScrollRef.current.scrollLeft = gapsScrollLeft - walk;
-    };
-
-    const handleGapsPointerUp = () => {
-        setIsGapsDragging(false);
-        if (gapsScrollRef.current) gapsScrollRef.current.style.cursor = 'grab';
-    };
-
-    const currentData = platformData[selectedPlatform] || platformData.all;
-    const filteredReviews = reviews.filter(r => {
-        if (reviewFilter === 'Positive') return r.sentiment === 'positive';
-        if (reviewFilter === 'Critical') return r.sentiment === 'critical';
-        if (reviewFilter === 'Needs Reply') return r.responseStatus === 'pending';
-        return true;
-    });
+    const activeCamp = campaigns.items[campaignIdx];
+    const safeCampIdx = campaigns.items.length > 0 ? campaignIdx : 0;
 
     return (
-        <>
-        <div className="main-content" style={{ overflowY: 'auto', paddingBottom: 60, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-            <style>{`
-                @keyframes liveGradient {
-                    0% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
-                    33% { transform: scale(1.05) translate(2% , 2%); opacity: 0.5; }
-                    66% { transform: scale(0.95) translate(-2%, -2%); opacity: 0.35; }
-                    100% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
-                }
-            `}</style>
+        <div className="flex-1 w-full overflow-y-auto overflow-x-hidden p-6 md:p-10 pb-24 flex flex-col items-center justify-start relative bg-[var(--bg-main-alt)]">
+            <div className="w-full max-w-6xl flex flex-col gap-6">
+                
+                {/* ── HEADER ── */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45 }}
+                    className="flex justify-between items-center mb-2"
+                >
+                    <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">Dashboard</h1>
+                    <button
+                        onClick={refresh}
+                        disabled={refreshing}
+                        className={`bg-[var(--card-bg-alt)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] text-xs font-semibold py-1.5 px-3 rounded-md transition-colors ${refreshing ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}
+                    >
+                        {refreshing ? 'Refreshing…' : 'Refresh'}
+                    </button>
+                </motion.div>
 
-            <div style={{
-                position: 'absolute', top: -150, left: 0, right: 0, height: '600px',
-                background: `radial-gradient(circle at 30% 0%, ${brandColor1}, transparent 50%), radial-gradient(circle at 70% 20%, ${brandColor2}, transparent 50%)`,
-                filter: 'blur(80px)', animation: 'liveGradient 15s ease-in-out infinite',
-                pointerEvents: 'none', zIndex: 0
-            }} />
-
-            <div style={{ padding: '60px 40px', maxWidth: 1100, margin: '0 auto', width: '100%', position: 'relative', zIndex: 1 }}>
-                {/* HEADER */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                        <div className="dash-logo-box" style={{ width: 88, height: 88, borderRadius: 20, background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke={brandColor1} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-                            </svg>
-                        </div>
-                        {/* BACKEND: core.core_workspaces, core.core_workspace_members, core.core_roles */}
-                        <div>
-                            {/* BACKEND: core.core_workspace_members + core.core_roles */}
-                            <h2 style={{ fontSize: 36, fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Vasil S.</h2>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: 16, marginTop: 2, fontWeight: 500 }}>Creator & Founder &middot; Since 2024</div>
-                        </div>
-                    </div>
-                    <div style={{ textAlign: 'right', marginTop: 8 }}>
-                        <div style={{ fontSize: 14, color: '#a1a1aa', fontWeight: 500 }}>Platform</div>
-                        <div style={{ fontSize: 18, color: 'white', fontWeight: 600 }}>OShift</div>
-                    </div>
-                </div>
-
-                {/* STATS BAR */}
-                <div style={{ display: 'flex', marginBottom: 48, borderBottom: '1px solid var(--border-color)', paddingBottom: 0 }} className="section-divider">
-                    {/* BACKEND: ⚠️ NO EQUIVALENT — OShift does not track creator analytics (Total Followers, Total Views, etc.) */}
-                    {[
-                        { label: 'Total Followers', value: '847K', change: '+12%', trend: 'up' as const, data: [30, 35, 32, 40, 45, 42, 50, 55, 52, 60, 65, 62, 70] },
-                        { label: 'Total Views', value: '12.4M', change: '+8%', trend: 'up' as const, data: [100, 120, 110, 140, 160, 150, 180, 200, 190, 220, 240, 230, 260] },
-                        { label: 'Revenue (MTD)', value: '$24.5K', change: '+15%', trend: 'up' as const, data: [5, 8, 7, 10, 12, 11, 14, 16, 15, 18, 20, 19, 24.5] },
-                        { label: 'Active Campaigns', value: '3', change: '0%', trend: 'flat' as const, data: [2, 2, 3, 3, 3, 4, 3, 3, 2, 3, 3, 3, 3] },
-                        { label: 'Avg Engagement', value: '4.2%', change: '+0.3%', trend: 'up' as const, data: [3.5, 3.8, 3.6, 4.0, 4.2, 3.9, 4.1, 4.3, 4.0, 4.2, 4.5, 4.3, 4.2] },
-                    ].map((stat, i) => (
-                        <div key={i} className="skeleton-target" style={{
-                            flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 6,
-                            borderRight: i < 4 ? '1px solid rgba(255,255,255,0.06)' : 'none'
-                        }}>
-                            <div className="stat-label" style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.label}</div>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                                <span className="stat-value" style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{stat.value}</span>
-                                <span className="stat-change" style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.change}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* OPPORTUNITIES + PERFORMANCE */}
-                <div className="skeleton-target opp-perf-panel" style={{ display: 'flex', marginBottom: 60, border: '1px solid var(--border-color)', borderRadius: 12 }}>
-                    <div style={{ flex: 1, padding: '24px 28px', borderRight: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Opportunities</h3>
-                            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{opportunities.length} open</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {opportunities.map((item, i) => (
-                                <div key={i}>
-                                    <div
-                                        onClick={() => setExpandedOpp(expandedOpp === i ? null : i)}
-                                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none', cursor: 'pointer' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-                                            <PriorityDot level={item.priority} />
-                                            <div>
-                                                <div className="opp-item-name" style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{item.name}</div>
-                                                <div className="opp-item-meta" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <span>${item.value}K &middot; {item.expiresIn}d left</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            {item.badge && <span style={{ fontSize: 10, color: brandColor1, fontWeight: 600 }}>New</span>}
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" style={{ transform: expandedOpp === i ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9" /></svg>
-                                        </div>
-                                    </div>
-                                    <AnimatePresence>
-                                        {expandedOpp === i && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                                style={{ overflow: 'hidden' }}
-                                            >
-                                                <div style={{ padding: '10px 14px', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <div className="opp-expanded-text" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{item.desc}</div>
-                                                    <button style={{ background: brandColor1, border: 'none', color: 'white', fontSize: 11, fontWeight: 600, padding: '5px 12px', borderRadius: 6, cursor: 'pointer' }}>Apply</button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                {/* ── GRID: INVERTED PYRAMID ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    
+                    {/* ── TOP LEFT (Span 2): LATEST CAMPAIGN HERO ── */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.05 }}
+                        className="col-span-1 lg:col-span-2 flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 h-full min-h-[380px]"
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <span className="text-base font-medium text-[var(--text-primary)]">Latest campaign performance</span>
+                            {campaigns.items.length > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <button onClick={prevCampaign} className="w-8 h-8 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                                    </button>
+                                    <button onClick={nextCampaign} className="w-8 h-8 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                                    </button>
                                 </div>
-                            ))}
+                            )}
                         </div>
-                        <div style={{ textAlign: 'right', marginTop: 8 }}>
-                            <a style={{ color: '#a1a1aa', fontSize: 12, fontWeight: 500, cursor: 'pointer', textDecoration: 'none' }}>See More &rarr;</a>
-                        </div>
-                    </div>
-
-                    <div style={{ flex: 1, padding: '24px 28px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Performance</h3>
-                            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{perfItems.length} active</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {perfItems.map((item, i) => (
-                                <div key={i}>
-                                    <div
-                                        onClick={() => setExpandedPerf(expandedPerf === i ? null : i)}
-                                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none', cursor: 'pointer' }}
-                                    >
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 14, fontWeight: 500, color: 'white' }}>{item.name}</div>
-                                            <div style={{ marginTop: 4 }}>
-                                                <div className="progress-track" style={{ height: 2, background: 'var(--border-color)', borderRadius: 1, overflow: 'hidden' }}>
-                                                    <div style={{ height: '100%', width: `${item.progress}%`, background: brandColor1, borderRadius: 1 }} />
-                                                </div>
-                                                <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 2 }}>{item.progress}% &middot; {item.target}</div>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 12 }}>
-                                            <span style={{ fontSize: 14, fontWeight: 600, color: brandColor1 }}>{item.metric}</span>
-                                            {item.badge && <span style={{ fontSize: 10, color: brandColor1, fontWeight: 600 }}>New</span>}
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" style={{ transform: expandedPerf === i ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9" /></svg>
-                                        </div>
-                                    </div>
-                                    <AnimatePresence>
-                                        {expandedPerf === i && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                                style={{ overflow: 'hidden' }}
-                                            >
-                                                <div style={{ padding: '10px 14px', marginBottom: 4 }}>
-                                                    <div style={{ display: 'flex', gap: 24, fontSize: 12, color: '#d4d4d8' }}>
-                                                        <span>Target: <strong style={{ color: 'white' }}>{item.target}</strong></span>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            ))}
-                        </div>
-                        <div style={{ textAlign: 'right', marginTop: 8 }}>
-                            <a style={{ color: '#a1a1aa', fontSize: 12, fontWeight: 500, cursor: 'pointer', textDecoration: 'none' }}>See More &rarr;</a>
-                        </div>
-                    </div>
-                </div>
-
-                {/* CHARTS SECTION */}
-                <div style={{ marginBottom: 60 }}>
-                    {/* Chart toolbar */}
-                    <div className="skeleton-target" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                        <div className="chart-toolbar-pill" style={{ display: 'flex', gap: 4, background: 'var(--card-bg-alt)', padding: 3, borderRadius: 10, border: '1px solid var(--border-color)' }}>
-                            {platforms.map(p => (
-                                <button key={p} onClick={() => setSelectedPlatform(p)} style={{
-                                    background: selectedPlatform === p ? brandColor1 : 'transparent', border: 'none', color: selectedPlatform === p ? 'white' : '#a1a1aa',
-                                    fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 7, cursor: 'pointer', transition: 'all 0.15s'
-                                }}>{platformFullLabels[p]}</button>
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', gap: 4, background: '#18181b', padding: 3, borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
-                            {dateRanges.map(r => (
-                                <button key={r} onClick={() => setSelectedRange(r)} style={{
-                                    background: selectedRange === r ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: selectedRange === r ? 'white' : '#a1a1aa',
-                                    fontSize: 12, fontWeight: 500, padding: '5px 10px', borderRadius: 7, cursor: 'pointer'
-                                }}>{r}</button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: activeChart ? '1fr 1fr' : '1fr 1fr 1fr', gap: 32 }}>
-                        {chartMetrics.map((metric) => (
-                            <div key={metric}
-                                onClick={() => setActiveChart(activeChart === metric ? null : metric)}
-                                className="skeleton-target"
-                                style={{
-                                    display: 'flex', flexDirection: 'column', cursor: 'pointer',
-                                    gridColumn: activeChart === metric ? '1 / -1' : 'auto',
-                                    order: activeChart === metric ? -1 : 0,
-                                    height: activeChart === metric ? 380 : 220,
-                                    transition: 'all 0.3s ease',
-                                    background: activeChart === metric ? 'rgba(255,255,255,0.02)' : 'transparent',
-                                    padding: activeChart === metric ? 24 : 0, borderRadius: 16
-                                }}
-                            >
-                                <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{chartTitles[metric]}</h3>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={currentData}>
-                                        <XAxis dataKey="name" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                        <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} itemStyle={{ color: brandColor1 }} />
-                                        {activeChart === metric && <ReferenceLine x="Apr" stroke="#a1a1aa" strokeDasharray="4 4" label={{ value: 'Campaign launch', fill: '#a1a1aa', fontSize: 10, position: 'insideTop' }} />}
-                                        <Line type="linear" dataKey="projected" stroke="#52525b" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
-                                        <Line type="linear" dataKey={metric} stroke={chartColors[metric]} strokeWidth={2} dot={{ r: 2.5, fill: chartColors[metric], stroke: 'none' }} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                                {activeChart === metric && (
-                                    <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: '#a1a1aa' }}>
-                                        <span><span style={{ color: chartColors[metric], fontWeight: 600 }}>&mdash;</span> Actual</span>
-                                        <span><span style={{ color: '#52525b', fontWeight: 600 }}>&ndash; &ndash;</span> Projected</span>
-                                        <span style={{ marginLeft: 'auto', color: brandColor1, fontWeight: 600 }}>Avg: +8.2% MoM</span>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* MY CAMPAIGNS */}
-                <div style={{ marginBottom: 80 }}>
-                    <div className="skeleton-target" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                        <h3 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>My Campaigns</h3>
-                        <div className="sort-pill" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', background: 'var(--card-bg-alt)', padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border-color)' }}>
-                            Sort by:
-                            <span style={{ color: 'white', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                Performance <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 36 }}>
-                        {campaigns.map((camp, i) => (
-                            <div key={i}>
-                                <div 
-                                    onClick={() => setExpandedCampaign(expandedCampaign === i ? null : i)} 
-                                    onDoubleClick={() => router.push(`/campaigns/${i}`)}
-                                    style={{ cursor: 'pointer' }}
+                        
+                        <div className="flex-1 relative">
+                            {campaigns.loading ? (
+                                <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">Loading campaigns...</div>
+                            ) : campaigns.items.length === 0 ? (
+                                <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">No campaigns detected yet.</div>
+                            ) : (
+                            <AnimatePresence mode="wait" custom={direction} initial={false}>
+                                <motion.div 
+                                    key={safeCampIdx}
+                                    custom={direction}
+                                    variants={containerVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="exit"
+                                    className="flex flex-col md:flex-row gap-8 items-start h-full cursor-pointer"
+                                    onClick={() => router.push(`/campaigns/${activeCamp.id}`)}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                        <div className="scene" style={{ marginBottom: 16 }}>
-                                            <div className="deck-wrapper" title={camp.name}>
+                                    <div className="w-full md:w-48 h-48 md:h-full flex items-center justify-center flex-shrink-0 relative overflow-visible mt-2">
+                                        <div className="scene">
+                                            <div className="deck-wrapper" style={{ transform: 'scale(0.65)' }}>
                                                 <div className="cards">
-                                                    <div className="card card-left" style={{ backgroundImage: `url('${camp.imgs[0]}')` }}>
-                                                      <div className="floating-bubble" style={{ bottom: 45, left: -20 }}>
-                                                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> 20
-                                                      </div>
-                                                    </div>
-                                                    
-                                                    <div className="card card-right" style={{ backgroundImage: `url('${camp.imgs[1]}')` }}>
-                                                      <div className="floating-bubble" style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}>
-                                                        Wen
-                                                      </div>
-                                                    </div>
-
-                                                    <div className="card deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('${camp.imgs[2]}')` }}>
-                                                        <div className="logo" style={{ fontSize: 13, lineHeight: 1.2, color: '#e4e4e7' }}>{camp.name}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="cord-ring" />
-                                            </div>
-                                        </div>
-                                        <div className="camp-info-box" style={{ textAlign: 'center', background: 'var(--card-bg-alt)', padding: '14px 20px', borderRadius: 12, border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }}>
-                                            <div className="camp-metric" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{camp.metric}</div>
-                                            <div className="camp-meta" style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 6, display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}>
-                                                <span>{camp.date}</span>
-                                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#3f3f46' }}></span>
-                                                <span style={{ color: camp.status === 'Active' ? brandColor1 : camp.status === 'Underperforming' ? '#a1a1aa' : '#d4d4d8' }}>{camp.status}</span>
-                                            </div>
-                                            <div style={{ marginTop: 8 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#a1a1aa', marginBottom: 2 }}>
-                                                    <span>Budget: ${camp.spent}K/${camp.budget}K</span>
-                                                </div>
-                                                <div className="progress-track" style={{ height: 3, background: 'var(--border-color)', borderRadius: 2, overflow: 'hidden' }}>
-                                                    <div style={{ height: '100%', width: `${camp.progress}%`, background: brandColor1, borderRadius: 2 }} />
-                                                </div>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 8 }}>
-                                                {camp.platforms.map(p => (
-                                                    <span key={p} style={{ background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600, color: brandColor1 }}>{platformLabels[p]}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <AnimatePresence>
-                                    {expandedCampaign === i && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                            style={{ overflow: 'hidden' }}
-                                        >
-                                            <div style={{ marginTop: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', padding: 20 }}>
-                                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Per-Platform Breakdown</div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                    {camp.platformMetrics.map((pm, j) => (
-                                                        <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: j < camp.platformMetrics.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', fontSize: 13 }}>
-                                                            <span style={{ color: 'var(--text-secondary)' }}>{pm.platform}</span>
-                                                            <div style={{ display: 'flex', gap: 20 }}>
-                                                                <span style={{ color: 'var(--text-primary)' }}>{pm.views}</span>
-                                                                <span style={{ color: brandColor1 }}>{pm.engagement}</span>
+                                                    <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
+                                                        <div className="card card-left" style={{ backgroundImage: deckGradient(activeCamp.id, 0) }}></div>
+                                                    </motion.div>
+                                                    <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
+                                                        <div className="card card-right" style={{ backgroundImage: deckGradient(activeCamp.id, 1) }}></div>
+                                                    </motion.div>
+                                                    <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-30">
+                                                        <div className="card card-center deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), ${deckGradient(activeCamp.id, 2)}` }}>
+                                                            <div className="logo flex items-center gap-2 mt-auto text-[#e4e4e7]">
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={brandColor1} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                                                                </svg>
+                                                                <span className="text-xs truncate">{activeCamp.title}</span>
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                    </motion.div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex flex-col flex-1 justify-between h-full w-full">
+                                        <motion.div variants={childVariants} custom={direction} className="mb-6">
+                                            <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)] mb-1">{activeCamp.title}</h2>
+                                            <p className="text-sm text-[var(--text-secondary)]">Detected {relativeTime(activeCamp.detected_at)}</p>
                                         </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* GROWTH GAPS */}
-                <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div className="skeleton-target" style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ marginBottom: 24, opacity: 0.8 }}>
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
+                                        
+                                        <div className="grid grid-cols-3 gap-6">
+                                            <motion.div variants={childVariants} custom={direction} className="flex flex-col">
+                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Total Posts</span>
+                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)]">{campaignPostCount(activeCamp)}</span>
+                                                <div className="flex items-center gap-1 text-xs font-medium mt-1.5 text-emerald-500">
+                                                    <SolidArrowUp /> Tracked
+                                                </div>
+                                            </motion.div>
+                                            <motion.div variants={childVariants} custom={direction} className="flex flex-col">
+                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Confidence</span>
+                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)]">{activeCamp.confidence}%</span>
+                                                <div className={`flex items-center gap-1 text-xs font-medium mt-1.5 ${activeCamp.confidence >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                    {activeCamp.confidence >= 70 ? <SolidArrowUp /> : <SolidArrowDown />} {confidenceLabel(activeCamp.confidence)}
+                                                </div>
+                                            </motion.div>
+                                            <motion.div variants={childVariants} custom={direction} className="flex flex-col">
+                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Status</span>
+                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)] capitalize">Active</span>
+                                            </motion.div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </AnimatePresence>
+                            )}
                         </div>
-                        <h3 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: 32, letterSpacing: '-0.02em' }}>Growth<br />Gaps<br /></h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <button onClick={() => scrollGaps('left')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&larr;</button>
-                            <div style={{ flex: 1, height: 2, background: '#27272a', position: 'relative' }}>
-                                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: '30%', background: '#a1a1aa' }}></div>
-                            </div>
-                            <button onClick={() => scrollGaps('right')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&rarr;</button>
-                        </div>
-                    </div>
+                    </motion.div>
 
-                    <div ref={gapsScrollRef} onPointerDown={handleGapsPointerDown} onPointerMove={handleGapsPointerMove} onPointerUp={handleGapsPointerUp} onPointerLeave={handleGapsPointerUp}
-                        style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', flex: 1, cursor: 'grab', alignItems: 'stretch' }}
+                    {/* ── TOP RIGHT (Span 1): HIGH-LEVEL KPIs ── */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}
+                        className="col-span-1 flex flex-col gap-4 h-full"
                     >
-                        {gaps.map((gap, i) => (
-                            <div key={i} className="skeleton-target" style={{ minWidth: 320, width: 320, display: 'flex', flexDirection: 'column' }}>
-                                <div onClick={() => setExpandedGap(expandedGap === i ? null : i)} className="gap-card" style={{
-                                    background: 'var(--card-bg-alt)', borderRadius: 16, border: '1px solid var(--border-color)', padding: 28,
-                                    display: 'flex', flexDirection: 'column', flex: 1, position: 'relative', overflow: 'hidden', cursor: 'pointer'
-                                }}>
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: brandColor1, opacity: gap.severity === 'high' ? 0.8 : gap.severity === 'medium' ? 0.5 : 0.25 }}></div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                        <div className="gap-card-title" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{gap.title}</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>{gap.severity}</span>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" style={{ transform: expandedGap === i ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9" /></svg>
+                        {stats.map((kpi, i) => (
+                            <div key={i} className="flex items-center justify-between bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 flex-1">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 mb-1 text-[var(--text-secondary)]">
+                                        {kpi.icon}
+                                        <span className="text-base font-medium text-[var(--text-primary)]">{kpi.label}</span>
+                                    </div>
+                                    <span className="text-xl font-medium tracking-tight text-[var(--text-primary)]">{kpi.value}</span>
+                                </div>
+                                <div className={`flex flex-col items-end text-xs font-bold ${kpi.trend === 'up' ? 'text-emerald-500' : 'text-red-500'}`}>
+                                    <div className="flex items-center gap-1 text-sm">
+                                        {kpi.trend === 'up' ? <SolidArrowUp /> : <SolidArrowDown />}
+                                        {kpi.change}
+                                    </div>
+                                    <span className="text-[10px] text-[var(--text-secondary)] font-medium mt-1">{kpi.context}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </motion.div>
+
+                    {/* ── BOTTOM LEFT (Span 2): PERFORMANCE CHARTS ── */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.15 }} 
+                        className="col-span-1 lg:col-span-2 flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6"
+                    >
+                        <div className="flex justify-between items-center mb-8">
+                            <div className="flex items-center">
+                                <h3 className="text-base font-medium text-[var(--text-primary)]">Historical analytics</h3>
+                                <SampleBadge title="Placeholder data" />
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-14">
+                            {[
+                                { key: 'views', dataKey: 'views', label: 'Total Views (K)', color: brandColor1 },
+                                { key: 'engagement', dataKey: 'engagement', label: 'Engagement Rate (%)', color: brandColor2 },
+                            ].map(({ key, dataKey, label, color }) => (
+                                <div
+                                    key={key}
+                                    onClick={() => setActiveChart(activeChart === key ? null : (key as any))}
+                                    className={`flex flex-col cursor-pointer transition-all duration-300 ${activeChart === key ? 'h-[280px]' : 'h-[100px] opacity-60 hover:opacity-100'}`}
+                                >
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="w-3 h-[2px] rounded-full" style={{ backgroundColor: color }} />
+                                        <h4 className="text-sm font-medium text-[var(--text-primary)]">{label}</h4>
+                                    </div>
+                                    <div className="flex-1 w-full h-full min-h-0 relative -left-4">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id={`gradient-${key}`} x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor={color} stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                {activeChart === key && <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" opacity={0.6} />}
+                                                <XAxis dataKey="name" stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} />
+                                                {activeChart === key && <YAxis stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} />}
+                                                <Tooltip 
+                                                    contentStyle={{ backgroundColor: 'var(--bg-main-alt)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', boxShadow: 'none' }} 
+                                                    itemStyle={{ color, fontWeight: 500 }} 
+                                                    cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }}
+                                                />
+                                                <Area type="linear" dataKey={dataKey} stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#gradient-${key})`} activeDot={{ r: 4, fill: color, strokeWidth: 0 }} dot={{ r: 3, fill: color, strokeWidth: 0 }} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    {/* ── BOTTOM RIGHT (Span 1): ACTION CENTERS ── */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.2 }} 
+                        className="col-span-1 flex flex-col gap-6"
+                    >
+                        <div className="flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6">
+                            <h3 className="text-base font-medium text-[var(--text-primary)] mb-5">Action center</h3>
+                            
+                            <div className="flex flex-col gap-4">
+                                {gaps.items.slice(0, 1).map(gap => (
+                                    <div key={gap.id} className="flex flex-col bg-[var(--card-bg)] border border-red-500/20 rounded-lg p-4">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Growth Gap</span>
+                                        </div>
+                                        <span className="text-sm font-semibold text-[var(--text-primary)] mb-3 leading-tight truncate">{gap.title}</span>
+                                        <button onClick={() => router.push(`/company/${gap.id}`)} className="text-xs font-semibold bg-[var(--text-primary)] hover:bg-[var(--text-secondary)] transition-colors text-[var(--card-bg)] py-1.5 px-4 rounded-md w-fit">Review Gap</button>
+                                    </div>
+                                ))}
+
+                                {opportunities.items.slice(0, 2).map(opp => (
+                                    <div key={opp.id} className="flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg p-4 relative">
+                                        <div className="flex justify-between items-start mb-1 mt-1">
+                                            <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Opportunity</span>
+                                            {opp.status === 'new' && (
+                                                <span className="text-[10px] text-[#FF5A00] font-bold border border-[#FF5A00]/30 px-2 py-0.5 rounded uppercase tracking-wider">New</span>
+                                            )}
+                                        </div>
+                                        <span className="text-sm font-semibold text-[var(--text-primary)] mb-3 leading-tight truncate">{opp.title}</span>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => router.push('/opportunities')} className="text-xs font-medium border border-[var(--border-color)] hover:bg-[var(--item-hover)] transition-colors text-[var(--text-primary)] py-1.5 px-4 rounded-md w-fit">View details</button>
+                                            <button 
+                                                onClick={async () => {
+                                                    await updateOpportunityStatus(opp.id, 'in_progress');
+                                                    refresh();
+                                                }}
+                                                className="text-xs font-medium border border-[var(--border-color)] bg-[var(--text-primary)] text-[var(--card-bg)] hover:bg-[var(--text-secondary)] transition-colors py-1.5 px-4 rounded-md w-fit"
+                                            >
+                                                Apply
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="gap-card-desc" style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>{gap.desc}</div>
-                                    <AnimatePresence>
-                                        {expandedGap === i && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                                style={{ overflow: 'hidden' }}
-                                            >
-                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12, marginTop: 12 }}>
-                                                    <div style={{ marginBottom: 10 }}>
-                                                        <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 600, marginBottom: 4 }}>SUGGESTED ACTION</div>
-                                                        <div style={{ fontSize: 13, color: '#d4d4d8', lineHeight: 1.5 }}>{gap.action}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 600, marginBottom: 4 }}>BENCHMARK</div>
-                                                        <div style={{ fontSize: 13, color: '#a1a1aa' }}>{gap.benchmark}</div>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                ))}
+                                
+                                {gaps.items.length === 0 && opportunities.items.length === 0 && (
+                                    <div className="text-sm text-[var(--text-secondary)] p-4 text-center">No urgent actions required.</div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+
+                </div>
+
+                {/* ── CUSTOMER REVIEWS (Horizontal Scroll) ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, delay: 0.25 }}
+                    className="flex flex-col md:flex-row gap-12 overflow-hidden items-center bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 mt-2"
+                >
+                    <div className="shrink-0 w-full md:w-48 flex flex-col justify-start">
+                        <div className="text-6xl text-[var(--border-color)] leading-none mb-6 font-serif">&ldquo;</div>
+                        <h3 className="text-base font-medium text-[var(--text-primary)] mb-8">
+                            Customer sentiment
+                        </h3>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => scrollList('left')} className="w-8 h-8 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <button onClick={() => scrollList('right')} className="w-8 h-8 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div
+                        ref={reviewsScrollRef}
+                        className="flex gap-10 overflow-x-auto flex-1 snap-x snap-mandatory hide-scrollbar scroll-smooth px-2 pb-4"
+                        style={{ scrollbarWidth: 'none' }}
+                    >
+                        {reviews.loading ? (
+                            <div className="text-sm text-[var(--text-secondary)]">Loading reviews...</div>
+                        ) : reviews.items.length === 0 ? (
+                            <div className="text-sm text-[var(--text-secondary)]">No reviews tracked yet.</div>
+                        ) : reviews.items.map((rev, i) => (
+                            <div key={rev.id || i} className="min-w-[280px] md:min-w-[340px] snap-start">
+                                <div className="flex flex-col h-full cursor-pointer hover:bg-[var(--bg-main-alt)] p-6 rounded-lg transition-colors border border-transparent hover:border-[var(--border-color)]">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-10 h-10 rounded-full border border-[var(--border-color)] flex items-center justify-center text-[var(--text-primary)] text-sm font-bold uppercase">
+                                            {reviewAuthor(rev).charAt(0)}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <div className="text-[var(--text-primary)] text-sm font-medium">{reviewAuthor(rev)}</div>
+                                            <div className="text-[var(--text-secondary)] text-xs mt-1">{relativeTime(rev.reviewed_at)}</div>
+                                        </div>
+                                        <div className="ml-auto">
+                                            <StatusPill status={normalizeSentiment(rev)} />
+                                        </div>
+                                    </div>
+                                    <div className="text-[var(--text-secondary)] text-sm leading-relaxed mb-6 flex-1 line-clamp-3">
+                                        &ldquo;{rev.body}&rdquo;
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex gap-1.5 text-[var(--text-primary)]">
+                                            {[...Array(5)].map((_, idx) => (
+                                                <svg key={idx} width="16" height="16" viewBox="0 0 24 24" fill={idx < (rev.rating || 0) ? "currentColor" : "none"} stroke={idx < (rev.rating || 0) ? "none" : "currentColor"} strokeWidth="2" className={idx >= (rev.rating || 0) ? "opacity-20" : ""}>
+                                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                </svg>
+                                            ))}
+                                        </div>
+                                        <button 
+                                            disabled 
+                                            title="Reply endpoint not available" 
+                                            className="text-xs font-medium border border-[var(--border-color)] text-[var(--text-secondary)] py-1 px-3 rounded-md opacity-50 cursor-not-allowed"
+                                        >
+                                            Reply
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </div>
+                </motion.div>
 
-                {/* REVIEWS */}
-                <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: 80, color: '#3f3f46', lineHeight: 0.8, marginBottom: 16, fontFamily: 'serif' }}>&ldquo;</div>
-                        <h3 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-0.02em' }}>What <br />customers are<br />saying</h3>
-                        {/* Sentiment summary bar */}
-                        <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
-                            {(() => {
-                                const pos = reviews.filter(r => r.sentiment === 'positive').length / reviews.length * 100;
-                                const neu = reviews.filter(r => r.sentiment === 'neutral').length / reviews.length * 100;
-                                const crit = reviews.filter(r => r.sentiment === 'critical').length / reviews.length * 100;
-                                return (
-                                    <div style={{ width: '100%', height: 6, borderRadius: 3, display: 'flex', overflow: 'hidden' }}>
-                                        <div style={{ width: `${pos}%`, background: brandColor1 }} />
-                                        <div style={{ width: `${neu}%`, background: '#a1a1aa' }} />
-                                        <div style={{ width: `${crit}%`, background: '#3f3f46' }} />
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                        <div style={{ display: 'flex', gap: 12, marginBottom: 24, fontSize: 11, color: '#a1a1aa' }}>
-                            <span><span style={{ color: brandColor1, fontWeight: 600 }}>&#9632;</span> Positive</span>
-                            <span><span style={{ color: '#a1a1aa', fontWeight: 600 }}>&#9632;</span> Neutral</span>
-                            <span><span style={{ color: '#3f3f46', fontWeight: 600 }}>&#9632;</span> Critical</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <button onClick={() => scrollList('left')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&larr;</button>
-                            <div style={{ flex: 1, height: 2, background: '#27272a', position: 'relative' }}>
-                                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: '30%', background: '#a1a1aa' }}></div>
-                            </div>
-                            <button onClick={() => scrollList('right')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&rarr;</button>
-                        </div>
-                    </div>
-
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                        {/* Filter pills */}
-                        <div className="skeleton-target filter-pill-group" style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--card-bg-alt)', padding: 3, borderRadius: 10, border: '1px solid var(--border-color)', width: 'fit-content' }}>
-                            {reviewFilters.map(f => (
-                                <button key={f} onClick={() => setReviewFilter(f)} style={{
-                                    background: reviewFilter === f ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none',
-                                    color: reviewFilter === f ? 'white' : '#a1a1aa', fontSize: 12, fontWeight: 500,
-                                    padding: '5px 12px', borderRadius: 7, cursor: 'pointer'
-                                }}>{f}</button>
-                            ))}
-                        </div>
-
-                        <div ref={scrollRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp}
-                            style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', cursor: 'grab' }}
-                        >
-                            {filteredReviews.map((rev, i) => (
-                                <div key={i} className="skeleton-target" style={{ minWidth: 320, width: 320 }}>
-                                    <div className="review-card" style={{
-                                        background: 'var(--card-bg-alt)', borderRadius: '24px', border: '1px solid var(--border-color)',
-                                        padding: 28, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden'
-                                    }}>
-                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: rev.stars > 3 ? brandColor1 : rev.stars > 2 ? '#f59e0b' : '#ef4444' }} />
-                                        
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <img src={rev.avatar} alt={rev.user} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
-                                                <div>
-                                                    <div className="review-author" style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700 }}>{rev.user}</div>
-                                                    <div className="review-date" style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>{rev.date}</div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                                                <div className="skeleton-target" style={{ display: 'flex', gap: 8, background: 'var(--card-bg)', padding: 6, borderRadius: 12, border: '1px solid var(--border-color)' }}>
-                                                    {Array.from({ length: 5 }).map((_, idx) => (
-                                                        <svg key={idx} width="12" height="12" viewBox="0 0 24 24" fill={idx < rev.stars ? brandColor1 : "var(--border-color)"}>
-                                                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                                                        </svg>
-                                                    ))}
-                                                </div>
-                                                <div style={{
-                                                    fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 6,
-                                                    background: rev.responseStatus === 'replied' ? 'rgba(196,132,29,0.15)' : rev.responseStatus === 'pending' ? 'rgba(196,132,29,0.1)' : 'var(--bg-main-alt)',
-                                                    color: rev.responseStatus === 'replied' ? brandColor1 : rev.responseStatus === 'pending' ? brandColor1 : 'var(--text-secondary)',
-                                                    border: '1px solid var(--border-color)'
-                                                }}>
-                                                    {rev.responseStatus === 'replied' ? 'Replied' : rev.responseStatus === 'pending' ? 'Pending' : 'Ignored'}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="review-text" style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
-                                            &ldquo;{rev.text}&rdquo;
-                                        </div>
-                                        
-                                        {rev.responseStatus === 'pending' && (
-                                            <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
-                                                <button onClick={() => setReplyOpen(replyOpen === i ? null : i)} style={{
-                                                    background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
-                                                    padding: '6px 14px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s'
-                                                }}>Reply</button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <AnimatePresence>
-                                        {replyOpen === i && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                                style={{ overflow: 'hidden' }}
-                                            >
-                                                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                                                    <input
-                                                        value={replyText[i] || ''}
-                                                        onChange={(e) => setReplyText({ ...replyText, [i]: e.target.value })}
-                                                        placeholder="Write a reply..."
-                                                        style={{
-                                                            flex: 1, background: '#18181b', border: '1px solid rgba(255,255,255,0.1)',
-                                                            borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'white', outline: 'none'
-                                                        }}
-                                                    />
-                                                    <button style={{ background: brandColor1, border: 'none', color: 'white', fontSize: 12, fontWeight: 600, padding: '8px 14px', borderRadius: 8, cursor: 'pointer' }}>Send</button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                {/* ── MY CAMPAIGNS (Horizontal Scroll) ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, delay: 0.3 }}
+                    className="flex flex-col gap-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 mt-2"
+                >
+                    <h3 className="text-base font-medium text-[var(--text-primary)]">My Campaigns</h3>
+                    <div className="flex gap-6 overflow-x-auto pb-4 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
+                        {campaigns.loading ? (
+                            <div className="text-sm text-[var(--text-secondary)]">Loading campaigns...</div>
+                        ) : campaigns.items.length === 0 ? (
+                            <div className="text-sm text-[var(--text-secondary)]">No active campaigns.</div>
+                        ) : campaigns.items.map((camp) => (
+                            <div key={camp.id} className="min-w-[280px] p-5 rounded-lg border border-[var(--border-color)] flex flex-col cursor-pointer hover:border-[var(--text-primary)] transition-colors" onClick={() => router.push(`/campaigns/${camp.id}`)}>
+                                <span className="text-sm font-semibold text-[var(--text-primary)] mb-2 truncate">{camp.title}</span>
+                                <div className="text-xs text-[var(--text-secondary)] mb-4">{campaignDate(camp)}</div>
+                                <div className="flex items-center justify-between mt-auto">
+                                    <span className="text-xs font-medium text-[var(--text-primary)]">{campaignPostCount(camp)} Posts</span>
+                                    <span className="text-xs font-medium text-emerald-500">{camp.confidence}% Conf.</span>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                </motion.div>
+
             </div>
         </div>
-
-        {/* BACKEND: POST /hermes/conversations/{id}/messages */}
-        {/* BACKEND: POST /hermes/conversations/{id}/messages (SSE streaming) */}
-        <PromptField 
-            selectedNode={selectedNode}
-            setSelectedNode={setSelectedNode}
-            commandActive={commandActive}
-            setCommandActive={setCommandActive}
-            setSidebarCollapsed={setSidebarCollapsed}
-            onThinkingChange={setIsThinking}
-        />
-
-        </>
     );
 }

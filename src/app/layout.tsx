@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import "./light-overrides.css";
 import "./profile.css";
 import AppShell from "@/components/AppShell";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { PinnedProvider } from "@/context/PinnedContext";
 
-const poppins = Poppins({
-  weight: ["300", "400", "500", "600", "700", "800"],
-  subsets: ["latin"],
-  variable: "--font-poppins",
-});
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "OShift",
   description: "Campaigns and Partnerships Dashboard",
+  icons: { icon: "/icon.png" },
 };
 
 export default function RootLayout({
@@ -24,9 +22,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${poppins.variable} font-sans`}>
+      <body className={`${inter.variable} font-sans`}>
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <PinnedProvider>
+            <AppShell>{children}</AppShell>
+          </PinnedProvider>
         </ThemeProvider>
       </body>
     </html>

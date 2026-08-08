@@ -2,8 +2,8 @@ import '../auth.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Login - OShift',
-    description: 'Log in to OShift',
+    title: 'Login - CShift',
+    description: 'Login to CShift',
 };
 
 export default function LoginLayout({
@@ -12,7 +12,7 @@ export default function LoginLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="auth-root reversed">
+        <div className="auth-root reversed" data-theme="light">
             {children}
         </div>
     );

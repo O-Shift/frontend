@@ -267,5 +267,129 @@ export async function triggerPipeline(): Promise<ApiResult<{ run_id: string; sta
   });
 }
 
+export interface InsightSource {
+  id: string;
+  title: string | null;
+  url: string | null;
+  source: string | null;
+  captured_at: string | null;
+}
+
+/** A row from insights.insights_gaps, layer in ('gap','act_now','alarm_for_us'). */
+export interface InsightGap {
+  id: string;
+  competitor_id: string | null;
+  layer: "gap" | "act_now" | "alarm_for_us";
+  title: string;
+  description: string | null;
+  confidence: number | null;
+  detected_at: string | null;
+  signal_ids: string[];
+  sources: InsightSource[];
+}
+
+export async function fetchGaps(params?: {
+  competitor_id?: string;
+  layer?: string;
+  limit?: number;
+}): Promise<ApiResult<InsightGap[]>> {
+  const query = new URLSearchParams();
+  if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.layer) query.set("layer", params.layer);
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<InsightGap[]>(`/insights/gaps${queryString}`);
+}
+
+/** A row from sense.sense_reviews. No author or reply state is stored. */
+export interface SenseReview {
+  id: string;
+  workspace_id: string;
+  competitor_id: string | null;
+  platform: string | null;
+  review_id: string | null;
+  rating: number | null;
+  title: string | null;
+  body: string | null;
+  sentiment: string | null;
+  url: string | null;
+  reviewed_at: string | null;
+  captured_at: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export async function fetchReviews(params?: {
+  competitor_id?: string;
+  platform?: string;
+  limit?: number;
+}): Promise<ApiResult<SenseReview[]>> {
+  const query = new URLSearchParams();
+  if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.platform) query.set("platform", params.platform);
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<SenseReview[]>(`/sense/reviews${queryString}`);
+}
+
+export interface CampaignPost {
+  id: string;
+  title: string;
+  content: string;
+  platform: string;
+  source: string;
+  url: string;
+  captured_at: string | null;
+}
+
+/** Written by insights/campaigns.py as insights_gaps rows with layer='campaign'. */
+export interface CampaignMetadata {
+  post_count?: number;
+  date_range?: string | { start?: string; end?: string } | null;
+  themes?: string[];
+  signal_ids?: string[];
+  [key: string]: unknown;
+}
+
+export interface Campaign {
+  id: string;
+  competitor_id: string | null;
+  title: string;
+  description: string | null;
+  confidence: number;
+  detected_at: string | null;
+  metadata: CampaignMetadata;
+  posts: CampaignPost[];
+}
+
+export async function fetchCampaigns(params?: {
+  owner_type?: "competitor" | "self";
+  competitor_id?: string;
+  limit?: number;
+}): Promise<ApiResult<Campaign[]>> {
+  const query = new URLSearchParams();
+  if (params?.owner_type) query.set("owner_type", params.owner_type);
+  if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<Campaign[]>(`/campaigns${queryString}`);
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  timezone: string;
+  locale: string;
+  plan: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export async function fetchWorkspaces(): Promise<ApiResult<Workspace[]>> {
+  return apiFetch<Workspace[]>("/core/workspaces");
+}
+
 
 

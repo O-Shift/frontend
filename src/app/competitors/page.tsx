@@ -67,6 +67,13 @@ function getPattern(index: number, c1: string, c2: string) {
   return patterns[index % patterns.length];
 }
 
+const SampleBadge = ({ title }: { title: string }) => (
+  <span style={{ fontSize: 10, background: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+    {title}
+  </span>
+);
+
+
 export default function CompetitorsPage() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,30 +197,33 @@ export default function CompetitorsPage() {
             <button
               onClick={() => setIsAddModalOpen(true)}
               style={{
-                background: 'var(--accent, #f97316)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 16,
+                background: 'rgba(255, 255, 255, 0.03)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
                 padding: '14px 24px',
                 fontSize: 15,
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(249, 115, 22, 0.35)',
-                transition: 'transform 0.2s ease, opacity 0.2s ease',
+                transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
                 whiteSpace: 'nowrap'
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+              }}
             >
               <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Add Competitor
             </button>
 
             <motion.div className="competitors-search skeleton-target"
               animate={{ 
-                width: isSearchFocused ? '100%' : 280,
+                width: isSearchFocused ? '100%' : 320,
                 borderColor: isSearchFocused ? 'var(--text-secondary)' : 'var(--border-color)',
                 boxShadow: isSearchFocused ? '0 16px 48px var(--shadow-color)' : '0 8px 32px var(--shadow-color)'
               }}
@@ -225,10 +235,10 @@ export default function CompetitorsPage() {
                 background: 'var(--card-bg)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 16,
-                padding: '14px 20px'
+                padding: '16px 24px'
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 12, flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 16, flexShrink: 0 }}>
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
@@ -243,8 +253,8 @@ export default function CompetitorsPage() {
                   background: 'transparent',
                   border: 'none',
                   outline: 'none',
-                  color: 'var(--text-primary, #ffffff)',
-                  fontSize: 16,
+                  color: 'var(--text-primary)',
+                  fontSize: 18,
                   width: '100%',
                   fontFamily: 'inherit',
                   fontWeight: 500
@@ -255,7 +265,7 @@ export default function CompetitorsPage() {
         </div>
 
         {error && (
-          <div style={{ width: '100%', maxWidth: 1000, marginBottom: 24, padding: '16px 20px', borderRadius: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: 14 }}>
+          <div className="card" style={{ padding: '16px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: 14, width: '100%', maxWidth: 1000, marginBottom: 32 }}>
             {error}
           </div>
         )}
@@ -271,13 +281,11 @@ export default function CompetitorsPage() {
             {[1, 2, 3, 4].map((n) => (
               <div
                 key={n}
+                className="card"
                 style={{
                   height: '320px',
                   borderRadius: '24px',
-                  background: 'var(--card-bg, rgba(255,255,255,0.05))',
-                  border: '1px solid var(--border-color, rgba(255,255,255,0.1))',
                   animation: 'pulse 1.5s infinite ease-in-out',
-                  padding: 24,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between'
@@ -289,14 +297,12 @@ export default function CompetitorsPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{
+          <div className="card" style={{
             width: '100%',
             maxWidth: 1000,
             padding: '60px 40px',
             textAlign: 'center',
-            background: 'var(--card-bg, rgba(255,255,255,0.02))',
-            border: '1px dashed var(--border-color, rgba(255,255,255,0.15))',
-            borderRadius: 24,
+            borderStyle: 'dashed',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -312,15 +318,22 @@ export default function CompetitorsPage() {
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 style={{
-                  background: 'var(--accent, #f97316)',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 14,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
                   padding: '12px 24px',
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  marginTop: 8
+                  marginTop: 8,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
                 }}
               >
                 + Add Competitor
@@ -353,7 +366,8 @@ export default function CompetitorsPage() {
                     position: 'relative',
                     overflow: 'hidden',
                     boxShadow: '0 20px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease'
+                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease',
+                    padding: 0
                   }}
                   onClick={(e) => {
                     const logoDiv = e.currentTarget.querySelector('.search-logo-container') as HTMLDivElement;
@@ -399,8 +413,8 @@ export default function CompetitorsPage() {
                       background: 'rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(8px)',
                       color: 'rgba(255,255,255,0.8)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: '50%',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 6,
                       width: 28,
                       height: 28,
                       display: 'flex',
@@ -490,7 +504,12 @@ export default function CompetitorsPage() {
                     }}
                   >
                     <div style={{ color: 'rgba(255,255,255,0.95)', fontSize: 12, lineHeight: 1.5, textShadow: '0 2px 4px rgba(0,0,0,0.3)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {company.description || `Monitored competitor profile for ${company.name}. Click to view signals and intelligence.`}
+                      {company.description || (
+                        <span>
+                          Monitored competitor profile for {company.name}. Click to view signals and intelligence.
+                          <SampleBadge title="Mock data" />
+                        </span>
+                      )}
                     </div>
                     <div style={{ marginTop: 16, padding: '8px 16px', background: 'white', color: c1, borderRadius: 20, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignSelf: 'flex-start', boxShadow: `0 4px 12px rgba(0,0,0,0.2)` }}>
                       Click to know more
@@ -521,25 +540,24 @@ export default function CompetitorsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="card card-lg"
               style={{
                 width: '100%',
                 maxWidth: 480,
-                background: 'var(--card-bg, #18181b)',
-                border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                borderRadius: 24,
-                padding: 32,
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary, #ffffff)', margin: 0 }}>Add Competitor</h2>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Add Competitor</h2>
                 <button
                   onClick={() => setIsAddModalOpen(false)}
                   style={{
                     background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-secondary, #a1a1aa)',
-                    fontSize: 20,
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                    color: 'var(--text-secondary)',
+                    fontSize: 16,
                     cursor: 'pointer'
                   }}
                 >
@@ -548,14 +566,14 @@ export default function CompetitorsPage() {
               </div>
 
               {addError && (
-                <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: 13 }}>
+                <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 6, background: 'transparent', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: 13 }}>
                   {addError}
                 </div>
               )}
 
               <form onSubmit={handleAddCompetitor} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Company Name *
                   </label>
                   <input
@@ -569,8 +587,8 @@ export default function CompetitorsPage() {
                       padding: '12px 16px',
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 15,
                       outline: 'none'
                     }}
@@ -578,7 +596,7 @@ export default function CompetitorsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Website / Domain *
                   </label>
                   <input
@@ -592,8 +610,8 @@ export default function CompetitorsPage() {
                       padding: '12px 16px',
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 15,
                       outline: 'none'
                     }}
@@ -601,7 +619,7 @@ export default function CompetitorsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Description (optional)
                   </label>
                   <textarea
@@ -614,8 +632,8 @@ export default function CompetitorsPage() {
                       padding: '12px 16px',
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 14,
                       outline: 'none',
                       resize: 'none'
@@ -629,10 +647,10 @@ export default function CompetitorsPage() {
                     onClick={() => setIsAddModalOpen(false)}
                     style={{
                       padding: '12px 20px',
-                      borderRadius: 12,
+                      borderRadius: 6,
                       background: 'transparent',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 14,
                       fontWeight: 600,
                       cursor: 'pointer'
@@ -645,14 +663,21 @@ export default function CompetitorsPage() {
                     disabled={isSubmitting}
                     style={{
                       padding: '12px 24px',
-                      borderRadius: 12,
-                      background: 'var(--accent, #f97316)',
-                      border: 'none',
-                      color: '#ffffff',
+                      borderRadius: '6px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 14,
                       fontWeight: 600,
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                      opacity: isSubmitting ? 0.7 : 1
+                      opacity: isSubmitting ? 0.7 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSubmitting) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSubmitting) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
                     }}
                   >
                     {isSubmitting ? 'Adding...' : 'Add Competitor'}

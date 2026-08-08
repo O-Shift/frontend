@@ -830,49 +830,63 @@ export default function PartnershipsPage() {
   }, [currentView, loading, dbGraphData, dbCompetitors, router]);
 
   return (
-    <div className="main-content skeleton-target" id="graphContainer" ref={containerRef}>
+    <div className="page-canvas skeleton-target" id="graphContainer" ref={containerRef}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
             <canvas id="obsidianCanvas" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}></canvas>
         </div>
 
-        <div className="main-header">
-            <h1>Partnerships</h1>
-            <div className="view-toggle" id="viewToggleBtn" style={{ position: 'relative' }} onClick={() => setViewDropdownOpen(!viewDropdownOpen)}>
+        {/* ── Page header ────────────────────────────────────────── */}
+        <div className="page-header" style={{ position: 'absolute', top: 28, left: 28, zIndex: 10, pointerEvents: 'none', alignItems: 'center', marginBottom: 0, gap: 16 }}>
+          <div style={{ pointerEvents: 'auto' }}>
+            <h1 className="page-title">Partnerships</h1>
+          </div>
+          <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn-secondary card-sm"
+                id="viewToggleBtn"
+                onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="3" y1="12" x2="21" y2="12" />
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <line x1="3" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
-                <span>View: <span>{currentView}</span></span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4 }}>
-                    <polyline points="6 9 12 15 18 9" />
+                <span>View:</span>
+                <span className="pill pill-accent">{currentView}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
-                {viewDropdownOpen && (
-                  <div className="view-dropdown show" id="viewDropdown">
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Graph'); setViewDropdownOpen(false); }}>Graph</div>
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Timeline'); setViewDropdownOpen(false); }}>Timeline</div>
-                  </div>
-                )}
+              </button>
+              {viewDropdownOpen && (
+                <div className="view-dropdown show" id="viewDropdown">
+                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('graph'); }}>Graph</div>
+                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('timeline'); }}>Timeline</div>
+                </div>
+              )}
             </div>
+          </div>
         </div>
 
-        <div className="bottom-right-controls">
-            <div className="br-pill">
-                <button className="icon-btn" onClick={() => (window as any).zoomOut()}>
+        <div className="bottom-right-controls" style={{ zIndex: 20, pointerEvents: 'auto' }}>
+            <div className="br-pill card-sm">
+                <button className="icon-btn" onClick={() => (window as any).zoomOut()} title="Zoom Out">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
                 <div className="divider"></div>
-                <button className="icon-btn" onClick={() => (window as any).zoomIn()}>
+                <button className="icon-btn" onClick={() => (window as any).zoomIn()} title="Zoom In">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
             </div>
-            <div className="br-pill br-zoom" id="zoom-indicator" onClick={() => (window as any).resetView()}>{zoom}%</div>
-            <button className="br-circle">
+            <button className="btn-secondary card-sm pill" id="zoom-indicator" onClick={() => (window as any).resetView()} title="Reset View">
+              {zoom}%
+            </button>
+            <button className="btn-secondary card-sm" style={{ padding: '8px 12px' }} title="Help">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
@@ -895,8 +909,8 @@ export default function PartnershipsPage() {
             <div className="v0-sidebar-header">
                 <button className="v0-toggle-btn" onClick={() => setSidebarCollapsed(true)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <circle cx="8" cy="12" r="2" fill="black" />
-                        <circle cx="16" cy="12" r="2" fill="black" />
+                        <circle cx="8" cy="12" r="2" fill="var(--text-primary)" />
+                        <circle cx="16" cy="12" r="2" fill="var(--text-primary)" />
                     </svg>
                 </button>
             </div>
