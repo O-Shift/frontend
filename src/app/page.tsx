@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
-import { updateOpportunityStatus, type Campaign, type SenseReview } from '@/lib/api';
+import { apiFetch, updateOpportunityStatus, type Campaign, type SenseReview } from '@/lib/api';
 
 const brandColor1 = '#FF5A00';
 const brandColor2 = '#64748b';
@@ -131,6 +131,26 @@ function confidenceLabel(c: number | null | undefined): string {
     return 'Low confidence';
 }
 
+interface Competitor {
+    id: string;
+    name: string;
+    website: string;
+}
+
+// The /company/[domain] route resolves a competitor by substring-matching the
+// segment against competitor.website, so the segment must be a bare hostname.
+function extractDomain(website: string): string {
+    if (!website) return '';
+    try {
+        const urlStr = website.startsWith('http://') || website.startsWith('https://')
+            ? website
+            : `https://${website}`;
+        return new URL(urlStr).hostname.replace(/^www\./, '');
+    } catch {
+        return website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+    }
+}
+
 export default function DashboardPage() {
     const router = useRouter();
     const [activeChart, setActiveChart] = useState<'views' | 'engagement' | null>('views');
@@ -139,6 +159,32 @@ export default function DashboardPage() {
     const reviewsScrollRef = useRef<HTMLDivElement>(null);
 
     const { opportunities, opportunitiesTotal, gaps, reviews, campaigns, workspace, user, refreshing, refresh } = useDashboard();
+
+    // Gaps carry competitor_id, not a website. The watchlist is the only place
+    // that maps one to the other, so it is fetched once for gap navigation.
+    const [competitors, setCompetitors] = useState<Competitor[]>([]);
+
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            const res = await apiFetch<Competitor[]>('/competitors');
+            if (!cancelled && res.ok && Array.isArray(res.data)) {
+                setCompetitors(res.data);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const competitorDomains = useMemo(() => {
+        const byId = new Map<string, string>();
+        for (const c of competitors) {
+            const domain = extractDomain(c.website);
+            if (domain) byId.set(c.id, domain);
+        }
+        return byId;
+    }, [competitors]);
 
     const scrollList = (dir: 'left' | 'right') => {
         if (reviewsScrollRef.current) {
@@ -389,15 +435,29 @@ export default function DashboardPage() {
                             <h3 className="text-base font-medium text-[var(--text-primary)] mb-5">Action center</h3>
                             
                             <div className="flex flex-col gap-4">
-                                {gaps.items.slice(0, 1).map(gap => (
+                                {gaps.items.slice(0, 1).map(gap => {
+                                    const gapDomain = gap.competitor_id ? competitorDomains.get(gap.competitor_id) : undefined;
+                                    return (
                                     <div key={gap.id} className="flex flex-col bg-[var(--card-bg)] border border-red-500/20 rounded-lg p-4">
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Growth Gap</span>
                                         </div>
                                         <span className="text-sm font-semibold text-[var(--text-primary)] mb-3 leading-tight truncate">{gap.title}</span>
-                                        <button onClick={() => router.push(`/company/${gap.id}`)} className="text-xs font-semibold bg-[var(--text-primary)] hover:bg-[var(--text-secondary)] transition-colors text-[var(--card-bg)] py-1.5 px-4 rounded-md w-fit">Review Gap</button>
+                                        <button
+                                            onClick={gapDomain ? () => router.push(`/company/${gapDomain}`) : undefined}
+                                            disabled={!gapDomain}
+                                            title={gapDomain ? undefined : 'No competitor linked to this gap — nothing to review'}
+                                            className={`text-xs font-semibold transition-colors py-1.5 px-4 rounded-md w-fit ${
+                                                gapDomain
+                                                    ? 'bg-[var(--text-primary)] hover:bg-[var(--text-secondary)] text-[var(--card-bg)] cursor-pointer'
+                                                    : 'border border-[var(--border-color)] text-[var(--text-secondary)] opacity-50 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            Review Gap
+                                        </button>
                                     </div>
-                                ))}
+                                    );
+                                })}
 
                                 {opportunities.items.slice(0, 2).map(opp => (
                                     <div key={opp.id} className="flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg p-4 relative">
