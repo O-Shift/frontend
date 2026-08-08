@@ -478,5 +478,93 @@ export async function fetchCompanyAnalytics(params?: {
   return apiFetch<CompanyAnalytics>(`/company/analytics${queryString}`);
 }
 
+/**
+ * A row of competitors.watchlists — the workspace's pinned-competitor sets.
+ * `item_count` is computed per request, not a stored column.
+ */
+export interface Watchlist {
+  id: string;
+  workspace_id: string;
+  name: string | null;
+  description: string | null;
+  item_count: number;
+  created_at: string;
+}
 
+/** One pinned competitor. `competitor_id` is the key every other endpoint takes. */
+export interface WatchlistItem {
+  competitor_id: string;
+  name: string | null;
+  website: string | null;
+  created_at: string;
+}
+
+/** A watchlist with its members expanded. */
+export interface WatchlistDetail {
+  id: string;
+  workspace_id: string;
+  name: string | null;
+  description: string | null;
+  created_at: string;
+  items: WatchlistItem[];
+}
+
+/**
+ * Answers `[]` for a workspace that has never created a watchlist. That is the
+ * normal first-run state, not a failure — callers must not treat it as one.
+ * Ordered by created_at, so the first entry is the oldest.
+ */
+export async function fetchWatchlists(): Promise<ApiResult<Watchlist[]>> {
+  return apiFetch<Watchlist[]>("/competitors/watchlists");
+}
+
+export async function createWatchlist(
+  name: string,
+  description?: string | null,
+): Promise<ApiResult<Watchlist>> {
+  return apiFetch<Watchlist>("/competitors/watchlists", {
+    method: "POST",
+    body: JSON.stringify({ name, description: description ?? null }),
+  });
+}
+
+/** Answers 404 when the id belongs to another workspace. */
+export async function fetchWatchlist(
+  watchlistId: string,
+): Promise<ApiResult<WatchlistDetail>> {
+  return apiFetch<WatchlistDetail>(`/competitors/watchlists/${watchlistId}`);
+}
+
+/**
+ * Idempotent: pinning a competitor that is already on the watchlist answers 200
+ * with the existing row rather than an error.
+ */
+export async function addWatchlistItem(
+  watchlistId: string,
+  competitorId: string,
+): Promise<ApiResult<WatchlistItem>> {
+  return apiFetch<WatchlistItem>(
+    `/competitors/watchlists/${watchlistId}/items`,
+    {
+      method: "POST",
+      body: JSON.stringify({ competitor_id: competitorId }),
+    },
+  );
+}
+
+/**
+ * Answers 204 with an empty body, which apiFetch surfaces as `ok` with `data`
+ * left null — callers must key off `ok`, never off `data`. A 404 means the
+ * competitor was not pinned to this watchlist, so the caller's desired end
+ * state already holds.
+ */
+export async function removeWatchlistItem(
+  watchlistId: string,
+  competitorId: string,
+): Promise<ApiResult<void>> {
+  return apiFetch<void>(
+    `/competitors/watchlists/${watchlistId}/items/${competitorId}`,
+    { method: "DELETE" },
+  );
+}
 
