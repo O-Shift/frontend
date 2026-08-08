@@ -391,5 +391,65 @@ export async function fetchWorkspaces(): Promise<ApiResult<Workspace[]>> {
   return apiFetch<Workspace[]>("/core/workspaces");
 }
 
+/**
+ * A row of company.companies — the workspace's OWN company, 1:1 with the
+ * workspace. GET /company answers 404 when the row does not exist, which means
+ * onboarding has not run: an empty state, not a failure.
+ */
+export interface Company {
+  id: string;
+  workspace_id: string;
+  name: string;
+  website: string | null;
+  description: string | null;
+  industry: string | null;
+  founding_year: number | null;
+  market_valuation_usd: number | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export async function fetchCompany(): Promise<ApiResult<Company>> {
+  return apiFetch<Company>("/company");
+}
+
+export type AnalyticsRange = "1m" | "3m" | "6m" | "1y";
+export type AnalyticsGranularity = "day" | "week" | "month";
+
+/**
+ * One time bucket of company.analytics_snapshots. A metric is null when no
+ * snapshot in the bucket recorded it — distinct from a real zero, so callers
+ * must not coalesce it.
+ */
+export interface CompanyAnalyticsPoint {
+  timestamp: string;
+  followers: number | null;
+  views: number | null;
+  engagement_rate: number | null;
+}
+
+/** `points` is empty (not an error) when the workspace has no snapshots. */
+export interface CompanyAnalytics {
+  range: AnalyticsRange;
+  granularity: AnalyticsGranularity;
+  platform: string | null;
+  points: CompanyAnalyticsPoint[];
+}
+
+export async function fetchCompanyAnalytics(params?: {
+  range?: AnalyticsRange;
+  granularity?: AnalyticsGranularity;
+  platform?: string;
+}): Promise<ApiResult<CompanyAnalytics>> {
+  const query = new URLSearchParams();
+  if (params?.range) query.set("range", params.range);
+  if (params?.granularity) query.set("granularity", params.granularity);
+  if (params?.platform) query.set("platform", params.platform);
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<CompanyAnalytics>(`/company/analytics${queryString}`);
+}
+
 
 

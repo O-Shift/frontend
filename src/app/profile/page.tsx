@@ -1,14 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import Globe from '@/components/Globe';
 import { useProfile } from '@/hooks/use-profile';
-
-const SampleBadge = ({ title }: { title: string }) => (
-    <span className="ml-3 inline-flex items-center rounded-md bg-transparent px-2 py-1 text-xs font-medium text-[var(--text-secondary)] border border-[var(--border-color)]">
-        {title}
-    </span>
-);
 
 const rise = (delay: number) => ({
     initial: { opacity: 0, y: 14 },
@@ -74,19 +68,21 @@ const IconCheck = () => (
     </svg>
 );
 
-const FOCUS_ICONS = [
-    (
+// Keyed by label, not index: areasOfFocus varies in length with what the
+// company profile actually supplies, so an index map would shift the icons.
+const FOCUS_ICONS: Record<string, ReactNode> = {
+    'Industry Focus': (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
         </svg>
     ),
-    (
+    'Competitor Intel': (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
     ),
-    (
+    'Partnerships': (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
             <circle cx="9" cy="7" r="4" />
@@ -94,12 +90,19 @@ const FOCUS_ICONS = [
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
     ),
-    (
+    'Market Reach': (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
         </svg>
-    )
-];
+    ),
+};
+
+const FOCUS_ICON_FALLBACK = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>
+);
 
 export default function ProfilePage() {
     const { profileData: PROFILE_DATA, loading, error } = useProfile();
@@ -109,11 +112,43 @@ export default function ProfilePage() {
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!PROFILE_DATA) return null;
 
+    // Market coverage lives only in company.metadata, so it is absent for most
+    // workspaces. Say which of the three reasons applies instead of rendering
+    // an unexplained blank panel.
+    const noMarketData =
+        PROFILE_DATA.companyProfileStatus === 'missing'
+            ? 'Complete onboarding to record the markets you operate in.'
+            : PROFILE_DATA.companyProfileStatus === 'unavailable'
+                ? 'Company profile could not be loaded, so market coverage is unknown.'
+                : 'No market coverage recorded on your company profile yet.';
+
+    const industryValue =
+        PROFILE_DATA.corporate.industry ??
+        (PROFILE_DATA.companyProfileStatus === 'unavailable' ? 'Unavailable' : 'Not set');
+
+    const industryHint = PROFILE_DATA.corporate.industry
+        ? undefined
+        : PROFILE_DATA.companyProfileStatus === 'missing'
+            ? 'Complete onboarding to record your company profile.'
+            : PROFILE_DATA.companyProfileStatus === 'unavailable'
+                ? 'Company profile could not be loaded.'
+                : 'No industry recorded on your company profile.';
+
     const snapshot = [
-        { label: 'Active Markets', value: String(PROFILE_DATA.markets.countries.length), Icon: IconGlobe },
-        { label: 'Live Watchlists', value: '12', Icon: IconEye },
-        { label: 'Alliances', value: '8', Icon: IconUsers },
-        { label: 'Target Industries', value: String(PROFILE_DATA.markets.industries.length), Icon: IconBuilding },
+        {
+            label: 'Active Markets',
+            value: PROFILE_DATA.markets.countries.length ? String(PROFILE_DATA.markets.countries.length) : '—',
+            hint: PROFILE_DATA.markets.countries.length ? undefined : noMarketData,
+            Icon: IconGlobe,
+        },
+        { label: 'Live Watchlists', value: String(PROFILE_DATA.competitors.length), hint: undefined as string | undefined, Icon: IconEye },
+        { label: 'Alliances', value: String(PROFILE_DATA.partnershipsCount), hint: undefined as string | undefined, Icon: IconUsers },
+        {
+            label: 'Target Industries',
+            value: PROFILE_DATA.markets.industries.length ? String(PROFILE_DATA.markets.industries.length) : '—',
+            hint: PROFILE_DATA.markets.industries.length ? undefined : noMarketData,
+            Icon: IconBuilding,
+        },
     ];
 
     return (
@@ -169,7 +204,7 @@ export default function ProfilePage() {
                     {/* 4 Stat blocks */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
                         {snapshot.map((stat, i) => (
-                            <div key={i} className="p-4 rounded-lg bg-[var(--card-bg)] border border-[var(--border-color)] flex items-center gap-4">
+                            <div key={i} title={stat.hint} className="p-4 rounded-lg bg-[var(--card-bg)] border border-[var(--border-color)] flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-md border border-[var(--border-color)] flex-shrink-0 flex items-center justify-center text-[var(--text-primary)]">
                                     <stat.Icon />
                                 </div>
@@ -211,12 +246,17 @@ export default function ProfilePage() {
                             <div className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-5">Corporate Info</div>
                             <div className="flex flex-col gap-4">
                                 {[
-                                    { label: 'Company', val: PROFILE_DATA.corporate.company },
-                                    { label: 'Industry', val: PROFILE_DATA.corporate.industry },
+                                    { label: 'Company', val: PROFILE_DATA.corporate.company, hint: undefined as string | undefined },
+                                    { label: 'Industry', val: industryValue, hint: industryHint },
                                 ].map((item, i) => (
                                     <div key={i} className="flex justify-between items-start gap-3 text-xs">
                                         <span className="text-[var(--text-secondary)] font-medium flex-shrink-0">{item.label}</span>
-                                        <span className="text-[var(--text-primary)] font-semibold text-right leading-tight">{item.val}</span>
+                                        <span
+                                            title={item.hint}
+                                            className={`font-semibold text-right leading-tight ${item.hint ? 'text-[var(--text-secondary)] italic' : 'text-[var(--text-primary)]'}`}
+                                        >
+                                            {item.val}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -246,10 +286,10 @@ export default function ProfilePage() {
                                 <span className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider">Focus Pillars</span>
                             </div>
                             <div className="flex flex-col gap-3">
-                                {PROFILE_DATA.areasOfFocus.map((focus: any, idx: number) => (
-                                    <div key={idx} className="p-3.5 rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] flex items-center gap-4">
+                                {PROFILE_DATA.areasOfFocus.map((focus, idx) => (
+                                    <div key={focus.label || idx} className="p-3.5 rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-md border border-[var(--border-color)] flex-shrink-0 flex items-center justify-center text-[var(--text-primary)]">
-                                            {FOCUS_ICONS[idx] || FOCUS_ICONS[0]}
+                                            {FOCUS_ICONS[focus.label] ?? FOCUS_ICON_FALLBACK}
                                         </div>
                                         <div>
                                             <div className="text-sm font-semibold text-[var(--text-primary)]">{focus.label}</div>
@@ -270,11 +310,12 @@ export default function ProfilePage() {
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider">Global Market Reach</span>
-                                        <SampleBadge title="Mock data" />
                                     </div>
                                 </div>
                                 <div className="flex gap-1.5 flex-wrap">
-                                    {PROFILE_DATA.markets.regions.map((reg, i) => (
+                                    {PROFILE_DATA.markets.regions.length === 0 ? (
+                                        <span className="text-[10px] font-medium text-[var(--text-secondary)]" title={noMarketData}>No regions recorded</span>
+                                    ) : PROFILE_DATA.markets.regions.map((reg, i) => (
                                         <span key={i} className="text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)] px-2 py-0.5 rounded uppercase tracking-wider">{reg}</span>
                                     ))}
                                 </div>
@@ -282,7 +323,11 @@ export default function ProfilePage() {
                             <div className="h-[280px] w-full rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] relative overflow-hidden flex items-center justify-center">
                                 <Globe className="profile-globe" />
                                 <div className="absolute bottom-3 left-3 flex gap-1.5 flex-wrap z-10">
-                                    {PROFILE_DATA.markets.countries.map((country, i) => (
+                                    {PROFILE_DATA.markets.countries.length === 0 ? (
+                                        <span className="text-[10px] font-medium text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)] px-2 py-0.5 rounded">
+                                            {noMarketData}
+                                        </span>
+                                    ) : PROFILE_DATA.markets.countries.map((country, i) => (
                                         <span key={i} className="text-[10px] font-bold text-[var(--card-bg)] bg-[var(--text-primary)] px-2 py-0.5 rounded uppercase tracking-wider">
                                             {country}
                                         </span>
@@ -294,17 +339,20 @@ export default function ProfilePage() {
                         <motion.div {...rise(0.13)} className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6">
                             <div className="flex items-center mb-4">
                                 <span className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider">Target Industries</span>
-                                <SampleBadge title="Mock data" />
                             </div>
                             <div className="flex gap-1.5 flex-wrap">
-                                {PROFILE_DATA.markets.industries.map((ind, i) => (
+                                {PROFILE_DATA.markets.industries.length === 0 ? (
+                                    <span className="text-xs text-[var(--text-secondary)]">{noMarketData}</span>
+                                ) : PROFILE_DATA.markets.industries.map((ind, i) => (
                                     <span key={i} className="text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)] px-2 py-0.5 rounded uppercase tracking-wider">{ind}</span>
                                 ))}
                             </div>
                             <div className="mt-6 border-t border-[var(--border-color)] pt-6">
                                 <div className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-4">Active Markets</div>
                                 <div className="flex gap-1.5 flex-wrap">
-                                    {PROFILE_DATA.markets.countries.map((c, i) => (
+                                    {PROFILE_DATA.markets.countries.length === 0 ? (
+                                        <span className="text-xs text-[var(--text-secondary)]">{noMarketData}</span>
+                                    ) : PROFILE_DATA.markets.countries.map((c, i) => (
                                         <span key={i} className="text-[10px] font-bold text-[var(--card-bg)] bg-[var(--text-primary)] px-2 py-0.5 rounded uppercase tracking-wider">{c}</span>
                                     ))}
                                 </div>
