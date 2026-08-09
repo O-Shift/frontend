@@ -141,31 +141,39 @@ export default function NotFoundPage() {
       padding: '2vw', boxSizing: 'border-box',
       userSelect: 'none', WebkitUserSelect: 'none'
     }}>
+      {/* OS Pattern Background (Full Background) */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0, opacity: 'var(--bg-pattern-opacity)' }}>
+        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '-10%', top: '-20%', width: '150vh', transform: 'rotate(45deg)' }} />
+        <img src="/logo.png" alt="" style={{ position: 'absolute', right: '-15%', bottom: '-30%', width: '180vh', transform: 'rotate(-30deg)' }} />
+      </div>
+
       <div style={{
         position: 'relative', width: '100%', height: '100%',
         border: '1px solid var(--border-color)', borderRadius: '24px',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden', background: 'var(--bg-main)',
+        zIndex: 1
       }}>
         {/* Top Text & Button */}
         {!isChess && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 10, marginBottom: '4vh' }}>
-            <p style={{ color: 'var(--text-secondary, #888)', fontSize: '0.9rem', textAlign: 'center', maxWidth: '420px', lineHeight: 1.6, fontWeight: 600 }}>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 50, marginBottom: '4vh' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', textAlign: 'center', maxWidth: '420px', lineHeight: 1.6, fontWeight: 500 }}>
               Looks like you hit a dead end. <br/> Play a game while we sort it out?
             </p>
             <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95, y: 2, filter: 'drop-shadow(2px 2px 0px var(--accent))' }}
+              whileHover={{ opacity: 0.9, y: -1 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => router.push('/')}
               style={{ 
-                background: 'var(--bg-main)', color: 'var(--text-primary)', 
-                border: '2px solid var(--text-primary)', borderRadius: '999px', 
-                padding: '12px 36px', fontSize: '1rem', fontWeight: 800, cursor: 'pointer', 
-                filter: 'drop-shadow(4px 4px 0px var(--accent))',
-                textTransform: 'uppercase', letterSpacing: '0.05em'
+                background: 'var(--accent)', color: '#fff', 
+                border: 'none', borderRadius: '6px', 
+                padding: '0.85rem 1.75rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer', 
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.2)'
               }}
             >
               Go back home
+              <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>→</span>
             </motion.button>
           </div>
         )}
@@ -201,31 +209,36 @@ export default function NotFoundPage() {
               4
             </motion.div>
 
+            {/* The interactive "0" */}
             <motion.div
               layout
               onClick={() => !isChess && setIsChess(true)}
-              whileHover={!isChess ? { scale: 1.05 } : {}}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5,
-                ...(isChess ? {
-                  position: 'absolute', inset: 0, margin: 'auto',
-                  width: 'min(65vh, 80vw)', height: 'min(65vh, 80vw)',
-                  maxWidth: '800px', maxHeight: '800px', cursor: 'default',
-                  background: 'rgba(15, 23, 42, 0.4)',
-                  backdropFilter: 'blur(20px)',
-                  WebkitBackdropFilter: 'blur(20px)',
-                  borderRadius: '16px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                } : {
-                  position: 'relative', cursor: 'pointer', display: 'inline-block', margin: '0 2vw',
-                  background: 'conic-gradient(var(--bg-body) 90deg, var(--accent) 90deg 180deg, var(--bg-body) 180deg 270deg, var(--accent) 270deg) 0 0 / 25% 25%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20,
+                ...( !isChess ? {
+                  position: 'relative', cursor: 'pointer',
+                  margin: '0 -2%',
+                  background: 'repeating-conic-gradient(var(--card-bg) 0% 25%, var(--border-color) 0% 50%) 50% / 32px 32px',
                   WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                  color: 'transparent',
+                  WebkitTextStroke: '1px var(--border-color)',
+                  filter: 'drop-shadow(8px 8px 0px rgba(0,0,0,0.15))'
+                } : {
+                  position: 'absolute', inset: 0, margin: 'auto',
+                  width: 'min(90vw, 60vh)', height: 'min(90vw, 60vh)',
+                  maxWidth: '800px', maxHeight: '800px', cursor: 'default',
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '12px',
+                  boxShadow: '0 24px 64px rgba(0,0,0,0.1)',
+                  WebkitTextFillColor: 'initial',
+                  WebkitBackgroundClip: 'initial',
+                  WebkitTextStroke: 'none',
+                  filter: 'none'
                 })
               }}
+              whileHover={!isChess ? { scale: 1.05, rotate: 3 } : {}}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
               {!isChess && "0"}
 
@@ -241,7 +254,7 @@ export default function NotFoundPage() {
                     position: 'absolute', top: '10%', bottom: '10%', left: '-8vw', 
                     width: '6vw', minWidth: '50px',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', 
-                    fontSize: 'clamp(1.2rem, 2vw, 1.8rem)', color: '#fff',
+                    fontSize: 'clamp(1.2rem, 2vw, 1.8rem)', color: 'var(--text-primary)',
                     background: 'var(--card-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
                     border: '1px solid var(--border-color)', borderRadius: '16px',
                     boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)'
@@ -253,7 +266,9 @@ export default function NotFoundPage() {
                   </div>
 
                   {/* Board Squares Container */}
-                  <div style={{ width: '100%', height: '100%', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ 
+                    position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '12px'
+                  }}>
                     {[...Array(8)].map((_, r) => [...Array(8)].map((_, c) => {
                       const p = board[r]?.[c];
                       const sq = `${String.fromCharCode(97 + c)}${8 - r}`;
@@ -270,9 +285,32 @@ export default function NotFoundPage() {
                             width: '12.5%', height: '12.5%',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer',
-                            backgroundColor: isDark ? 'var(--accent)' : 'var(--bg-main)',
+                            backgroundColor: isDark ? 'var(--text-primary)' : 'transparent',
+                            opacity: isDark ? 0.06 : 1,
                             boxShadow: 'inset 0 0 1px var(--border-color)',
-                            transition: 'background-color 0.2s ease',
+                            transition: 'background-color 0.2s ease, opacity 0.2s ease',
+                            zIndex: 1
+                          }}
+                        />
+                      );
+                    }))}
+                    
+                    {[...Array(8)].map((_, r) => [...Array(8)].map((_, c) => {
+                      const p = board[r]?.[c];
+                      const sq = `${String.fromCharCode(97 + c)}${8 - r}`;
+                      const isSel = selectedSquare === sq;
+                      const isDest = validDestinations.includes(sq);
+                      
+                      return (
+                        <div
+                          key={`pieces-layer-${sq}`}
+                          style={{
+                            position: 'absolute',
+                            top: `${r * 12.5}%`, left: `${c * 12.5}%`,
+                            width: '12.5%', height: '12.5%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            pointerEvents: 'none',
+                            zIndex: 2
                           }}
                         >
                           {isSel && <div style={{ position: 'absolute', inset: '4%', border: '2px solid var(--text-primary)', borderRadius: '8px', zIndex: 1, opacity: 0.8 }} />}
@@ -287,7 +325,7 @@ export default function NotFoundPage() {
                                 layoutId={`piece-${p.type}-${p.color}-${sq}`}
                                 style={{
                                   fontSize: 'clamp(28px, 6vmin, 60px)',
-                                  color: p.color === 'w' ? '#fff' : '#111',
+                                  color: p.color === 'w' ? 'var(--accent)' : 'var(--text-primary)',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   zIndex: 2
                                 }}>
@@ -305,7 +343,7 @@ export default function NotFoundPage() {
                     position: 'absolute', top: '10%', bottom: '10%', right: '-8vw', 
                     width: '6vw', minWidth: '50px',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', 
-                    fontSize: 'clamp(1.2rem, 2vw, 1.8rem)', color: '#111',
+                    fontSize: 'clamp(1.2rem, 2vw, 1.8rem)', color: 'var(--text-primary)',
                     background: 'var(--card-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
                     border: '1px solid var(--border-color)', borderRadius: '16px',
                     boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)'
@@ -342,9 +380,9 @@ export default function NotFoundPage() {
                 animate={{ opacity: 1, scale: 1, rotate: -10, y: [0, -10, 0] }}
                 transition={{ opacity: { duration: 0.5 }, scale: { duration: 0.5 }, rotate: { duration: 0.5 }, y: { duration: 3, repeat: Infinity, ease: 'easeInOut' } }}
                 style={{
-                  position: 'absolute', top: '15%', left: '-5%', background: 'var(--bg-main)', color: 'var(--text-primary)',
-                  padding: '8px 20px', borderRadius: '999px', fontSize: 'clamp(0.7rem, 1.2vw, 1rem)', fontWeight: 800,
-                  whiteSpace: 'nowrap', zIndex: 15, border: '2px solid var(--text-primary)', filter: 'drop-shadow(4px 4px 0px var(--accent))', cursor: 'grab'
+                  position: 'absolute', top: '15%', left: '-5%', background: 'transparent', color: 'var(--card-bg)',
+                  padding: '8px 20px', fontSize: 'clamp(0.7rem, 1.2vw, 1rem)', fontWeight: 800,
+                  whiteSpace: 'nowrap', zIndex: 15, border: '2px solid var(--card-bg)', filter: 'drop-shadow(4px 4px 0px var(--accent))', cursor: 'grab'
                 }}
               >
                 DAMN WHAT HAPPENED ?!
@@ -357,9 +395,9 @@ export default function NotFoundPage() {
                 animate={{ opacity: 1, scale: 1, rotate: 12, y: [0, -10, 0] }}
                 transition={{ opacity: { duration: 0.5 }, scale: { duration: 0.5 }, rotate: { duration: 0.5 }, y: { duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 } }}
                 style={{
-                  position: 'absolute', bottom: '25%', right: '-8%', background: 'var(--bg-main)', color: 'var(--text-primary)',
-                  padding: '8px 20px', borderRadius: '999px', fontSize: 'clamp(0.7rem, 1.2vw, 1rem)', fontWeight: 800,
-                  whiteSpace: 'nowrap', zIndex: 15, border: '2px solid var(--text-primary)', filter: 'drop-shadow(4px 4px 0px var(--accent))', cursor: 'grab'
+                  position: 'absolute', bottom: '25%', right: '-8%', background: 'transparent', color: 'var(--card-bg)',
+                  padding: '8px 20px', fontSize: 'clamp(0.7rem, 1.2vw, 1rem)', fontWeight: 800,
+                  whiteSpace: 'nowrap', zIndex: 15, border: '2px solid var(--card-bg)', filter: 'drop-shadow(4px 4px 0px var(--accent))', cursor: 'grab'
                 }}
               >
                 SOME ERROR OR SOMETHING?
@@ -384,6 +422,9 @@ export default function NotFoundPage() {
               </motion.div>
             </>
           )}
+
+          {/* Clean minimal padding to separate from chess overlays */}
+          <div style={{ height: '40px' }} />
         </div>
 
         {/* Chess Overlays */}
@@ -396,10 +437,10 @@ export default function NotFoundPage() {
                 style={{ position: 'absolute', top: '4%', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 30 }}
               >
                 <div style={{ 
-                  fontSize: '1rem', fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-primary)',
+                  fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-primary)',
                   background: 'var(--card-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                  padding: '10px 32px', borderRadius: '999px', border: '1px solid var(--border-color)', 
-                  boxShadow: '0 8px 32px 0 rgba(0,0,0,0.1)' 
+                  padding: '8px 20px', borderRadius: '6px', border: '1px solid var(--border-color)', 
+                  boxShadow: '0 4px 12px 0 rgba(0,0,0,0.05)' 
                 }}>
                   {gameStatus}
                 </div>
@@ -410,18 +451,18 @@ export default function NotFoundPage() {
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                 style={{ position: 'absolute', bottom: '4%', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 30 }}
               >
-                <div style={{ display: 'flex', gap: '16px', background: 'var(--card-bg)', padding: '8px', borderRadius: '999px', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', boxShadow: '0 8px 32px 0 rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', gap: '12px', background: 'var(--card-bg)', padding: '10px 14px', borderRadius: '8px', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', boxShadow: '0 8px 32px 0 rgba(0,0,0,0.1)' }}>
                   <motion.button 
-                    whileHover={{ scale: 1.05, backgroundColor: 'var(--text-primary)', color: 'var(--bg-body)' }} whileTap={{ scale: 0.95 }}
+                    whileHover={{ opacity: 0.9 }} whileTap={{ scale: 0.95 }}
                     onClick={initGame} 
-                    style={{ padding: '8px 28px', fontSize: '0.9rem', background: 'var(--text-primary)', color: 'var(--bg-body)', border: 'none', cursor: 'pointer', fontWeight: 700, borderRadius: '999px', transition: 'all 0.2s' }}
+                    style={{ padding: '8px 24px', fontSize: '0.9rem', background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, borderRadius: '6px', transition: 'opacity 0.2s' }}
                   >
                     Reset
                   </motion.button>
                   <motion.button 
-                    whileHover={{ scale: 1.05, backgroundColor: 'var(--bg-main)' }} whileTap={{ scale: 0.95 }}
+                    whileHover={{ backgroundColor: 'var(--item-hover)' }} whileTap={{ scale: 0.95 }}
                     onClick={() => { setIsChess(false); setShowPieces(false); }} 
-                    style={{ padding: '8px 28px', fontSize: '0.9rem', background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-color)', cursor: 'pointer', fontWeight: 600, borderRadius: '999px', transition: 'all 0.2s' }}
+                    style={{ padding: '8px 24px', fontSize: '0.9rem', background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-color)', cursor: 'pointer', fontWeight: 600, borderRadius: '6px', transition: 'background-color 0.2s' }}
                   >
                     Close
                   </motion.button>

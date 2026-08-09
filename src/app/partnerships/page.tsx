@@ -30,6 +30,12 @@ interface DBGraphEdge {
   source_type?: string;
   target_name?: string;
   target_type?: string;
+  /**
+   * graph.graph_relationships.weight — relationship strength. Nullable, and
+   * nothing writes it today, so null is the common case rather than the rare
+   * one. A real 0 is a meaningful strength and is not the same as null.
+   */
+  weight?: number | null;
   metadata?: any;
 }
 
@@ -327,10 +333,67 @@ export default function PartnershipsPage() {
       });
     }
 
+    // Node size carries one real measurement, never a random draw.
+    //
+    // The preferred metric is the summed weight of a node's incident edges,
+    // normalised into the size band the graph already used. But nothing in the
+    // backend writes graph_relationships.weight yet — app/agent/tools/
+    // partnerships.py inserts (workspace_id, source_id, target_id, rel_type,
+    // metadata) and no job backfills it — so on every real workspace today
+    // that map comes back empty. The fallback is therefore degree: how many
+    // partnerships the node actually has. That is present in the data right
+    // now, and it is what node size gets read as anyway.
+    //
+    // The two are never mixed. A graph with any weighted edge is scaled purely
+    // by weight, otherwise purely by degree; blending them would put two
+    // different units on one axis and make the sizes mean nothing.
+    //
+    // Edges are matched to entities exactly the way the link pass below matches
+    // them: by id first, then by lowercased name.
+    const entityIdByKey = new Map<string, string>();
+    for (const e of rawEntities) {
+      if (e.id) entityIdByKey.set(String(e.id), e.id);
+      if (e.name) entityIdByKey.set(String(e.name).toLowerCase(), e.id);
+    }
+
+    const summedWeight = new Map<string, number>();
+    const degree = new Map<string, number>();
+    for (const edge of dbGraphData?.edges ?? []) {
+      const srcId = entityIdByKey.get(edge.source) ?? entityIdByKey.get((edge.source_name || '').toLowerCase());
+      const tgtId = entityIdByKey.get(edge.target) ?? entityIdByKey.get((edge.target_name || '').toLowerCase());
+      if (srcId && srcId === tgtId) continue; // self-loops are dropped from the links too
+      const w = edge.weight;
+      const weighted = typeof w === 'number' && Number.isFinite(w);
+      for (const id of [srcId, tgtId]) {
+        if (!id) continue;
+        degree.set(id, (degree.get(id) ?? 0) + 1);
+        if (weighted) summedWeight.set(id, (summedWeight.get(id) ?? 0) + (w as number));
+      }
+    }
+
+    // Presence in the chosen map is the "has a real measurement" flag, so a
+    // node totalling a genuine 0 stays distinct from one with nothing recorded.
+    const sizeBy = summedWeight.size > 0 ? summedWeight : degree;
+    let maxSize = 0;
+    for (const total of sizeBy.values()) {
+      if (total > maxSize) maxSize = total;
+    }
+
     for (let i = 0; i < rawEntities.length; i++) {
       const entity = rawEntities[i];
       const isHub = entity.isHub;
-      const value = isHub ? 150 + Math.random() * 2000 : 15 + Math.random() * 50;
+      // A node with nothing recorded sits at the band floor rather than taking
+      // a random size: an unconnected node genuinely is the smallest thing in
+      // the graph, and a fixed floor stops it re-sizing on every render.
+      const total = sizeBy.get(entity.id);
+      const strength = total === undefined
+        ? null
+        : maxSize > 0
+          ? Math.min(1, Math.max(0, total / maxSize))
+          : 0;
+      const value = strength === null
+        ? (isHub ? 150 : 15)
+        : (isHub ? 150 + strength * 2000 : 15 + strength * 50);
       const radius = isHub ? 12 + Math.sqrt(value) * 0.25 : 6 + Math.sqrt(value) * 0.4;
       const cacheKey = entity.id || `${entity.name}_${i}`;
 
@@ -830,49 +893,63 @@ export default function PartnershipsPage() {
   }, [currentView, loading, dbGraphData, dbCompetitors, router]);
 
   return (
-    <div className="main-content skeleton-target" id="graphContainer" ref={containerRef}>
+    <div className="page-canvas skeleton-target" id="graphContainer" ref={containerRef}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
             <canvas id="obsidianCanvas" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}></canvas>
         </div>
 
-        <div className="main-header">
-            <h1>Partnerships</h1>
-            <div className="view-toggle" id="viewToggleBtn" style={{ position: 'relative' }} onClick={() => setViewDropdownOpen(!viewDropdownOpen)}>
+        {/* ── Page header ────────────────────────────────────────── */}
+        <div className="page-header" style={{ position: 'absolute', top: 28, left: 28, zIndex: 10, pointerEvents: 'none', alignItems: 'center', marginBottom: 0, gap: 16 }}>
+          <div style={{ pointerEvents: 'auto' }}>
+            <h1 className="page-title">Partnerships</h1>
+          </div>
+          <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn-secondary card-sm"
+                id="viewToggleBtn"
+                onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="3" y1="12" x2="21" y2="12" />
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <line x1="3" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
-                <span>View: <span>{currentView}</span></span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4 }}>
-                    <polyline points="6 9 12 15 18 9" />
+                <span>View:</span>
+                <span className="pill pill-accent">{currentView}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
-                {viewDropdownOpen && (
-                  <div className="view-dropdown show" id="viewDropdown">
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Graph'); setViewDropdownOpen(false); }}>Graph</div>
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Timeline'); setViewDropdownOpen(false); }}>Timeline</div>
-                  </div>
-                )}
+              </button>
+              {viewDropdownOpen && (
+                <div className="view-dropdown show" id="viewDropdown">
+                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('graph'); }}>Graph</div>
+                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('timeline'); }}>Timeline</div>
+                </div>
+              )}
             </div>
+          </div>
         </div>
 
-        <div className="bottom-right-controls">
-            <div className="br-pill">
-                <button className="icon-btn" onClick={() => (window as any).zoomOut()}>
+        <div className="bottom-right-controls" style={{ zIndex: 20, pointerEvents: 'auto' }}>
+            <div className="br-pill card-sm">
+                <button className="icon-btn" onClick={() => (window as any).zoomOut()} title="Zoom Out">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
                 <div className="divider"></div>
-                <button className="icon-btn" onClick={() => (window as any).zoomIn()}>
+                <button className="icon-btn" onClick={() => (window as any).zoomIn()} title="Zoom In">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
             </div>
-            <div className="br-pill br-zoom" id="zoom-indicator" onClick={() => (window as any).resetView()}>{zoom}%</div>
-            <button className="br-circle">
+            <button className="btn-secondary card-sm pill" id="zoom-indicator" onClick={() => (window as any).resetView()} title="Reset View">
+              {zoom}%
+            </button>
+            <button className="btn-secondary card-sm" style={{ padding: '8px 12px' }} title="Help">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
@@ -895,8 +972,8 @@ export default function PartnershipsPage() {
             <div className="v0-sidebar-header">
                 <button className="v0-toggle-btn" onClick={() => setSidebarCollapsed(true)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <circle cx="8" cy="12" r="2" fill="black" />
-                        <circle cx="16" cy="12" r="2" fill="black" />
+                        <circle cx="8" cy="12" r="2" fill="var(--text-primary)" />
+                        <circle cx="16" cy="12" r="2" fill="var(--text-primary)" />
                     </svg>
                 </button>
             </div>

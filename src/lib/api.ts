@@ -263,9 +263,308 @@ export async function deleteOpportunity(id: string): Promise<ApiResult<void>> {
 export async function triggerPipeline(): Promise<ApiResult<{ run_id: string; status: string }>> {
   return apiFetch<{ run_id: string; status: string }>("/automation/trigger", {
     method: "POST",
-    body: JSON.stringify({ workflow_type: "oshift-pipeline-v1" }),
+    body: JSON.stringify({ workflow_type: "oshift/crawlers.run" }),
   });
 }
 
+export interface InsightSource {
+  id: string;
+  title: string | null;
+  url: string | null;
+  source: string | null;
+  captured_at: string | null;
+}
 
+/** A row from insights.insights_gaps, layer in ('gap','act_now','alarm_for_us'). */
+export interface InsightGap {
+  id: string;
+  competitor_id: string | null;
+  layer: "gap" | "act_now" | "alarm_for_us";
+  title: string;
+  description: string | null;
+  confidence: number | null;
+  detected_at: string | null;
+  signal_ids: string[];
+  sources: InsightSource[];
+}
+
+export async function fetchGaps(params?: {
+  competitor_id?: string;
+  layer?: string;
+  limit?: number;
+}): Promise<ApiResult<InsightGap[]>> {
+  const query = new URLSearchParams();
+  if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.layer) query.set("layer", params.layer);
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<InsightGap[]>(`/insights/gaps${queryString}`);
+}
+
+/** A row from sense.sense_reviews. No author or reply state is stored. */
+export interface SenseReview {
+  id: string;
+  workspace_id: string;
+  competitor_id: string | null;
+  platform: string | null;
+  review_id: string | null;
+  rating: number | null;
+  title: string | null;
+  body: string | null;
+  sentiment: string | null;
+  url: string | null;
+  reviewed_at: string | null;
+  captured_at: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export async function fetchReviews(params?: {
+  competitor_id?: string;
+  platform?: string;
+  limit?: number;
+}): Promise<ApiResult<SenseReview[]>> {
+  const query = new URLSearchParams();
+  if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.platform) query.set("platform", params.platform);
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<SenseReview[]>(`/sense/reviews${queryString}`);
+}
+
+export interface CampaignPost {
+  id: string;
+  title: string;
+  content: string;
+  platform: string;
+  source: string;
+  url: string;
+  captured_at: string | null;
+}
+
+/** Free-form jsonb on a campaigns.campaigns row. */
+export interface CampaignMetadata {
+  post_count?: number;
+  date_range?: string | { start?: string; end?: string } | null;
+  themes?: string[];
+  signal_ids?: string[];
+  [key: string]: unknown;
+}
+
+/** A row of campaigns.campaigns. `title` is the table's `name` column. */
+export interface Campaign {
+  id: string;
+  workspace_id: string;
+  competitor_id: string | null;
+  company_id: string | null;
+  owner_type: string | null;
+  title: string;
+  description: string | null;
+  cluster: string | null;
+  identified_target: string | null;
+  style: string | null;
+  status: string | null;
+  platforms: string[];
+  themes: string[];
+  signal_ids: string[];
+  start_date: string | null;
+  end_date: string | null;
+  detected_at: string | null;
+  budget_usd: number | null;
+  spent_usd: number | null;
+  progress: number | null;
+  roi: number | null;
+  /** Always null: campaigns.campaigns has no confidence column. */
+  confidence: number | null;
+  platform_metrics: Record<string, unknown>;
+  metadata: CampaignMetadata;
+  created_at: string | null;
+  updated_at: string | null;
+  posts: CampaignPost[];
+}
+
+export async function fetchCampaigns(params?: {
+  owner_type?: "competitor" | "self";
+  competitor_id?: string;
+  status?: string;
+  limit?: number;
+}): Promise<ApiResult<Campaign[]>> {
+  const query = new URLSearchParams();
+  if (params?.owner_type) query.set("owner_type", params.owner_type);
+  if (params?.competitor_id) query.set("competitor_id", params.competitor_id);
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<Campaign[]>(`/campaigns${queryString}`);
+}
+
+export async function fetchCampaign(id: string): Promise<ApiResult<Campaign>> {
+  return apiFetch<Campaign>(`/campaigns/${id}`);
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  timezone: string;
+  locale: string;
+  plan: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export async function fetchWorkspaces(): Promise<ApiResult<Workspace[]>> {
+  return apiFetch<Workspace[]>("/core/workspaces");
+}
+
+/**
+ * A row of company.companies — the workspace's OWN company, 1:1 with the
+ * workspace. GET /company answers 404 when the row does not exist, which means
+ * onboarding has not run: an empty state, not a failure.
+ */
+export interface Company {
+  id: string;
+  workspace_id: string;
+  name: string;
+  website: string | null;
+  description: string | null;
+  industry: string | null;
+  founding_year: number | null;
+  market_valuation_usd: number | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export async function fetchCompany(): Promise<ApiResult<Company>> {
+  return apiFetch<Company>("/company");
+}
+
+export type AnalyticsRange = "1m" | "3m" | "6m" | "1y";
+export type AnalyticsGranularity = "day" | "week" | "month";
+
+/**
+ * One time bucket of company.analytics_snapshots. A metric is null when no
+ * snapshot in the bucket recorded it — distinct from a real zero, so callers
+ * must not coalesce it.
+ */
+export interface CompanyAnalyticsPoint {
+  timestamp: string;
+  followers: number | null;
+  views: number | null;
+  engagement_rate: number | null;
+}
+
+/** `points` is empty (not an error) when the workspace has no snapshots. */
+export interface CompanyAnalytics {
+  range: AnalyticsRange;
+  granularity: AnalyticsGranularity;
+  platform: string | null;
+  points: CompanyAnalyticsPoint[];
+}
+
+export async function fetchCompanyAnalytics(params?: {
+  range?: AnalyticsRange;
+  granularity?: AnalyticsGranularity;
+  platform?: string;
+}): Promise<ApiResult<CompanyAnalytics>> {
+  const query = new URLSearchParams();
+  if (params?.range) query.set("range", params.range);
+  if (params?.granularity) query.set("granularity", params.granularity);
+  if (params?.platform) query.set("platform", params.platform);
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<CompanyAnalytics>(`/company/analytics${queryString}`);
+}
+
+/**
+ * A row of competitors.watchlists — the workspace's pinned-competitor sets.
+ * `item_count` is computed per request, not a stored column.
+ */
+export interface Watchlist {
+  id: string;
+  workspace_id: string;
+  name: string | null;
+  description: string | null;
+  item_count: number;
+  created_at: string;
+}
+
+/** One pinned competitor. `competitor_id` is the key every other endpoint takes. */
+export interface WatchlistItem {
+  competitor_id: string;
+  name: string | null;
+  website: string | null;
+  created_at: string;
+}
+
+/** A watchlist with its members expanded. */
+export interface WatchlistDetail {
+  id: string;
+  workspace_id: string;
+  name: string | null;
+  description: string | null;
+  created_at: string;
+  items: WatchlistItem[];
+}
+
+/**
+ * Answers `[]` for a workspace that has never created a watchlist. That is the
+ * normal first-run state, not a failure — callers must not treat it as one.
+ * Ordered by created_at, so the first entry is the oldest.
+ */
+export async function fetchWatchlists(): Promise<ApiResult<Watchlist[]>> {
+  return apiFetch<Watchlist[]>("/competitors/watchlists");
+}
+
+export async function createWatchlist(
+  name: string,
+  description?: string | null,
+): Promise<ApiResult<Watchlist>> {
+  return apiFetch<Watchlist>("/competitors/watchlists", {
+    method: "POST",
+    body: JSON.stringify({ name, description: description ?? null }),
+  });
+}
+
+/** Answers 404 when the id belongs to another workspace. */
+export async function fetchWatchlist(
+  watchlistId: string,
+): Promise<ApiResult<WatchlistDetail>> {
+  return apiFetch<WatchlistDetail>(`/competitors/watchlists/${watchlistId}`);
+}
+
+/**
+ * Idempotent: pinning a competitor that is already on the watchlist answers 200
+ * with the existing row rather than an error.
+ */
+export async function addWatchlistItem(
+  watchlistId: string,
+  competitorId: string,
+): Promise<ApiResult<WatchlistItem>> {
+  return apiFetch<WatchlistItem>(
+    `/competitors/watchlists/${watchlistId}/items`,
+    {
+      method: "POST",
+      body: JSON.stringify({ competitor_id: competitorId }),
+    },
+  );
+}
+
+/**
+ * Answers 204 with an empty body, which apiFetch surfaces as `ok` with `data`
+ * left null — callers must key off `ok`, never off `data`. A 404 means the
+ * competitor was not pinned to this watchlist, so the caller's desired end
+ * state already holds.
+ */
+export async function removeWatchlistItem(
+  watchlistId: string,
+  competitorId: string,
+): Promise<ApiResult<void>> {
+  return apiFetch<void>(
+    `/competitors/watchlists/${watchlistId}/items/${competitorId}`,
+    { method: "DELETE" },
+  );
+}
 

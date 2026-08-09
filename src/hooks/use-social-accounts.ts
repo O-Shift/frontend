@@ -115,6 +115,7 @@ export function useSocialAccounts() {
 
   // Initial load
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchAccounts();
   }, [fetchAccounts]);
 

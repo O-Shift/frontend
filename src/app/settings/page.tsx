@@ -5,27 +5,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { useTheme } from '@/components/ThemeProvider';
 import { createClient } from '@/utils/supabase/client';
+import { useSettings } from '@/hooks/use-settings';
 
-// BACKEND: core.core_workspace_members JOIN core.core_roles WHERE workspace_id = ?
-const MOCK_USERS = [
-  { id: 1, name: 'Alex Rivera', email: 'alex@oshift.ai', role: 'Admin', access: 'All Pages', status: 'Active' },
-  { id: 2, name: 'Sarah Chen', email: 'sarah@oshift.ai', role: 'Editor', access: 'Campaigns, Opportunities', status: 'Active' },
-  { id: 3, name: 'Michael Chang', email: 'michael@oshift.ai', role: 'Viewer', access: 'Dashboard Only', status: 'Pending' },
-];
+const SampleBadge = () => (
+  <span style={{ fontSize: 10, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle', textTransform: 'uppercase', fontWeight: 600 }}>Mock data</span>
+);
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { users, apiKeys, featureFlags, refreshing, refresh, createApiKey, deleteApiKey, updateFeatureFlag } = useSettings();
   const [activeTab, setActiveTab] = useState('main');
   const [loggingOut, setLoggingOut] = useState(false);
-  const [notifications, setNotifications] = useState({
-    weeklyReport: true,
-    newOpportunities: true,
-    newPartnerships: false
-  });
+  const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyResult, setNewKeyResult] = useState<string | null>(null);
   const { theme, toggle } = useTheme();
 
   // PromptField State
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [commandActive, setCommandActive] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -69,8 +65,8 @@ export default function SettingsPage() {
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
       <button
         onClick={() => setActiveTab('main')}
-        className="skeleton-target"
-        style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+        className="skeleton-target rounded-md"
+        style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--item-hover)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
@@ -112,7 +108,6 @@ export default function SettingsPage() {
                 <h2 className="skeleton-target" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 16 }}>General</h2>
                 <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '16px 24px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    {/* BACKEND: core.core_workspace_members */}
                     <div style={{ background: 'var(--card-bg-alt)', width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                     </div>
@@ -121,18 +116,17 @@ export default function SettingsPage() {
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Toggle between dark mode and light mode.</p>
                     </div>
                   </div>
-                  <button onClick={toggle} style={{ width: 52, height: 28, borderRadius: 14, background: theme === 'dark' ? 'var(--accent)' : 'var(--border-color)', position: 'relative', cursor: 'pointer', border: 'none', transition: 'background 0.3s' }}>
+                  <button onClick={toggle} className="rounded-md" style={{ width: 52, height: 28, background: theme === 'dark' ? 'var(--accent)' : 'var(--border-color)', position: 'relative', cursor: 'pointer', border: 'none', transition: 'background 0.3s' }}>
                     <motion.div layout initial={false} animate={{ x: theme === 'dark' ? 26 : 2 }} style={{ width: 24, height: 24, borderRadius: 12, background: 'white', position: 'absolute', top: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
                   </button>
                 </div>
 
                 <div className="skeleton-target" style={{ background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                  <button onClick={() => setActiveTab('notifications')} style={rowStyle} onMouseEnter={e => e.currentTarget.style.background = 'var(--item-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <button disabled style={{ ...rowStyle, opacity: 0.5, cursor: 'not-allowed' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                      <span>Notifications</span>
+                      <span>Notifications (Not set)</span>
                     </div>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                 </div>
               </div>
@@ -179,18 +173,18 @@ export default function SettingsPage() {
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
                     <div>
-                      <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Password Reset</h3>
+                      <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Password Reset <SampleBadge /></h3>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Send a password reset link to your email.</p>
                     </div>
                   </div>
-                  <button style={{ background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--text-primary)', padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                  <button className="rounded-md" style={{ background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--text-primary)', padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
                     Send Link
                   </button>
                 </div>
 
                 <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '16px 24px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: 'var(--item-hover)', width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     </div>
                     <div>
@@ -202,9 +196,32 @@ export default function SettingsPage() {
                     type="button"
                     onClick={handleLogout}
                     disabled={loggingOut}
-                    style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: loggingOut ? 'wait' : 'pointer', opacity: loggingOut ? 0.7 : 1 }}
+                    className="rounded-md"
+                    style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: loggingOut ? 'wait' : 'pointer', opacity: loggingOut ? 0.7 : 1 }}
                   >
                     {loggingOut ? 'Signing out…' : 'Logout'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Developer Group */}
+              <div>
+                <h2 className="skeleton-target" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 16 }}>Developer</h2>
+                <div className="skeleton-target" style={{ background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                  <button onClick={() => setActiveTab('api-keys')} style={rowStyle} onMouseEnter={e => e.currentTarget.style.background = 'var(--item-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+                      <span>API Keys</span>
+                    </div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                  </button>
+                  <div style={{ height: 1, background: 'var(--border-color)', margin: '0 24px' }} />
+                  <button onClick={() => setActiveTab('feature-flags')} style={rowStyle} onMouseEnter={e => e.currentTarget.style.background = 'var(--item-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                      <span>Feature Flags</span>
+                    </div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                 </div>
               </div>
@@ -213,42 +230,117 @@ export default function SettingsPage() {
           </motion.div>
         );
 
-      case 'notifications':
+      case 'api-keys':
         return (
-          <motion.div key="notifications" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
-            {renderHeader('Notifications')}
-            <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 32 }}>Email Notifications</h2>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Weekly Analytics Report</h3>
-                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Receive a weekly summary of your workspace's performance and analytics.</p>
-                </div>
-                <button onClick={() => setNotifications(prev => ({ ...prev, weeklyReport: !prev.weeklyReport }))} style={{ width: 44, height: 24, borderRadius: 12, background: notifications.weeklyReport ? 'var(--accent)' : 'var(--border-color)', position: 'relative', cursor: 'pointer', border: 'none', transition: 'background 0.3s' }}>
-                  <motion.div layout initial={false} animate={{ x: notifications.weeklyReport ? 22 : 2 }} style={{ width: 20, height: 20, borderRadius: 10, background: 'white', position: 'absolute', top: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+          <motion.div key="api-keys" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
+            {renderHeader('API Keys')}
+            
+            <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: 24, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Create New Key</h2>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="Key Name"
+                  className="rounded-md"
+                  style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)', background: 'var(--bg-body)', color: 'var(--text-primary)' }}
+                />
+                <button 
+                  onClick={async () => {
+                    const res = await createApiKey(newKeyName);
+                    if (res.key) {
+                      setNewKeyResult(res.key);
+                      setNewKeyName('');
+                    } else if (res.error) {
+                      alert(res.error);
+                    }
+                  }}
+                  className="rounded-md"
+                  style={{ background: 'var(--text-primary)', color: 'var(--bg-body)', padding: '10px 20px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+                  Create
                 </button>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>New Opportunities</h3>
-                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Get notified instantly when a new high-impact opportunity is generated.</p>
+              {newKeyResult && (
+                <div style={{ marginTop: 16, padding: 12, background: 'var(--item-hover)', borderRadius: 8, wordBreak: 'break-all' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: 13, color: 'var(--text-secondary)' }}>Please copy this key now, you won't be able to see it again:</p>
+                  <code style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{newKeyResult}</code>
                 </div>
-                <button onClick={() => setNotifications(prev => ({ ...prev, newOpportunities: !prev.newOpportunities }))} style={{ width: 44, height: 24, borderRadius: 12, background: notifications.newOpportunities ? 'var(--accent)' : 'var(--border-color)', position: 'relative', cursor: 'pointer', border: 'none', transition: 'background 0.3s' }}>
-                  <motion.div layout initial={false} animate={{ x: notifications.newOpportunities ? 22 : 2 }} style={{ width: 20, height: 20, borderRadius: 10, background: 'white', position: 'absolute', top: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
-                </button>
-              </div>
+              )}
+            </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>New Partnerships</h3>
-                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Get alerts when a new strategic partnership aligns with your workspace.</p>
+            <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+              {apiKeys.loading ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading keys...</div>
+              ) : apiKeys.error ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444' }}>{apiKeys.error}</div>
+              ) : apiKeys.items.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>No API keys found.</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg-alt)' }}>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Name</th>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Key Hint</th>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Created</th>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {apiKeys.items.map((key) => (
+                      <tr key={key.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '16px 24px', color: 'var(--text-primary)', fontSize: 14 }}>{key.name}</td>
+                        <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                          <code style={{ background: 'var(--item-hover)', padding: '4px 8px', borderRadius: 4 }}>{key.key_hint}</code>
+                        </td>
+                        <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                          {new Date(key.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                          <button 
+                            onClick={() => deleteApiKey(key.id)}
+                            className="rounded-md"
+                            style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}>
+                            Revoke
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </motion.div>
+        );
+
+      case 'feature-flags':
+        return (
+          <motion.div key="feature-flags" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
+            {renderHeader('Feature Flags')}
+            <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+              {featureFlags.loading ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading flags...</div>
+              ) : featureFlags.error ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444' }}>{featureFlags.error}</div>
+              ) : featureFlags.items.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>No feature flags found.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {featureFlags.items.map((flag, i) => (
+                    <div key={flag.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: i < featureFlags.items.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
+                      <div>
+                        <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>{flag.name}</h3>
+                      </div>
+                      <button 
+                        onClick={() => updateFeatureFlag(flag.name, !flag.enabled)} 
+                        className="rounded-md"
+                        style={{ width: 44, height: 24, background: flag.enabled ? 'var(--accent)' : 'var(--border-color)', position: 'relative', cursor: 'pointer', border: 'none', transition: 'background 0.3s' }}>
+                        <motion.div layout initial={false} animate={{ x: flag.enabled ? 22 : 2 }} style={{ width: 20, height: 20, borderRadius: 10, background: 'white', position: 'absolute', top: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <button onClick={() => setNotifications(prev => ({ ...prev, newPartnerships: !prev.newPartnerships }))} style={{ width: 44, height: 24, borderRadius: 12, background: notifications.newPartnerships ? 'var(--accent)' : 'var(--border-color)', position: 'relative', cursor: 'pointer', border: 'none', transition: 'background 0.3s' }}>
-                  <motion.div layout initial={false} animate={{ x: notifications.newPartnerships ? 22 : 2 }} style={{ width: 20, height: 20, borderRadius: 10, background: 'white', position: 'absolute', top: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
-                </button>
-              </div>
+              )}
             </div>
           </motion.div>
         );
@@ -258,51 +350,56 @@ export default function SettingsPage() {
           <motion.div key="users" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
               {renderHeader('Workspace Users')}
-              <button className="skeleton-target" style={{ background: 'var(--text-primary)', color: 'var(--bg-body)', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', marginTop: -32 }}>
+              <button className="skeleton-target rounded-md" style={{ background: 'var(--text-primary)', color: 'var(--bg-body)', padding: '10px 20px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', marginTop: -32 }}>
                 + Invite User
               </button>
             </div>
 
             <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg-alt)' }}>
-                    <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>User</th>
-                    <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Role</th>
-                    <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Access</th>
-                    <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_USERS.map((user) => (
-                    <tr key={user.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '16px 24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
-                            {user.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 15 }}>{user.name}</div>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{user.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px 24px', color: 'var(--text-primary)', fontSize: 14 }}>{user.role}</td>
-                      <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>{user.access}</td>
-                      <td style={{ padding: '16px 24px' }}>
-                        <span style={{ padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600, background: user.status === 'Active' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 103, 0, 0.1)', color: user.status === 'Active' ? '#4ade80' : '#FF6700' }}>
-                          {user.status}
-                        </span>
-                      </td>
+              {users.loading ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading users...</div>
+              ) : users.error ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444' }}>{users.error}</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg-alt)' }}>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>User</th>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Role</th>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Access</th>
+                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {users.items.map((user: any) => (
+                      <tr key={user.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '16px 24px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
+                              {user.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 15 }}>{user.name}</div>
+                              <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px 24px', color: 'var(--text-primary)', fontSize: 14 }}>{user.role}</td>
+                        <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>{user.access}</td>
+                        <td style={{ padding: '16px 24px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: user.status === 'Active' ? '#4ade80' : '#FF6700' }} />
+                            {user.status}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </motion.div>
         );
-
-
 
       case 'terms':
         return (
@@ -361,7 +458,6 @@ export default function SettingsPage() {
         setSidebarCollapsed={setSidebarCollapsed}
         onThinkingChange={setIsThinking}
       />
-
     </>
   );
 }

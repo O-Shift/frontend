@@ -1,88 +1,30 @@
 'use client';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { useState, useRef, useEffect, Suspense } from 'react';
+import { useState, useRef, useEffect, Suspense, useMemo } from 'react';
 import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import PromptField from '@/components/PromptField';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useCompany } from '@/hooks/use-company';
 
-// BACKEND: signals.signals aggregated by day (e.g. SELECT date_trunc('day', created_at), sum(score) WHERE competitor_id = ?)
-const mockChartData = [
-    { name: 'Jan', share: 48, engagement: 340, time: 58 },
-    { name: 'Feb', share: 32, engagement: 210, time: 72 },
-    { name: 'Mar', share: 55, engagement: 410, time: 45 },
-    { name: 'Apr', share: 38, engagement: 280, time: 63 },
-    { name: 'May', share: 62, engagement: 480, time: 39 },
-    { name: 'Jun', share: 44, engagement: 320, time: 55 },
-    { name: 'Jul', share: 70, engagement: 550, time: 34 },
-    { name: 'Aug', share: 51, engagement: 390, time: 48 },
-    { name: 'Sep', share: 58, engagement: 440, time: 42 },
-    { name: 'Oct', share: 35, engagement: 260, time: 68 }
-];
 
-// BACKEND: insights.insights_gaps — SELECT title, description WHERE competitor_id = ?
-const gaps = [
-    { title: "Gen-Z Reach", desc: "Low engagement compared to peers on TikTok." },
-    { title: "Sponsorship ROI", desc: "Diminishing returns on major influencer campaigns." },
-    { title: "Sentiment Dip", desc: "Recent PR issues affected overall trust scores." }
-];
-
-// BACKEND: sense.sense_reviews WHERE competitor_id = ?
-const reviews = [
-    { user: "Karan", date: "1 week ago", text: "Incredible ecosystem integration. Nothing else comes close to this level of polish.", stars: 5, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" },
-    { user: "Sarah", date: "3 weeks ago", text: "Prices keep going up but the core product hasn't improved much. Really frustrating.", stars: 2, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" },
-    { user: "Catherine", date: "10 days ago", text: "The new update completely fixed my workflow issues. They respond in a timely manner.", stars: 5, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop" },
-    { user: "Peter", date: "2 weeks ago", text: "Customer service took 3 days to respond to a critical billing error. Unacceptable.", stars: 1, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" }
-];
-
-// BACKEND: ⚠️ NO EQUIVALENT — campaigns table doesn't exist
-const campaigns = [
-    {
-        name: "Summer Creator Fund", date: "Jun 2026", metric: "+15% Engagement", status: "Active",
-        color: "#FF6700",
-        imgs: [
-            'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80',
-            'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80',
-            'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&q=80'
-        ]
-    },
-    {
-        name: "Tech Reviewers Push", date: "May 2026", metric: "2.4M Views", status: "Completed",
-        color: "#00A4EF",
-        imgs: [
-            'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=300&q=80',
-            'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300&q=80',
-            'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=300&q=80'
-        ]
-    },
-    {
-        name: "Podcast Sponsorships", date: "Apr 2026", metric: "-5% ROI", status: "Underperforming",
-        color: "#34A853",
-        imgs: [
-            'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=300&q=80',
-            'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=300&q=80',
-            'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=300&q=80'
-        ]
-    }
-];
 
 function getBrandColors(domain: string) {
     const knownBrands: Record<string, [string, string]> = {
-        'amazon.com': ['#ff9900', '#ffb84d'], // Amazon Orange
-        'tesla.com': ['#e82127', '#ff4d4d'], // Tesla Red
-        'apple.com': ['#ffffff', '#a1a1aa'], // Apple Silver/White
-        'nike.com': ['#ff6600', '#ff9933'], // Nike Orange
-        'spotify.com': ['#1db954', '#1ed760'], // Spotify Green
-        'stripe.com': ['#635bff', '#7a73ff'], // Stripe Blurple
-        'vercel.com': ['#ffffff', '#a1a1aa'], // Vercel White
-        'google.com': ['#4285f4', '#ea4335'], // Google Blue/Red
-        'microsoft.com': ['#00a4ef', '#7fba00'], // Microsoft Blue/Green
-        'meta.com': ['#0668e1', '#42b4ff'], // Meta Blue
-        'netflix.com': ['#e50914', '#ff4c4c'] // Netflix Red
+        'amazon.com': ['#ff9900', '#ffb84d'],
+        'tesla.com': ['#e82127', '#ff4d4d'],
+        'apple.com': ['#ffffff', '#a1a1aa'],
+        'nike.com': ['#ff6600', '#ff9933'],
+        'spotify.com': ['#1db954', '#1ed760'],
+        'stripe.com': ['#635bff', '#7a73ff'],
+        'vercel.com': ['#ffffff', '#a1a1aa'],
+        'google.com': ['#4285f4', '#ea4335'],
+        'microsoft.com': ['#00a4ef', '#7fba00'],
+        'meta.com': ['#0668e1', '#42b4ff'],
+        'netflix.com': ['#e50914', '#ff4c4c']
     };
 
     const key = domain.toLowerCase();
-    if (knownBrands[key]) {
-        return knownBrands[key];
-    }
+    if (knownBrands[key]) return knownBrands[key];
 
     let hash = 0;
     for (let i = 0; i < domain.length; i++) {
@@ -92,16 +34,25 @@ function getBrandColors(domain: string) {
     return [`hsl(${hue}, 80%, 50%)`, `hsl(${(hue + 40) % 360}, 80%, 40%)`];
 }
 
+const SampleBadge = ({ title }: { title: string }) => (
+    <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 border border-yellow-300 px-2 py-0.5 rounded ml-2 whitespace-nowrap">
+        {title}
+    </span>
+);
+
 function CompanyPageContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
 
+    const domain = typeof params.domain === 'string' ? params.domain : 'example.com';
+    const { competitor, loading, error, metrics, gaps: backendGaps, reviews: backendReviews, campaigns: backendCampaigns } = useCompany(domain);
+
     const [selectedNode, setSelectedNode] = useState<any>(null);
     const [commandActive, setCommandActive] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     const [isThinking, setIsThinking] = useState(false);
-
+    
     useEffect(() => {
         document.body.classList.toggle('is-thinking-active', isThinking);
         return () => document.body.classList.remove('is-thinking-active');
@@ -118,480 +69,464 @@ function CompanyPageContent() {
         return () => window.removeEventListener('keydown', onEsc);
     }, []);
 
-    const [mountNode, setMountNode] = useState<{ x: number, y: number, w: number } | null>(null);
-    const [animationState, setAnimationState] = useState<'idle' | 'entering' | 'entered'>('idle');
-    const [activeChart, setActiveChart] = useState<string | null>(null);
-
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const reviewsScrollRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStartX, setDragStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
 
     const scrollList = (dir: 'left' | 'right') => {
-        if (scrollRef.current) {
-            const amount = 344; // Card width + gap
-            scrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+        if (reviewsScrollRef.current) {
+            reviewsScrollRef.current.scrollBy({ left: dir === 'left' ? -344 : 344, behavior: 'smooth' });
         }
     };
 
     const handlePointerDown = (e: React.PointerEvent) => {
-        if (!scrollRef.current) return;
+        if (!reviewsScrollRef.current) return;
         setIsDragging(true);
-        setDragStartX(e.pageX - scrollRef.current.offsetLeft);
-        setScrollLeft(scrollRef.current.scrollLeft);
-        scrollRef.current.style.cursor = 'grabbing';
+        setDragStartX(e.pageX - reviewsScrollRef.current.offsetLeft);
+        setScrollLeft(reviewsScrollRef.current.scrollLeft);
+        reviewsScrollRef.current.style.cursor = 'grabbing';
     };
-
     const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isDragging || !scrollRef.current) return;
+        if (!isDragging || !reviewsScrollRef.current) return;
         e.preventDefault();
-        const x = e.pageX - scrollRef.current.offsetLeft;
-        const walk = (x - dragStartX) * 2;
-        scrollRef.current.scrollLeft = scrollLeft - walk;
+        const x = e.pageX - reviewsScrollRef.current.offsetLeft;
+        reviewsScrollRef.current.scrollLeft = scrollLeft - (x - dragStartX) * 2;
     };
-
     const handlePointerUp = () => {
         setIsDragging(false);
-        if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
+        if (reviewsScrollRef.current) reviewsScrollRef.current.style.cursor = 'grab';
     };
 
-    const gapsScrollRef = useRef<HTMLDivElement>(null);
-    const [isGapsDragging, setIsGapsDragging] = useState(false);
-    const [gapsDragStartX, setGapsDragStartX] = useState(0);
-    const [gapsScrollLeft, setGapsScrollLeft] = useState(0);
-
-    const scrollGaps = (dir: 'left' | 'right') => {
-        if (gapsScrollRef.current) {
-            const amount = 344;
-            gapsScrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-        }
-    };
-
-    const handleGapsPointerDown = (e: React.PointerEvent) => {
-        if (!gapsScrollRef.current) return;
-        setIsGapsDragging(true);
-        setGapsDragStartX(e.pageX - gapsScrollRef.current.offsetLeft);
-        setGapsScrollLeft(gapsScrollRef.current.scrollLeft);
-        gapsScrollRef.current.style.cursor = 'grabbing';
-    };
-
-    const handleGapsPointerMove = (e: React.PointerEvent) => {
-        if (!isGapsDragging || !gapsScrollRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - gapsScrollRef.current.offsetLeft;
-        const walk = (x - gapsDragStartX) * 2;
-        gapsScrollRef.current.scrollLeft = gapsScrollLeft - walk;
-    };
-
-    const handleGapsPointerUp = () => {
-        setIsGapsDragging(false);
-        if (gapsScrollRef.current) gapsScrollRef.current.style.cursor = 'grab';
-    };
-
-    const domain = typeof params.domain === 'string' ? params.domain : 'example.com';
-    const companyName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
+    const companyName = competitor?.name || (domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1));
     const [brandColor1, brandColor2] = getBrandColors(domain);
-
     const [logoUrl, setLogoUrl] = useState(`https://logo.clearbit.com/${domain}`);
+    
+    const [pinnedState, setPinnedState] = useState(false);
+    const togglePin = () => setPinnedState(!pinnedState);
 
     const startX = searchParams.get('startX');
     const startY = searchParams.get('startY');
     const startW = searchParams.get('startW');
     const isRound = searchParams.get('round') === 'true';
-
     const [isMorphing, setIsMorphing] = useState(!!startX);
     const logoRef = useRef<HTMLDivElement>(null);
-
     const [morphStyle, setMorphStyle] = useState<any>({
         position: 'fixed',
         left: startX ? `${startX}px` : '0px',
         top: startY ? `${startY}px` : '0px',
         width: startW ? `${startW}px` : '0px',
         height: startW ? `${startW}px` : '0px',
-        borderRadius: isRound ? '50%' : '16px',
+        borderRadius: isRound ? '50%' : '6px',
         transition: 'none',
         zIndex: 9999,
-        pointerEvents: 'none'
     });
+    const [c1, c2] = getBrandColors(domain);
 
     useEffect(() => {
-        if (startX && logoRef.current) {
-            const rect = logoRef.current.getBoundingClientRect();
-
+        if (startX && startY && startW) {
+            const sx = parseFloat(startX);
+            const sy = parseFloat(startY);
+            const sw = parseFloat(startW);
+            setMorphStyle({ position: 'fixed', left: sx, top: sy, width: sw, height: sw, borderRadius: '6px', transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: 9999 });
             const raf = requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    setMorphStyle({
-                        position: 'fixed',
-                        left: `${rect.left}px`,
-                        top: `${rect.top}px`,
-                        width: `${rect.width}px`,
-                        height: `${rect.height}px`,
-                        borderRadius: '20px',
-                        transition: 'all 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
-                        zIndex: 9999,
-                        pointerEvents: 'none'
-                    });
-
-                    setTimeout(() => {
-                        setIsMorphing(false);
-                    }, 650);
-                });
+                if (logoRef.current) {
+                    const rect = logoRef.current.getBoundingClientRect();
+                    setMorphStyle({ position: 'fixed', left: rect.left, top: rect.top, width: rect.width, height: rect.height, borderRadius: '6px', transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: 9999 });
+                    setTimeout(() => setIsMorphing(false), 500);
+                }
             });
             return () => cancelAnimationFrame(raf);
         }
     }, [startX]);
 
+    const chartData = useMemo(() => {
+        if (!metrics.share?.points?.length && !metrics.engagement?.points?.length && !metrics.time?.points?.length) {
+            return [];
+        }
+        const dateSet = new Set<string>();
+        metrics.share?.points?.forEach(p => dateSet.add(p.timestamp.substring(0, 7)));
+        metrics.engagement?.points?.forEach(p => dateSet.add(p.timestamp.substring(0, 7)));
+        metrics.time?.points?.forEach(p => dateSet.add(p.timestamp.substring(0, 7)));
+        
+        const dates = Array.from(dateSet).sort();
+        return dates.map(d => {
+            const sharePoint = metrics.share?.points?.find(p => p.timestamp.startsWith(d));
+            const engPoint = metrics.engagement?.points?.find(p => p.timestamp.startsWith(d));
+            const timePoint = metrics.time?.points?.find(p => p.timestamp.startsWith(d));
+            
+            const dObj = new Date(d + '-01');
+            const name = dObj.toLocaleString('en-US', { month: 'short' });
+
+            return {
+                name,
+                share: sharePoint?.value ?? 0,
+                engagement: engPoint?.value ?? 0,
+                time: timePoint?.value ?? 0,
+            };
+        });
+    }, [metrics]);
+
+    const displayGaps = backendGaps.map(g => ({ title: g.title, desc: g.description || '', severity: (g as any).severity || 'medium' }));
+
+    const displayReviews = backendReviews.map(r => ({
+        user: String(r.metadata?.author ?? "Anonymous"),
+        date: r.reviewed_at ? new Date(r.reviewed_at).toLocaleDateString() : "Recently",
+        text: r.body || "",
+        stars: r.rating ? Math.round(r.rating) : 5,
+        avatar: String(r.metadata?.avatar ?? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop")
+    }));
+
+    const displayCampaigns = backendCampaigns.map((c, i) => ({
+        id: c.id,
+        name: c.title,
+        date: c.detected_at ? new Date(c.detected_at).toLocaleDateString() : "Active",
+        metric: String(c.metadata?.metric ?? "N/A"),
+        status: String(c.metadata?.status ?? "Active"),
+        color: "#00A4EF",
+        imgs: c.posts.map(p => p.url).filter(Boolean).slice(0, 3)
+    }));
+
+
+    const [activeChart, setActiveChart] = useState<string | null>(null);
+    const [expandedGap, setExpandedGap] = useState<number | null>(null);
+
+    const chevron = (rotated: boolean) => (
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2"
+            style={{ transform: rotated ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9" />
+        </svg>
+    );
+
+    const quickStats = [
+        { label: 'Peak Market Share', value: '70%', sub: 'Jul 2026' },
+        { label: 'Peak Engagement', value: '550K', sub: 'Jul 2026' },
+        { label: 'Avg Response Time', value: '51s', sub: 'across 10 mo.' },
+    ];
+
+    if (error === 'Not Found') {
+        return (
+            <div className="page-container px-4 md:px-8 pt-8 pb-24 relative flex items-center justify-center min-h-[50vh]">
+                <div className="text-center bg-[var(--card-bg)] border border-[var(--border-color)] p-8 rounded-xl">
+                    <h2 className="text-2xl font-bold mb-4 text-[var(--text-primary)]">Company Not Found</h2>
+                    <p className="text-[var(--text-secondary)]">We couldn't find data for {domain}.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <>
-        <div className="main-content" style={{ overflowY: 'auto', paddingBottom: 60, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        {/* Ambient Gradient - Fixed positioned behind content spanning full viewport to prevent sidebar clipping */}
+        <div className="fixed inset-0 pointer-events-none z-0" style={{ opacity: 0.4 }}>
             <style>{`
-                    @keyframes liveGradient {
-                        0% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
-                        33% { transform: scale(1.05) translate(2% , 2%); opacity: 0.5; }
-                        66% { transform: scale(0.95) translate(-2%, -2%); opacity: 0.35; }
-                        100% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
-                    }
-                `}</style>
-
-            {/* Subtle Live Gradient */}
-            <div style={{
-                position: 'absolute',
-                top: -150, left: 0, right: 0,
-                height: '600px',
-                background: `radial-gradient(circle at 30% 0%, ${brandColor1}, transparent 50%), radial-gradient(circle at 70% 20%, ${brandColor2}, transparent 50%)`,
-                filter: 'blur(80px)',
-                animation: 'liveGradient 15s ease-in-out infinite',
-                pointerEvents: 'none',
-                zIndex: 0
+                @keyframes liveGradient {
+                    0% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
+                    33% { transform: scale(1.05) translate(2%, 2%); opacity: 0.5; }
+                    66% { transform: scale(0.95) translate(-2%, -2%); opacity: 0.35; }
+                    100% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
+                }
+            `}</style>
+            <div className="absolute top-[-150px] left-0 right-0 h-[600px]" style={{
+                background: `radial-gradient(circle at 30% 0%, ${c1}, transparent 50%), radial-gradient(circle at 70% 20%, ${c2}, transparent 50%)`,
+                filter: 'blur(80px)', animation: 'liveGradient 15s ease-in-out infinite'
             }} />
+        </div>
 
-            {isMorphing && (
-                <div style={{ ...morphStyle, background: '#18181b', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
-                    <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                </div>
-            )}
+        {isMorphing && (
+            <div style={{ ...morphStyle, background: 'var(--card-bg)', border: '1px solid var(--border-color)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
+                <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+        )}
 
-            <div style={{
-                padding: '60px 40px',
-                maxWidth: 1100,
-                margin: '0 auto',
-                width: '100%',
-                position: 'relative',
-                zIndex: 1,
-                opacity: isMorphing ? 0 : 1,
-                transform: isMorphing ? 'translateY(20px)' : 'translateY(0)',
-                transition: 'opacity 0.5s ease 0.1s, transform 0.5s ease 0.1s'
-            }}>
-                {/* Header Section */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 50 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                        <div ref={logoRef} className="company-logo-box" style={{
-                            width: 88, height: 88, borderRadius: 20, background: 'var(--card-bg-alt)',
-                            border: '1px solid var(--border-color)', display: 'flex',
-                            alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-                            opacity: isMorphing ? 0 : 1
-                        }}>
+        <div className="page-container px-4 md:px-8 pt-8 pb-24 relative z-10">
+            <div className={`transition-all duration-500 w-full max-w-[1320px] mx-auto ${isMorphing ? 'opacity-0 translate-y-5' : 'opacity-100 translate-y-0'}`}>
+
+                {/* ── HERO CARD ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45 }}
+                    className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 md:p-8 mb-8 relative overflow-hidden"
+                >
+                    {/* Top row: logo + identity + stats */}
+                    <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start relative z-10">
+                        {/* Logo */}
+                        <div ref={logoRef} className={`w-20 h-20 bg-[var(--card-bg-alt)] border border-[var(--border-color)] rounded-md flex items-center justify-center overflow-hidden flex-shrink-0 ${isMorphing ? 'opacity-0' : 'opacity-100'}`}>
                             <img
                                 src={logoUrl}
                                 alt={companyName}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                className="w-full h-full object-contain"
                                 onError={() => setLogoUrl(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)}
                             />
                         </div>
-                        <div>
-                            <h2 style={{ fontSize: 36, fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{companyName}</h2>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: 16, marginTop: 4, fontWeight: 500 }}>Since 1967</div>
+
+                        {/* Company Identity */}
+                        <div className="flex-1 min-w-[200px]">
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight m-0">{companyName}</h1>
+                                <span className="text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)] px-2 py-0.5 rounded uppercase tracking-wider">Technology</span>
+                            </div>
+                            <div className="text-sm text-[var(--text-secondary)] mt-1 font-medium">
+                                {competitor?.founding_year ? `Est. ${competitor.founding_year}` : 'Est. 1967'} &middot; {domain}
+                            </div>
+                            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mt-4 max-w-[600px] mb-0">
+                                {competitor?.description || 'No description captured yet.'}
+                            </p>
+                        </div>
+
+                        {/* Right: Market info & Actions */}
+                        <div className="flex flex-col gap-2 flex-shrink-0 text-left md:text-right">
+                            <div className="flex md:justify-end gap-2 mb-2">
+                                <button
+                                    onClick={togglePin}
+                                    className={`text-xs font-semibold px-3 py-1.5 rounded-md border transition-colors flex items-center gap-2 ${
+                                        pinnedState 
+                                        ? 'bg-[var(--text-primary)] text-[var(--card-bg)] border-[var(--text-primary)]' 
+                                        : 'bg-[var(--card-bg-alt)] text-[var(--text-primary)] border-[var(--border-color)] hover:bg-[var(--item-hover)]'
+                                    }`}
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill={pinnedState ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                    </svg>
+                                    {pinnedState ? 'Pinned' : 'Pin to Sidebar'}
+                                </button>
+                            </div>
+                            <div className="text-xs text-[var(--text-secondary)] font-medium">Market Valuation</div>
+                            <div className="text-2xl font-bold text-[var(--text-primary)] tracking-tight leading-none">{competitor?.market_valuation_usd ? `$${(competitor.market_valuation_usd / 1e9).toFixed(2)}B` : '$0.67B'}</div>
+                            <div className="text-xs text-[var(--text-secondary)] font-medium mt-2">Industry</div>
+                            <div className="flex md:justify-end">
+                                <span className="text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)] px-2 py-0.5 rounded uppercase tracking-wider">{competitor?.industry || 'Technology'}</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-                        <div style={{ fontSize: 20, color: 'var(--text-primary)', fontWeight: 600 }}>
-                            <span style={{ color: 'var(--text-secondary)', marginRight: 12, fontWeight: 500 }}>Market Val:</span>
-                            0.67$
-                        </div>
-                        <div style={{ fontSize: 20, color: 'var(--text-primary)', fontWeight: 600 }}>
-                            <span style={{ color: 'var(--text-secondary)', marginRight: 12, fontWeight: 500 }}>Industry:</span>
-                            Technology
-                        </div>
+                    {/* Divider */}
+                    <div className="h-[1px] bg-[var(--border-color)] my-6 relative z-10" />
+
+                    {/* Quick stats row */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                        {quickStats.map((stat, i) => (
+                            <div key={i} className="p-4 rounded-lg bg-[var(--card-bg-alt)] border border-[var(--border-color)]">
+                                <div className="text-xl font-bold text-[var(--text-primary)] tracking-tight">{stat.value}</div>
+                                <div className="text-xs text-[var(--text-secondary)] font-medium mt-1">{stat.label}</div>
+                                <div className="text-[10px] text-[var(--text-secondary)] mt-0.5 opacity-70">{stat.sub}</div>
+                            </div>
+                        ))}
                     </div>
+                </motion.div>
+
+                {/* ── 2-COL: CHARTS | STRATEGIC GAPS ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mb-8 items-start">
+                    {/* CHARTS */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, delay: 0.07 }}
+                        className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 min-w-0"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider m-0 flex items-center">
+                                Performance Analytics
+                            </h3>
+                            <span className="text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)] px-2 py-0.5 rounded tracking-wider">CLICK TO EXPAND</span>
+                        </div>
+
+                        <div className="flex flex-col gap-6">
+                            {[
+                                { key: 'market', dataKey: 'share', label: 'Market Share (%)', color: brandColor1 },
+                                { key: 'engagement', dataKey: 'engagement', label: 'Engagement (K)', color: brandColor2 },
+                                { key: 'time', dataKey: 'time', label: 'Avg Response Time (s)', color: 'var(--text-secondary)' },
+                            ].map(({ key, dataKey, label, color }) => (
+                                <div
+                                    key={key}
+                                    onClick={() => setActiveChart(activeChart === key ? null : key)}
+                                    className="skeleton-target cursor-pointer flex flex-col transition-all duration-300 min-w-0"
+                                    style={{
+                                        height: activeChart === key ? 300 : 140,
+                                        background: activeChart === key ? 'var(--item-hover)' : 'transparent',
+                                        padding: activeChart === key ? 16 : 0,
+                                        borderRadius: 8
+                                    }}
+                                >
+                                    <h4 className="m-0 mb-3 text-xs font-semibold text-[var(--text-primary)] tracking-wide">{label}</h4>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={chartData}>
+                                            <XAxis dataKey="name" stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--border-color)' }} />
+                                            <YAxis stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--border-color)' }} />
+                                            <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-primary)' }} itemStyle={{ color }} />
+                                            <Line type="linear" dataKey={dataKey} stroke={color} strokeWidth={2} dot={false} activeDot={{ r: 4, fill: color, stroke: 'var(--card-bg)' }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    {/* STRATEGIC GAPS */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, delay: 0.12 }}
+                        className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider m-0 flex items-center flex-wrap gap-2">
+                                Strategic Gaps
+                            </h3>
+                            <span className="text-[10px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)] px-2 py-0.5 rounded">{displayGaps.length}</span>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            {displayGaps.length === 0 && <div className="text-sm text-[var(--text-secondary)]">No gaps found.</div>}
+                            {displayGaps.map((gap, i) => (
+                                <div key={i}>
+                                    <div
+                                        onClick={() => setExpandedGap(expandedGap === i ? null : i)}
+                                        className="bg-[var(--card-bg-alt)] border border-[var(--border-color)] rounded-md p-3.5 flex flex-col gap-2 cursor-pointer hover:bg-[var(--item-hover)] transition-colors relative overflow-hidden"
+                                    >
+                                        <div className="flex justify-between items-center gap-2">
+                                            <div className="text-sm font-semibold text-[var(--text-primary)]">{gap.title}</div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{gap.severity}</span>
+                                                {chevron(expandedGap === i)}
+                                            </div>
+                                        </div>
+                                        <div className="text-xs text-[var(--text-secondary)] leading-relaxed">{gap.desc}</div>
+                                    </div>
+                                    <AnimatePresence>
+                                        {expandedGap === i && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="p-3 border-t border-[var(--border-color)] mt-1 bg-[var(--card-bg)]">
+                                                    <div className="text-[10px] text-[var(--text-secondary)] font-bold mb-1 tracking-wider uppercase">Suggested Action</div>
+                                                    <div className="text-xs text-[var(--text-primary)] leading-relaxed font-medium">
+                                                        {gap.title === 'Gen-Z Reach' ? 'Launch short-form vertical video series targeting 18-24 demographic.' :
+                                                            gap.title === 'Sponsorship ROI' ? 'Diversify into micro-influencer partnerships with higher conversion rates.' :
+                                                                'Publish behind-the-scenes content and community AMA to rebuild trust.'}
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
                 </div>
 
-                {/* Description Box */}
-                <div className="company-desc-box skeleton-target" style={{
-                    border: '1px solid var(--border-color)',
-                    padding: 40,
-                    borderRadius: 16,
-                    marginBottom: 60,
-                    background: 'var(--card-bg)',
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.7,
-                    fontSize: 17,
-                    boxShadow: '0 8px 32px var(--shadow-color)'
-                }}>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-                </div>
-
-                {/* Charts Section */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: activeChart ? '1fr 1fr' : '1fr 1fr 1fr',
-                    gap: 48,
-                    marginBottom: 80
-                }}>
-                    <div
-                        onClick={() => setActiveChart(activeChart === 'market' ? null : 'market')}
-                        className="skeleton-target"
-                        style={{
-                            display: 'flex', flexDirection: 'column',
-                            cursor: 'pointer',
-                            gridColumn: activeChart === 'market' ? '1 / -1' : 'auto',
-                            order: activeChart === 'market' ? -1 : 0,
-                            height: activeChart === 'market' ? 360 : 220,
-                            transition: 'all 0.3s ease',
-                            background: activeChart === 'market' ? 'rgba(255,255,255,0.02)' : 'transparent',
-                            padding: activeChart === 'market' ? 24 : 0,
-                            borderRadius: 16
-                        }}
-                    >
-                        <h3 style={{ margin: '0 0 24px 0', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Market Share (%)</h3>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={mockChartData}>
-                                <XAxis dataKey="name" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} itemStyle={{ color: brandColor1 }} />
-                                <Line type="linear" dataKey="share" stroke={brandColor1} strokeWidth={2} dot={{ r: 2.5, fill: brandColor1, stroke: 'none' }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <div
-                        onClick={() => setActiveChart(activeChart === 'engagement' ? null : 'engagement')}
-                        className="skeleton-target"
-                        style={{
-                            display: 'flex', flexDirection: 'column',
-                            cursor: 'pointer',
-                            gridColumn: activeChart === 'engagement' ? '1 / -1' : 'auto',
-                            order: activeChart === 'engagement' ? -1 : 0,
-                            height: activeChart === 'engagement' ? 360 : 220,
-                            transition: 'all 0.3s ease',
-                            background: activeChart === 'engagement' ? 'rgba(255,255,255,0.02)' : 'transparent',
-                            padding: activeChart === 'engagement' ? 24 : 0,
-                            borderRadius: 16
-                        }}
-                    >
-                        <h3 style={{ margin: '0 0 24px 0', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Engagement (K)</h3>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={mockChartData}>
-                                <XAxis dataKey="name" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} itemStyle={{ color: brandColor2 }} />
-                                <Line type="linear" dataKey="engagement" stroke={brandColor2} strokeWidth={2} dot={{ r: 2.5, fill: brandColor2, stroke: 'none' }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <div
-                        onClick={() => setActiveChart(activeChart === 'time' ? null : 'time')}
-                        className="skeleton-target"
-                        style={{
-                            display: 'flex', flexDirection: 'column',
-                            cursor: 'pointer',
-                            gridColumn: activeChart === 'time' ? '1 / -1' : 'auto',
-                            order: activeChart === 'time' ? -1 : 0,
-                            height: activeChart === 'time' ? 360 : 220,
-                            transition: 'all 0.3s ease',
-                            background: activeChart === 'time' ? 'rgba(255,255,255,0.02)' : 'transparent',
-                            padding: activeChart === 'time' ? 24 : 0,
-                            borderRadius: 16
-                        }}
-                    >
-                        <h3 style={{ margin: '0 0 24px 0', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Avg Response Time (67s)</h3>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={mockChartData}>
-                                <XAxis dataKey="name" stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} itemStyle={{ color: brandColor1 }} />
-                                <Line type="linear" dataKey="time" stroke={brandColor1} strokeWidth={2} dot={{ r: 2.5, fill: brandColor1, stroke: 'none' }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Recent Campaigns Section (Full Width) */}
-                <div style={{ marginBottom: 80 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                        <h3 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Recent Campaigns</h3>
-                        <div className="company-sort-pill" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', background: 'var(--card-bg-alt)', padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border-color)' }}>
-                            Sort by:
-                            <span style={{ color: 'white', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                Performance <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
-                            </span>
+                {/* ── RECENT CAMPAIGNS (Simplified Deck) ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, delay: 0.17 }}
+                    className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 mb-8"
+                >
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider m-0 flex items-center flex-wrap gap-2">
+                            Recent Campaigns
+                        </h3>
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--text-primary)] bg-[var(--card-bg-alt)] border border-[var(--border-color)] px-2 py-1 rounded tracking-wider uppercase hover:bg-[var(--item-hover)] transition-colors cursor-pointer">
+                            View All
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
                         </div>
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 40, paddingTop: 16 }}>
-                        {campaigns.map((camp, i) => (
-                            <div 
-                                key={i} 
-                                onDoubleClick={() => router.push(`/campaigns/${i}`)}
-                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
-                            >
-                                <div className="scene" style={{ marginBottom: 20 }}>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                        {displayCampaigns.length === 0 && <div className="text-sm text-[var(--text-secondary)] col-span-full">No campaigns found.</div>}
+                        {displayCampaigns.map((camp, i) => (
+                            <div key={camp.id || i} onDoubleClick={() => { if (camp.id) router.push(`/campaigns/${camp.id}`); }} title={camp.id ? undefined : 'Campaign id missing — cannot open this campaign'} className={`flex flex-col items-center p-3 bg-[var(--card-bg-alt)] border border-[var(--border-color)] rounded-lg hover:bg-[var(--item-hover)] transition-colors ${camp.id ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                <div className="scene mb-3 scale-90 origin-top">
                                     <div className="deck-wrapper" title={camp.name}>
                                         <div className="cards">
-                                            <div className="card card-left" style={{ backgroundImage: `url('${camp.imgs[0]}')` }}>
-                                              <div className="floating-bubble" style={{ bottom: 45, left: -20 }}>
-                                                <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> 20
-                                              </div>
-                                            </div>
-                                            
-                                            <div className="card card-right" style={{ backgroundImage: `url('${camp.imgs[1]}')` }}>
-                                              <div className="floating-bubble" style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}>
-                                                Wen
-                                              </div>
-                                            </div>
-
+                                            {/* Simplified cards - NO floating bubbles */}
+                                            <div className="card card-left" style={{ backgroundImage: `url('${camp.imgs[0]}')` }}></div>
+                                            <div className="card card-right" style={{ backgroundImage: `url('${camp.imgs[1]}')` }}></div>
                                             <div className="card deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('${camp.imgs[2]}')` }}>
-                                                <div className="logo" style={{ fontSize: 13, lineHeight: 1.2, color: '#e4e4e7' }}>{camp.name}</div>
+                                                <div className="logo text-[10px] font-bold uppercase tracking-wider text-zinc-200">{camp.name}</div>
                                             </div>
                                         </div>
                                         <div className="cord-ring" />
                                     </div>
                                 </div>
-                                    <div style={{ textAlign: 'center', background: 'var(--card-bg-alt)', padding: '12px 20px', borderRadius: 12, border: '1px solid var(--border-color)', width: '100%', boxSizing: 'border-box' }} className="company-camp-info">
-                                        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-                                            {camp.metric}
-                                        </div>
-                                        <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 4, display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}>
-                                            <span>{camp.date}</span>
-                                            <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--border-color)' }}></span>
-                                            <span style={{ color: 'var(--text-secondary)' }}>{camp.status}</span>
-                                        </div>
-                                    </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Strategic Gaps Carousel (Full Width) */}
-                <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    {/* Left Column */}
-                    <div style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ marginBottom: 24, opacity: 0.8 }}>
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
-                        </div>
-                        <h3 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: 32, letterSpacing: '-0.02em' }}>Strategic<br />Gaps<br /></h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <button onClick={() => scrollGaps('left')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&larr;</button>
-                            <div style={{ flex: 1, height: 2, background: 'var(--border-color)', position: 'relative' }} className="scroll-track">
-                                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: '30%', background: '#a1a1aa' }}></div>
-                            </div>
-                            <button onClick={() => scrollGaps('right')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&rarr;</button>
-                        </div>
-                    </div>
-
-                    {/* Right Column (Scrollable) */}
-                    <div
-                        ref={gapsScrollRef}
-                        onPointerDown={handleGapsPointerDown}
-                        onPointerMove={handleGapsPointerMove}
-                        onPointerUp={handleGapsPointerUp}
-                        onPointerLeave={handleGapsPointerUp}
-                        style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', flex: 1, cursor: 'grab', alignItems: 'center' }}
-                    >
-                        {gaps.map((gap, i) => (
-                            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 320, width: 320, height: '100%' }}>
-                                <div className="company-gap-card" style={{
-                                    background: 'var(--card-bg-alt)',
-                                    borderRadius: '16px',
-                                    border: '1px solid var(--border-color)',
-                                    padding: 32,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    height: '100%',
-                                    position: 'relative',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: '#3f3f46', opacity: 0.8 }}></div>
-                                    <div className="company-gap-title" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>{gap.title}</div>
-                                    <div className="company-gap-desc" style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.6 }}>
-                                        {gap.desc}
+                                <div className="text-center w-full">
+                                    <div className="text-sm font-bold text-[var(--text-primary)]">{camp.metric}</div>
+                                    <div className="text-[10px] text-[var(--text-secondary)] mt-1 flex justify-center gap-2 items-center font-bold uppercase tracking-wider">
+                                        <span>{camp.date}</span>
+                                        <span className="w-1 h-1 rounded-sm bg-[var(--border-color)]" />
+                                        <span>{camp.status}</span>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </div>
+                </motion.div>
 
-                {/* Top Comments Section (Full Width) */}
-                <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    {/* Left Column */}
-                    <div className="skeleton-target" style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: 80, color: '#3f3f46', lineHeight: 0.8, marginBottom: 24, fontFamily: 'serif' }}>“</div>
-                        <h3 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: 32, letterSpacing: '-0.02em' }}>What <br />customers are<br />saying</h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <button onClick={() => scrollList('left')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&larr;</button>
-                            <div style={{ flex: 1, height: 2, background: 'var(--border-color)', position: 'relative' }} className="scroll-track">
-                                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: '30%', background: '#a1a1aa' }}></div>
-                            </div>
-                            <button onClick={() => scrollList('right')} style={{ background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: 0, fontSize: 20 }}>&rarr;</button>
+                {/* ── CUSTOMER REVIEWS (Horizontal Scroll - Dashboard Style) ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, delay: 0.22 }}
+                    className="flex flex-col md:flex-row gap-12 overflow-hidden items-center bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 mb-8"
+                >
+                    <div className="shrink-0 w-full md:w-48 flex flex-col justify-start">
+                        <div className="text-6xl text-[var(--border-color)] leading-none mb-6 font-serif">&ldquo;</div>
+                        <h3 className="text-base font-medium text-[var(--text-primary)] mb-8 flex items-center flex-wrap gap-2">
+                            Customer sentiment
+                        </h3>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => scrollList('left')} className="w-8 h-8 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <button onClick={() => scrollList('right')} className="w-8 h-8 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] shadow-sm rounded-md transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
                         </div>
                     </div>
 
-                    {/* Right Column (Scrollable) */}
                     <div
-                        ref={scrollRef}
+                        ref={reviewsScrollRef}
+                        className="flex gap-10 overflow-x-auto flex-1 snap-x snap-mandatory hide-scrollbar scroll-smooth px-2 pb-4"
+                        style={{ scrollbarWidth: 'none' }}
                         onPointerDown={handlePointerDown}
                         onPointerMove={handlePointerMove}
                         onPointerUp={handlePointerUp}
                         onPointerLeave={handlePointerUp}
-                        style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', flex: 1, cursor: 'grab' }}
                     >
-                        {reviews.map((rev, i) => (
-                            <div key={i} className="skeleton-target" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 320, width: 320 }}>
-                                <div className="company-review-card" style={{
-                                    background: 'var(--card-bg-alt)',
-                                    borderRadius: '24px',
-                                    border: '1px solid var(--border-color)',
-                                    padding: '28px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    position: 'relative',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: rev.stars > 3 ? '#10b981' : rev.stars > 2 ? '#f59e0b' : '#ef4444' }} />
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                            <img src={rev.avatar} alt={rev.user} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
-                                            <div>
-                                                <div className="review-author" style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700 }}>{rev.user}</div>
-                                                <div className="review-date" style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>{rev.date}</div>
-                                            </div>
+                        {displayReviews.length === 0 && <div className="text-sm text-[var(--text-secondary)]">No reviews captured yet.</div>}
+                        {displayReviews.map((rev, i) => (
+                            <div key={i} className="min-w-[280px] md:min-w-[340px] snap-start">
+                                <div className="flex flex-col h-full cursor-pointer hover:bg-[var(--bg-main-alt)] p-6 rounded-lg transition-colors border border-transparent hover:border-[var(--border-color)]">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-10 h-10 rounded-full border border-[var(--border-color)] flex items-center justify-center text-[var(--text-primary)] text-sm font-bold uppercase">
+                                            {rev.user.charAt(0)}
                                         </div>
-                                        <div style={{ display: 'flex', gap: 2, background: 'var(--card-bg)', padding: '6px 10px', borderRadius: '20px', border: '1px solid var(--border-color)' }}>
-                                            {Array.from({ length: 5 }).map((_, idx) => (
-                                                <svg key={idx} width="14" height="14" viewBox="0 0 24 24" fill={idx < rev.stars ? "#10b981" : "var(--border-color)"} xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                                                </svg>
-                                            ))}
+                                        <div className="flex flex-col">
+                                            <div className="text-[var(--text-primary)] text-sm font-medium">{rev.user}</div>
+                                            <div className="text-[var(--text-secondary)] text-xs mt-1">{rev.date}</div>
                                         </div>
                                     </div>
-                                    <div className="company-review-text" style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.6 }}>
-                                        "{rev.text}"
+                                    <div className="text-[var(--text-secondary)] text-sm leading-relaxed mb-6 flex-1">
+                                        &ldquo;{rev.text}&rdquo;
+                                    </div>
+                                    <div className="flex gap-1.5 text-[var(--text-primary)]">
+                                        {[...Array(5)].map((_, idx) => (
+                                            <svg key={idx} width="16" height="16" viewBox="0 0 24 24" fill={idx < rev.stars ? "currentColor" : "none"} stroke={idx < rev.stars ? "none" : "currentColor"} strokeWidth="2" className={idx >= rev.stars ? "opacity-20" : ""}>
+                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            </svg>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </div>
+                </motion.div>
+
             </div>
         </div>
-
-        <PromptField 
+        <PromptField
             selectedNode={selectedNode}
             setSelectedNode={setSelectedNode}
             commandActive={commandActive}
@@ -599,14 +534,13 @@ function CompanyPageContent() {
             setSidebarCollapsed={setSidebarCollapsed}
             onThinkingChange={setIsThinking}
         />
-
         </>
     );
 }
 
 export default function CompanyPage() {
     return (
-        <Suspense fallback={<div className="main-content" />}>
+        <Suspense fallback={<div className="page-container" />}>
             <CompanyPageContent />
         </Suspense>
     );

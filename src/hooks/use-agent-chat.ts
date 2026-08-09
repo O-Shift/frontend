@@ -371,6 +371,7 @@ export function useAgentChat(initialConversationId?: string | null) {
 
   // Initial load
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchConversations();
   }, [fetchConversations]);
 
