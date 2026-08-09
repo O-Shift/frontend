@@ -6,17 +6,15 @@ import { useSearchParams } from 'next/navigation';
 import { useAgentChat } from '@/hooks/use-agent-chat';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import {
-  MessageSquare,
   Plus,
   Send,
   Square,
-  Bot,
-  User,
   Search,
-  ChevronLeft,
   AlertCircle,
   Loader2,
-  Terminal,
+  PanelRightClose,
+  PanelRightOpen,
+  MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -42,6 +40,7 @@ function ChatContent() {
   const [inputVal, setInputVal] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [autoSentQuery, setAutoSentQuery] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -76,93 +75,68 @@ function ChatContent() {
   );
 
   return (
-    <div className="flex-1 w-full flex flex-col md:flex-row bg-[var(--bg-main-alt)] p-4 md:p-6 gap-6 h-[calc(100vh-64px)] overflow-hidden">
-      {/* Sidebar */}
-      <div className="flex w-full md:w-72 flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl overflow-hidden shrink-0">
-        <div className="flex items-center justify-between p-5 border-b border-[var(--border-color)]">
-          <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-sm">
-            <Terminal className="h-4 w-4 text-[var(--text-primary)]" />
-            <h2>Sessions</h2>
-          </div>
+    <div className="flex-1 w-full h-full flex bg-[var(--bg-main-alt)] overflow-hidden relative">
+      
+      {/* Main Chat Window (Center Area) */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        {/* Floating Toggle Button when Right Sidebar is Collapsed */}
+        {!sidebarOpen && (
           <button
-            onClick={() => createConversation()}
-            className="flex items-center justify-center h-8 w-8 rounded border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition hover:bg-[var(--item-hover)]"
-            title="Start new conversation"
+            onClick={() => setSidebarOpen(true)}
+            className="absolute top-4 right-4 z-20 p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] shadow-sm transition-all cursor-pointer"
+            title="Expand Chat History"
           >
-            <Plus className="h-4 w-4" />
+            <PanelRightOpen className="h-4 w-4" />
           </button>
-        </div>
+        )}
 
-        {/* Search */}
-        <div className="p-4 pb-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--text-secondary)]" />
-            <input
-              type="text"
-              placeholder="Filter sessions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-main-alt)] pl-9 pr-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none transition focus:border-[var(--text-primary)]"
-            />
-          </div>
-        </div>
-
-        {/* Conversation List */}
-        <div className="flex-1 space-y-1 overflow-y-auto p-4 pt-2">
-          {conversations.length === 0 && isLoading ? (
-            <div className="flex items-center justify-center py-8 text-xs font-semibold text-[var(--text-secondary)]">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Loading...
-            </div>
-          ) : filteredConversations.length === 0 ? (
-            <div className="py-8 text-center text-xs font-semibold text-[var(--text-secondary)]">
-              No sessions
-            </div>
-          ) : (
-            filteredConversations.map((conv) => {
-              const isActive = conv.id === currentConversationId;
-              return (
-                <button
-                  key={conv.id}
-                  onClick={() => loadConversation(conv.id)}
-                  className={`group flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-all border ${
-                    isActive
-                      ? 'border-[var(--border-color)] bg-[var(--item-hover)] text-[var(--text-primary)]'
-                      : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-main-alt)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="truncate font-medium">{conv.title || 'Untitled Session'}</span>
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Main Chat Window */}
-      <div className="flex flex-1 flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl overflow-hidden relative shadow-sm">
-        {/* Messages Feed */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
-          {isLoading && messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-              <Loader2 className="h-6 w-6 animate-spin text-[var(--text-secondary)]" />
-              <p className="text-sm text-[var(--text-secondary)] font-medium">Initializing connection...</p>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto space-y-8">
-              <div className="border border-[var(--border-color)] bg-[var(--bg-main-alt)] p-8 rounded-lg shadow-sm">
-                <div className="w-12 h-12 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex items-center justify-center mx-auto mb-4">
-                    <Terminal className="h-6 w-6 text-[var(--text-primary)]" />
-                </div>
-                <h3 className="text-xl font-semibold tracking-tight text-[var(--text-primary)] mb-2">Intelligence Agent Ready</h3>
-                <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
-                  Await instructions. Analyze competitors, scrape market signals, update partnership graphs, or generate briefs.
-                </p>
+        {/* Chat Feed or Gemini Center Landing */}
+        {messages.length === 0 ? (
+          /* Gemini-style Initial State: Centered Greeting & Prompt */
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center relative">
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="w-full max-w-2xl flex flex-col items-center text-center space-y-8 my-auto"
+            >
+              {/* Unclipped Mascot Avatar Icon */}
+              <div className="w-24 h-24 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-2 shadow-sm flex items-center justify-center">
+                <img src="/mascot.png" alt="OShift Mascot" className="w-full h-full object-contain" />
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full pt-4">
+
+              <h2 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] font-sans">
+                Ask away!
+              </h2>
+
+              {/* Centered Input Box */}
+              <div className="w-full relative flex flex-col border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl shadow-sm focus-within:border-[var(--text-secondary)] transition-all">
+                <textarea
+                  ref={inputRef}
+                  rows={2}
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask OShift agent anything about market signals, competitors, campaigns..."
+                  className="w-full resize-none bg-transparent px-6 py-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none"
+                />
+
+                <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--border-color)] bg-[var(--card-bg-alt)] rounded-b-2xl">
+                  <span className="text-xs text-[var(--text-secondary)] font-medium">Press Enter to send</span>
+                  <button
+                    onClick={handleSend}
+                    disabled={!inputVal.trim() || isStreaming}
+                    className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <span>Ask</span>
+                    <Send className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Starter Prompt Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full pt-2">
                 {[
                   'Who are our active competitors?',
                   'Analyze recent market signals',
@@ -172,15 +146,18 @@ function ChatContent() {
                   <button
                     key={prompt}
                     onClick={() => sendMessage(prompt)}
-                    className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded text-left text-sm font-medium text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition shadow-sm"
+                    className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded-xl text-left text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-all shadow-sm cursor-pointer"
                   >
                     {prompt}
                   </button>
                 ))}
               </div>
-            </div>
-          ) : (
-            <div className="max-w-4xl mx-auto w-full space-y-8">
+            </motion.div>
+          </div>
+        ) : (
+          /* Active Chat Thread View */
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+            <div className="max-w-3xl mx-auto w-full space-y-6">
               {messages.map((msg) => {
                 const isUser = msg.role === 'user';
                 return (
@@ -190,17 +167,22 @@ function ChatContent() {
                   >
                     <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold tracking-wide">
                       {isUser ? (
-                        <><span>You</span><User className="h-3.5 w-3.5" /></>
+                        <span>You</span>
                       ) : (
-                        <><div className="w-5 h-5 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex items-center justify-center"><Bot className="h-3 w-3 text-[var(--text-primary)]" /></div><span>Agent</span></>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-0.5 shrink-0 flex items-center justify-center">
+                            <img src="/mascot.png" alt="Mascot" className="w-full h-full object-contain" />
+                          </div>
+                          <span>Agent</span>
+                        </div>
                       )}
                     </div>
 
                     <div
-                      className={`relative w-full max-w-3xl p-5 text-sm leading-relaxed rounded-lg shadow-sm border ${
+                      className={`w-full max-w-2xl p-5 text-sm leading-relaxed rounded-xl border ${
                         isUser
-                          ? 'border-[var(--border-color)] bg-[var(--bg-main-alt)] text-[var(--text-primary)] rounded-tr-sm'
-                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)] rounded-tl-sm'
+                          ? 'border-[var(--border-color)] bg-[var(--card-bg-alt)] text-[var(--text-primary)]'
+                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)]'
                       }`}
                     >
                       {isUser ? (
@@ -212,96 +194,185 @@ function ChatContent() {
                   </div>
                 );
               })}
-            </div>
-          )}
 
-          {/* Thinking Indicator */}
-          {isThinking && (
-            <div className="max-w-4xl mx-auto w-full flex flex-col items-start gap-2">
-              <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold tracking-wide">
-                <div className="w-5 h-5 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex items-center justify-center"><Bot className="h-3 w-3 text-[var(--text-primary)]" /></div><span>System Processing</span>
-              </div>
-              <div className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded-lg rounded-tl-sm text-sm flex items-center gap-3 shadow-sm">
-                <Loader2 className="h-4 w-4 animate-spin text-[var(--text-secondary)]" />
-                <span className="text-[var(--text-secondary)] font-medium">Analyzing data streams...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Active Tool Badge */}
-          {activeTool && (
-            <div className="max-w-4xl mx-auto w-full flex flex-col items-start gap-2 mt-4">
-              <div className="border border-[var(--border-color)] bg-[var(--card-bg-alt)] px-4 py-2 rounded text-xs font-medium flex items-center gap-2 shadow-sm">
-                <Terminal className="h-3.5 w-3.5 text-[var(--text-primary)]" />
-                <span className="text-[var(--text-secondary)]">Executing: <span className="text-[var(--text-primary)]">{activeTool}</span></span>
-              </div>
-            </div>
-          )}
-
-          {/* Error Banner */}
-          {error && (
-            <div className="max-w-4xl mx-auto w-full">
-              <div className="border border-red-500/30 bg-[var(--card-bg)] p-4 rounded-md text-sm flex items-center gap-3 text-[var(--text-primary)]">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-                <span className="font-medium">{error}</span>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input Bar */}
-        <div className="p-4 md:p-6 pt-0 bg-[var(--card-bg)]">
-          <div className="max-w-4xl mx-auto relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-main-alt)] rounded-xl focus-within:border-[var(--text-secondary)] transition shadow-sm">
-            <textarea
-              ref={inputRef}
-              rows={2}
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask the intelligence agent..."
-              className="w-full resize-none bg-transparent px-5 py-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none"
-            />
-
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-color)]">
-              <div className="text-xs font-medium text-[var(--text-secondary)]">
-                Press Enter to submit
-              </div>
-              {isStreaming ? (
-                <button
-                  onClick={stop}
-                  className="flex items-center gap-2 px-4 py-1.5 rounded bg-[var(--card-bg-alt)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition"
-                >
-                  <Square className="h-3.5 w-3.5 fill-current" />
-                  <span>Halt</span>
-                </button>
-              ) : (
-                <button
-                  onClick={handleSend}
-                  disabled={!inputVal.trim()}
-                  className="flex items-center gap-2 px-4 py-1.5 rounded bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:bg-[var(--text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  <span>Send</span>
-                  <Send className="h-3.5 w-3.5" />
-                </button>
+              {/* Thinking State */}
+              {isThinking && (
+                <div className="flex flex-col items-start gap-2">
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold">
+                    <div className="w-7 h-7 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-0.5 shrink-0 flex items-center justify-center">
+                      <img src="/mascot.png" alt="Mascot" className="w-full h-full object-contain" />
+                    </div>
+                    <span>Processing</span>
+                  </div>
+                  <div className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded-xl text-xs flex items-center gap-3 text-[var(--text-secondary)]">
+                    <Loader2 className="h-4 w-4 animate-spin text-[var(--text-primary)]" />
+                    <span>Analyzing data streams...</span>
+                  </div>
+                </div>
               )}
+
+              {/* Active Tool Badge (Clean border, no AI slop glow) */}
+              {activeTool && (
+                <div className="flex items-start gap-2">
+                  <div className="border border-[var(--border-color)] bg-[var(--card-bg-alt)] px-3 py-1.5 rounded-md text-xs font-mono text-[var(--text-secondary)]">
+                    Executing: <span className="text-[var(--text-primary)] font-semibold">{activeTool}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Banner */}
+              {error && (
+                <div className="border border-red-500/40 bg-[var(--card-bg)] p-4 rounded-lg text-xs flex items-center gap-3 text-[var(--text-primary)]">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Bottom Floating Input Bar when conversation is active */}
+        {messages.length > 0 && (
+          <div className="p-4 md:p-6 bg-[var(--card-bg)] border-t border-[var(--border-color)] shrink-0">
+            <div className="max-w-3xl mx-auto relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-main-alt)] rounded-xl focus-within:border-[var(--text-secondary)] transition-all">
+              <textarea
+                ref={inputRef}
+                rows={2}
+                value={inputVal}
+                onChange={(e) => setInputVal(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask follow-up question..."
+                className="w-full resize-none bg-transparent px-5 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none"
+              />
+
+              <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--border-color)] bg-[var(--card-bg-alt)] rounded-b-xl">
+                <span className="text-[11px] font-medium text-[var(--text-secondary)]">Press Enter to submit</span>
+                {isStreaming ? (
+                  <button
+                    onClick={stop}
+                    className="flex items-center gap-2 px-3 py-1 rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
+                  >
+                    <Square className="h-3 w-3 fill-current" />
+                    <span>Halt</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSend}
+                    disabled={!inputVal.trim()}
+                    className="flex items-center gap-2 px-4 py-1 rounded-md bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <span>Send</span>
+                    <Send className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Right Sidebar (Collapsible Sessions Drawer) */}
+      <AnimatePresence initial={false}>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 288, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="h-full bg-[var(--card-bg)] border-l border-[var(--border-color)] flex flex-col shrink-0 overflow-hidden"
+          >
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-xs uppercase tracking-wider">
+                <MessageSquare className="h-4 w-4 text-[var(--text-secondary)]" />
+                <span>Chat History</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => createConversation()}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
+                  title="New Chat"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>New</span>
+                </button>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
+                  title="Hide History"
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="p-3 pb-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--text-secondary)]" />
+                <input
+                  type="text"
+                  placeholder="Search chats..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-main-alt)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none transition focus:border-[var(--text-secondary)]"
+                />
+              </div>
+            </div>
+
+            {/* Conversation Session List */}
+            <div className="flex-1 space-y-1 overflow-y-auto p-3 pt-1">
+              {conversations.length === 0 && isLoading ? (
+                <div className="flex items-center justify-center py-6 text-xs text-[var(--text-secondary)]">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                  Loading sessions...
+                </div>
+              ) : filteredConversations.length === 0 ? (
+                <div className="py-6 text-center text-xs text-[var(--text-secondary)]">
+                  No chat history
+                </div>
+              ) : (
+                filteredConversations.map((conv) => {
+                  const isActive = conv.id === currentConversationId;
+                  return (
+                    <button
+                      key={conv.id}
+                      onClick={() => loadConversation(conv.id)}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition-all border ${
+                        isActive
+                          ? 'border-[var(--border-color)] bg-[var(--card-bg-alt)] text-[var(--text-primary)] font-semibold'
+                          : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--item-hover)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      <span className="truncate">{conv.title || 'Untitled Session'}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={
-      <div className="flex-1 flex items-center justify-center bg-[var(--bg-main-alt)]">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--text-secondary)]" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex-1 flex items-center justify-center bg-[var(--bg-main-alt)]">
+          <Loader2 className="w-7 h-7 animate-spin text-[var(--text-secondary)]" />
+        </div>
+      }
+    >
       <ChatContent />
     </Suspense>
   );
 }
+
+

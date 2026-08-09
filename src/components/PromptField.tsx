@@ -338,7 +338,7 @@ export default function PromptField({
     handleSendMessage(promptText);
   };
 
-  const showChatWindow = commandActive || messages.length > 0;
+  // const showChatWindow = commandActive || messages.length > 0;
 
   return (
     <>
@@ -350,8 +350,8 @@ export default function PromptField({
           !commandActive
             ? 'mascot-idle'
             : selectedNode
-            ? 'mascot-active has-chip'
-            : 'mascot-active'
+              ? 'mascot-active has-chip'
+              : 'mascot-active'
         }
         alt="PShift Mascot"
         onMouseDown={(e) => e.stopPropagation()}
@@ -364,7 +364,7 @@ export default function PromptField({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Floating Chat Messages Panel */}
+        {/* Floating Chat Messages Panel
         {showChatWindow && (
           <div
             className="chat-window"
@@ -446,27 +446,29 @@ export default function PromptField({
               ))}
 
               {/* Streaming Assistant Response */}
-              {isLoading && (
-                <div className="chat-message-wrapper assistant">
-                  <div className="chat-avatar-icon assistant-avatar">
-                    <img src="/mascot.png" alt="Assistant" />
-                  </div>
-                  <div className="chat-bubble assistant-bubble">
-                    {streamingText ? (
-                      <ChatMarkdown content={streamingText} />
-                    ) : (
-                      <div className="typing-indicator">
-                        <div className="typing-dot" />
-                        <div className="typing-dot" />
-                        <div className="typing-dot" />
-                      </div>
-                    )}
-                  </div>
+
+        {/* {isLoading && (
+          <div className="chat-message-wrapper assistant">
+            <div className="chat-avatar-icon assistant-avatar">
+              <img src="/mascot.png" alt="Assistant" />
+            </div>
+            <div className="chat-bubble assistant-bubble">
+              {streamingText ? (
+                <ChatMarkdown content={streamingText} />
+              ) : (
+                <div className="typing-indicator">
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
                 </div>
               )}
             </div>
           </div>
         )}
+      </div>
+    </div >
+        )
+} */}
 
         {/* Quick Suggestion Chips */}
         <div className={`suggestions ${commandActive && selectedNode ? 'visible' : ''}`}>
@@ -612,7 +614,7 @@ export default function PromptField({
             </div>
           </div>
         </div>
-      </div>
+      </div >
     </>
   );
 }

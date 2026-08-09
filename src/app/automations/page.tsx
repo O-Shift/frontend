@@ -16,21 +16,24 @@ import {
   Settings,
   Calendar,
   Sparkles,
-  Sliders,
-  Play,
   ToggleLeft,
   ToggleRight,
   Trash2,
+  X,
+  Activity,
+  Check,
+  Play,
   Info,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const WORKFLOW_TYPES = [
   {
     id: 'oshift-chained-master',
-    name: 'Full Master Intelligence Pipeline (Chained)',
-    desc: 'Runs the 3 pipelines sequentially (Crawlers → Analyzers → Reporters) to collect fresh signals, update scores, and export briefs.',
+    name: 'Full Master Intelligence Pipeline',
+    desc: 'Sequentially executes Crawlers → Analyzers → Reporters to collect fresh signals, update scores, and export briefs.',
     icon: Sparkles,
-    badge: 'Full Suite (Chained)',
+    badge: 'Full Suite',
   },
   {
     id: 'oshift/crawlers.run',
@@ -55,20 +58,6 @@ const WORKFLOW_TYPES = [
   },
 ];
 
-const AVAILABLE_STEPS = [
-  { id: 'web_collector', label: 'Web Scraper' },
-  { id: 'social_collector', label: 'Social Media' },
-  { id: 'video_collector', label: 'Video Asset' },
-  { id: 'normalizer', label: 'Data Normalizer' },
-  { id: 'scoring', label: 'Scoring Engine' },
-  { id: 'graph_memory', label: 'Knowledge Graph' },
-  { id: 'insights', label: 'Insights Engine' },
-  { id: 'battlecard', label: 'Battlecards' },
-  { id: 'brief_generator', label: 'Executive Brief' },
-  { id: 'alerts', label: 'Alert Dispatcher' },
-  { id: 'exports', label: 'Slack & Webhook' },
-];
-
 const DAYS_OF_WEEK = [
   { id: '1', label: 'Monday' },
   { id: '2', label: 'Tuesday' },
@@ -85,7 +74,6 @@ export function formatCronToHuman(cron: string | null | undefined): string {
   if (parts.length !== 5) return 'Scheduled Task';
 
   const [minStr, hourStr, domStr, monStr, dowStr] = parts;
-
   const hourNum = parseInt(hourStr, 10);
   const minNum = parseInt(minStr, 10);
 
@@ -143,7 +131,6 @@ export default function AutomationsPage() {
     refreshSchedules,
   } = useAutomations();
 
-  // User Local Timezone Detection
   const [userTimezone, setUserTimezone] = useState('');
   useEffect(() => {
     try {
@@ -154,45 +141,37 @@ export default function AutomationsPage() {
     }
   }, []);
 
-  // Modal & Schedule Creator State
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleName, setScheduleName] = useState('');
   const [scheduleWorkflow, setScheduleWorkflow] = useState('oshift-chained-master');
   const [scheduleFrequency, setScheduleFrequency] = useState<'daily' | 'weekdays' | 'weekly' | 'monthly'>('daily');
-  const [scheduleTime, setScheduleTime] = useState('18:00'); // Default 6:00 PM
-  const [selectedWeeklyDay, setSelectedWeeklyDay] = useState('1'); // Default Monday
+  const [scheduleTime, setScheduleTime] = useState('18:00');
+  const [selectedWeeklyDay, setSelectedWeeklyDay] = useState('1');
 
-  // Manual Trigger Collapsible State
-  const [showManualSection, setShowManualSection] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState('oshift-chained-master');
-  const [selectedChain, setSelectedChain] = useState<string[]>([]);
   const [isVerbose, setIsVerbose] = useState(false);
   const [triggerSuccessToast, setTriggerSuccessToast] = useState<string | null>(null);
 
-  const toggleStepChain = (stepId: string) => {
-    setSelectedChain((prev) =>
-      prev.includes(stepId) ? prev.filter((s) => s !== stepId) : [...prev, stepId]
-    );
-  };
-
-  const handleTrigger = async () => {
+  const handleTrigger = async (wfOverride?: string) => {
     setTriggerSuccessToast(null);
-    let targetWf = selectedWorkflow;
-    let chainArr = selectedChain;
+    const targetWf = wfOverride || selectedWorkflow;
+    let finalWf = targetWf;
+    let chainArr: string[] = [];
 
-    if (selectedWorkflow === 'oshift-chained-master') {
-      targetWf = 'oshift/crawlers.run';
+    if (targetWf === 'oshift-chained-master') {
+      finalWf = 'oshift/crawlers.run';
       chainArr = ['oshift/analyzers.run', 'oshift/reporters.run'];
     }
 
     const res = await triggerPipeline({
-      workflowType: targetWf,
+      workflowType: finalWf,
       verbose: isVerbose,
       chain: chainArr,
     });
     if (res?.run_id) {
-      setTriggerSuccessToast(`Chained Master Pipeline triggered! Run ID: ${res.run_id}`);
+      setTriggerSuccessToast(`Pipeline triggered! Run ID: ${res.run_id.slice(0, 8)}`);
       setTimeout(() => setTriggerSuccessToast(null), 5000);
+      refreshRuns();
     }
   };
 
@@ -201,18 +180,10 @@ export default function AutomationsPage() {
     const hourVal = parseInt(h, 10) || 0;
     const minVal = parseInt(m, 10) || 0;
 
-    if (scheduleFrequency === 'daily') {
-      return `${minVal} ${hourVal} * * *`;
-    }
-    if (scheduleFrequency === 'weekdays') {
-      return `${minVal} ${hourVal} * * 1-5`;
-    }
-    if (scheduleFrequency === 'weekly') {
-      return `${minVal} ${hourVal} * * ${selectedWeeklyDay}`;
-    }
-    if (scheduleFrequency === 'monthly') {
-      return `${minVal} ${hourVal} 1 * *`;
-    }
+    if (scheduleFrequency === 'daily') return `${minVal} ${hourVal} * * *`;
+    if (scheduleFrequency === 'weekdays') return `${minVal} ${hourVal} * * 1-5`;
+    if (scheduleFrequency === 'weekly') return `${minVal} ${hourVal} * * ${selectedWeeklyDay}`;
+    if (scheduleFrequency === 'monthly') return `${minVal} ${hourVal} 1 * *`;
     return `${minVal} ${hourVal} * * *`;
   };
 
@@ -229,614 +200,481 @@ export default function AutomationsPage() {
     if (res) {
       setShowScheduleModal(false);
       setScheduleName('');
+      refreshSchedules();
     }
   };
 
+  const activeSchedulesCount = schedules.filter((s) => s.is_active).length;
+  const completedRunsCount = runs.filter((r) => r.status === 'completed').length;
+
   return (
-    <div className="space-y-8 p-4 md:p-6 text-[var(--text-primary)] font-sans max-w-7xl mx-auto">
-      {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-color)] pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight">Automated Schedules & Workflows</h1>
-            {userTimezone && (
-              <span className="rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]">
-                {userTimezone}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">
-            Schedule competitive intelligence sweeps to run automatically at your preferred local time.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              refreshRuns();
-              refreshSchedules();
-            }}
-            className="flex items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2 text-xs font-medium hover:bg-[var(--border-color)]/10 transition"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Sync</span>
-          </button>
-          <button
-            onClick={() => setShowScheduleModal(true)}
-            className="flex items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Create Automated Schedule</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Banners */}
-      {error && (
-        <div className="flex items-center gap-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-3.5 text-xs text-[var(--text-primary)]">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {triggerSuccessToast && (
-        <div className="flex items-center gap-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-3.5 text-xs text-[var(--text-primary)]">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span>{triggerSuccessToast}</span>
-        </div>
-      )}
-
-      {/* HERO SECTION 1: Automated Schedules List */}
-      <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-[var(--text-primary)]" />
-            <div>
-              <h2 className="font-bold text-sm">Active Automated Schedules</h2>
-              <p className="text-[11px] text-[var(--text-secondary)]">
-                Recurrent background tasks executed automatically on schedule.
-              </p>
+    <div className="flex-1 w-full overflow-y-auto p-6 md:p-10 pb-24 bg-[var(--bg-main-alt)] text-[var(--text-primary)]">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-[var(--border-color)] pb-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">Automations & Schedules</h1>
+              {userTimezone && (
+                <span className="rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
+                  {userTimezone}
+                </span>
+              )}
             </div>
-          </div>
-          <button
-            onClick={() => setShowScheduleModal(true)}
-            className="text-xs text-[var(--text-primary)] hover:underline font-bold"
-          >
-            + New Schedule
-          </button>
-        </div>
-
-        {isLoadingSchedules && schedules.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-xs text-[var(--text-secondary)]">
-            <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            Loading schedules...
-          </div>
-        ) : schedules.length === 0 ? (
-          <div className="py-12 text-center space-y-3">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-md bg-[var(--card-bg)] text-[var(--text-primary)] border border-[var(--border-color)]">
-              <Calendar className="h-6 w-6" />
-            </div>
-            <h3 className="font-semibold text-sm">No Active Schedules Configured</h3>
-            <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
-              Create a schedule to run competitive analysis every evening, weekday morning, or monthly automatically.
+            <p className="text-xs text-[var(--text-secondary)] mt-1.5">
+              Set up automated background sweeps, monitor pipeline execution runs, and trigger workflows on demand.
             </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => {
+                refreshRuns();
+                refreshSchedules();
+              }}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-all cursor-pointer"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Sync</span>
+            </button>
+
+            <button
+              onClick={() => handleTrigger('oshift-chained-master')}
+              disabled={isTriggering}
+              className="flex items-center gap-2 rounded-lg bg-[var(--accent)] text-white px-4 py-2 text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+            >
+              <Zap className="h-4 w-4" />
+              <span>{isTriggering ? 'Triggering...' : 'Run Master Pipeline'}</span>
+            </button>
+
             <button
               onClick={() => setShowScheduleModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-4 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition"
+              className="flex items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>Schedule First Task</span>
+              <span>New Schedule</span>
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {schedules.map((sched) => {
-              const humanLabel = formatCronToHuman(sched.cron_expr);
-              const targetWfObj = WORKFLOW_TYPES.find((w) => w.id === sched.workflow_type);
-              return (
-                <div
-                  key={sched.id}
-                  className={`flex flex-col justify-between rounded-md border p-4 transition-all ${
-                    sched.is_active
-                      ? 'border-[var(--border-color)] bg-[var(--card-bg)]'
-                      : 'border-[var(--border-color)] bg-[var(--card-bg)] opacity-70'
-                  }`}
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-bold text-xs text-[var(--text-primary)]">{sched.name}</h3>
-                        <p className="text-[11px] font-semibold text-[var(--text-secondary)] mt-0.5">
-                          {humanLabel}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() =>
-                            updateSchedule(sched.id, { is_active: !sched.is_active })
-                          }
-                          className="hover:opacity-80 transition"
-                          title={sched.is_active ? 'Pause Schedule' : 'Activate Schedule'}
-                        >
-                          {sched.is_active ? (
-                            <ToggleRight className="h-6 w-6 text-[var(--text-primary)]" />
-                          ) : (
-                            <ToggleLeft className="h-6 w-6 text-[var(--text-secondary)]" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => deleteSchedule(sched.id)}
-                          className="rounded-lg p-1 text-[var(--text-secondary)] hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)] transition"
-                          title="Delete Schedule"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="rounded-md bg-[var(--card-bg)] p-2.5 text-[11px] space-y-1 border border-[var(--border-color)]">
-                      <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                        <span>Workflow:</span>
-                        <span className="font-medium text-[var(--text-primary)]">
-                          {targetWfObj ? targetWfObj.name : sched.workflow_type}
-                        </span>
-                      </div>
-                      {sched.next_run_at && (
-                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                          <span>Next Run:</span>
-                          <span className="font-medium text-[var(--text-primary)]">
-                            {new Date(sched.next_run_at).toLocaleString([], {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between pt-2 border-t border-[var(--border-color)] text-[10px] text-[var(--text-secondary)]">
-                    <span>
-                      Status: {sched.is_active ? 'Active' : 'Paused'}
-                    </span>
-                    {sched.last_run_at && (
-                      <span>
-                        Last run: {new Date(sched.last_run_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 2: Pipeline Execution History */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Runs Table (2 cols) */}
-        <div className="lg:col-span-2 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-[var(--text-primary)]" />
-              <h2 className="font-semibold text-sm">Execution History & Logs</h2>
-            </div>
-            <span className="text-xs text-[var(--text-secondary)]">Auto-syncing every 5s</span>
-          </div>
-
-          {isLoadingRuns && runs.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-xs text-[var(--text-secondary)]">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              Fetching pipeline execution log...
-            </div>
-          ) : runs.length === 0 ? (
-            <div className="py-12 text-center text-xs text-[var(--text-secondary)]">
-              No executions recorded yet.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--border-color)] text-[var(--text-secondary)] font-semibold">
-                    <th className="py-2.5 px-3">Run ID</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3">Started At</th>
-                    <th className="py-2.5 px-3">Completed At</th>
-                    <th className="py-2.5 px-3 text-right">Details</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-color)]">
-                  {runs.map((run) => {
-                    const isSelected = selectedRunId === run.id;
-                    const isRunning = run.status === 'running';
-                    const isFailed = run.status === 'failed';
-                    return (
-                      <tr
-                        key={run.id}
-                        onClick={() => fetchSteps(run.id)}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected ? 'bg-[var(--border-color)]/10 font-medium' : 'hover:bg-[var(--border-color)]/5'
-                        }`}
-                      >
-                        <td className="py-3 px-3 font-mono text-[11px] text-[var(--text-primary)]">
-                          {run.id.slice(0, 8)}...
-                        </td>
-                        <td className="py-3 px-3">
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-[10px] font-semibold border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)]`}
-                          >
-                            {isRunning && <Loader2 className="h-3 w-3 animate-spin" />}
-                            {run.status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-[var(--text-secondary)]">
-                          {new Date(run.started_at).toLocaleTimeString([], {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: true,
-                          })}
-                        </td>
-                        <td className="py-3 px-3 text-[var(--text-secondary)]">
-                          {run.completed_at
-                            ? new Date(run.completed_at).toLocaleTimeString([], {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                second: '2-digit',
-                                hour12: true,
-                              })
-                            : '—'}
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <ChevronRight className="h-4 w-4 inline text-[var(--text-secondary)]" />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
 
-        {/* Step Timing Drawer Column */}
-        <div>
-          {selectedRunId ? (
-            <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-5 space-y-3">
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-                <h3 className="font-semibold text-xs text-[var(--text-primary)]">
-                  Step Breakdown ({selectedRunId.slice(0, 8)})
-                </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-[var(--text-secondary)]">Active Schedules</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">{activeSchedulesCount} / {schedules.length}</p>
+            </div>
+            <div className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)]">
+              <Clock className="h-5 w-5 text-[var(--text-primary)]" />
+            </div>
+          </div>
+
+          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-[var(--text-secondary)]">24h Pipeline Executions</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">{runs.length} <span className="text-xs font-normal text-[var(--text-secondary)]">({completedRunsCount} completed)</span></p>
+            </div>
+            <div className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)]">
+              <Activity className="h-5 w-5 text-[var(--text-primary)]" />
+            </div>
+          </div>
+
+          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-[var(--text-secondary)]">Pipeline Engine</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">{isTriggering ? 'Executing' : 'Idle / Ready'}</p>
+            </div>
+            <div className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)]">
+              <Sparkles className="h-5 w-5 text-[var(--text-primary)]" />
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-[var(--card-bg)] p-4 text-xs text-[var(--text-primary)]">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {triggerSuccessToast && (
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] p-4 text-xs text-[var(--text-primary)]">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            <span>{triggerSuccessToast}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 space-y-6">
+              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                <div className="flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-[var(--text-primary)]" />
+                  <div>
+                    <h2 className="font-semibold text-base text-[var(--text-primary)]">Active Automated Schedules</h2>
+                    <p className="text-xs text-[var(--text-secondary)]">Recurring background tasks executed automatically.</p>
+                  </div>
+                </div>
                 <button
-                  onClick={() => fetchSteps(selectedRunId)}
-                  className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+                  onClick={() => setShowScheduleModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg-alt)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
                 >
-                  Reload
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Schedule</span>
                 </button>
               </div>
 
-              {isLoadingSteps ? (
-                <div className="py-6 text-center text-xs text-[var(--text-secondary)]">
-                  <Loader2 className="h-4 w-4 animate-spin inline mr-1" />
-                  Loading steps...
+              {isLoadingSchedules ? (
+                <div className="flex items-center justify-center py-12 text-xs text-[var(--text-secondary)]">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span>Loading schedules...</span>
                 </div>
-              ) : selectedRunSteps.length === 0 ? (
-                <div className="py-6 text-center text-xs text-[var(--text-secondary)]">
-                  No step results emitted yet.
+              ) : schedules.length === 0 ? (
+                <div className="text-center py-10 border border-dashed border-[var(--border-color)] rounded-xl p-6">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">No schedules created yet</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1 mb-4">Set up daily or weekly sweeps to automate competitor signal collection.</p>
+                  <button
+                    onClick={() => setShowScheduleModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Create Your First Schedule</span>
+                  </button>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {selectedRunSteps.map((step, idx) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {schedules.map((schedule) => (
                     <div
-                      key={idx}
-                      className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-2.5 text-xs space-y-1"
+                      key={schedule.id}
+                      className="border border-[var(--border-color)] bg-[var(--card-bg-alt)] rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-[var(--text-secondary)] transition-all"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-[var(--text-primary)]">{step.step_name}</span>
-                        <span className="font-mono text-[10px] text-[var(--text-secondary)]">
-                          {step.duration_ms}ms
-                        </span>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-[var(--text-primary)]">{schedule.name}</h3>
+                          <p className="text-xs text-[var(--text-secondary)] mt-1">{formatCronToHuman(schedule.cron_expr)}</p>
+                        </div>
+                        <button
+                          onClick={() => updateSchedule(schedule.id, { is_active: !schedule.is_active })}
+                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                          title={schedule.is_active ? 'Disable schedule' : 'Enable schedule'}
+                        >
+                          {schedule.is_active ? (
+                            <ToggleRight className="h-6 w-6 text-emerald-400" />
+                          ) : (
+                            <ToggleLeft className="h-6 w-6" />
+                          )}
+                        </button>
                       </div>
-                      {step.error && (
-                        <p className="text-[10px] text-[var(--text-primary)] bg-[var(--card-bg)] border border-[var(--border-color)] p-1.5 rounded font-mono break-all">
-                          {step.error}
-                        </p>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+                        <span className="font-mono text-[11px] truncate max-w-[140px]">{schedule.workflow_type}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleTrigger(schedule.workflow_type)}
+                            className="px-2.5 py-1 rounded bg-[var(--card-bg)] border border-[var(--border-color)] hover:bg-[var(--item-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer text-[11px] font-medium"
+                          >
+                            Run Now
+                          </button>
+                          <button
+                            onClick={() => deleteSchedule(schedule.id)}
+                            className="p-1 rounded text-[var(--text-secondary)] hover:text-red-400 transition-colors cursor-pointer"
+                            title="Delete Schedule"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                <div className="flex items-center gap-3">
+                  <Activity className="h-5 w-5 text-[var(--text-primary)]" />
+                  <div>
+                    <h2 className="font-semibold text-base text-[var(--text-primary)]">Pipeline Execution Stream</h2>
+                    <p className="text-xs text-[var(--text-secondary)]">Click any execution to inspect detailed step logs.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={refreshRuns}
+                  className="p-1.5 rounded-md border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
+                  title="Refresh runs"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {isLoadingRuns ? (
+                <div className="flex items-center justify-center py-12 text-xs text-[var(--text-secondary)]">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span>Loading executions...</span>
+                </div>
+              ) : runs.length === 0 ? (
+                <div className="text-center py-8 text-xs text-[var(--text-secondary)]">
+                  No pipeline executions recorded yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {runs.map((run) => {
+                    const isSelected = run.id === selectedRunId;
+                    return (
+                      <div
+                        key={run.id}
+                        onClick={() => fetchSteps(run.id)}
+                        className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-[var(--text-primary)] bg-[var(--card-bg-alt)]'
+                            : 'border-[var(--border-color)] bg-[var(--card-bg-alt)] hover:bg-[var(--item-hover)]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {run.status === 'completed' ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                          ) : run.status === 'failed' ? (
+                            <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+                          ) : (
+                            <Loader2 className="h-4 w-4 animate-spin text-[var(--text-secondary)] shrink-0" />
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-[var(--text-primary)]">Pipeline Run</span>
+                              <span className="text-[10px] font-mono text-[var(--text-secondary)]">#{run.id.slice(0, 8)}</span>
+                            </div>
+                            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                              Started {new Date(run.started_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-[var(--border-color)] text-[var(--text-secondary)]">
+                            {run.status}
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-[var(--text-secondary)]" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+                <h3 className="font-semibold text-sm text-[var(--text-primary)]">Run Step Inspector</h3>
+                {selectedRunId && (
+                  <span className="text-[10px] font-mono text-[var(--text-secondary)]">#{selectedRunId.slice(0, 8)}</span>
+                )}
+              </div>
+
+              {!selectedRunId ? (
+                <div className="text-center py-10 text-xs text-[var(--text-secondary)]">
+                  Select any execution run from the left panel to inspect step progress.
+                </div>
+              ) : isLoadingSteps ? (
+                <div className="flex items-center justify-center py-10 text-xs text-[var(--text-secondary)]">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span>Fetching step metrics...</span>
+                </div>
+              ) : selectedRunSteps.length === 0 ? (
+                <div className="text-center py-8 text-xs text-[var(--text-secondary)]">
+                  No step details logged for this run.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedRunSteps.map((step, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-[var(--text-primary)]">{step.step_name || `Step ${i + 1}`}</span>
+                        <span className="text-[10px] text-[var(--text-secondary)] uppercase font-bold">{step.status}</span>
+                      </div>
+                      {step.duration_ms && (
+                        <p className="text-[11px] text-[var(--text-secondary)]">Duration: {(step.duration_ms / 1000).toFixed(1)}s</p>
                       )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          ) : (
-            <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-5 text-center text-xs text-[var(--text-secondary)] py-12">
-              Select any execution row on the left to view detailed step timing breakdowns.
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* SECTION 3: Manual Instant Triggering (Collapsible Accordion) */}
-      <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] overflow-hidden">
-        <button
-          onClick={() => setShowManualSection(!showManualSection)}
-          className="w-full flex items-center justify-between p-4 bg-[var(--card-bg)] hover:bg-[var(--border-color)]/5 transition text-left"
-        >
-          <div className="flex items-center gap-2">
-            <Sliders className="h-4 w-4 text-[var(--text-secondary)]" />
-            <div>
-              <span className="font-semibold text-xs text-[var(--text-primary)]">
-                Manual One-Off Trigger & Step Builder
-              </span>
-              <span className="text-[11px] text-[var(--text-secondary)] ml-2">
-                (Execute pipeline manually on demand)
-              </span>
-            </div>
-          </div>
-          <ChevronRight className={`h-4 w-4 text-[var(--text-secondary)] transition-transform ${showManualSection ? 'rotate-90' : ''}`} />
-        </button>
+            <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-sm text-[var(--text-primary)] border-b border-[var(--border-color)] pb-3">
+                One-Click Manual Trigger
+              </h3>
 
-        {showManualSection && (
-          <div className="p-5 border-t border-[var(--border-color)] space-y-5">
-            {/* Task Type Cards */}
-            <div>
-              <label className="text-xs font-medium text-[var(--text-secondary)] mb-2.5 block">
-                Select Workflow Task Type:
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {WORKFLOW_TYPES.map((wf) => {
-                  const Icon = wf.icon;
-                  const isSelected = selectedWorkflow === wf.id;
-                  return (
-                    <div
+              <div className="space-y-3">
+                <label className="text-xs font-medium text-[var(--text-secondary)] block">Target Workflow</label>
+                <div className="space-y-2">
+                  {WORKFLOW_TYPES.map((wf) => (
+                    <button
                       key={wf.id}
                       onClick={() => setSelectedWorkflow(wf.id)}
-                      className={`cursor-pointer rounded-md border p-3.5 transition-all ${
-                        isSelected
-                          ? 'border-[var(--text-primary)] bg-[var(--card-bg)]'
-                          : 'border-[var(--border-color)] bg-[var(--card-bg)] hover:border-[var(--text-secondary)]/50'
+                      className={`w-full text-left p-3 rounded-lg border transition-all text-xs cursor-pointer ${
+                        selectedWorkflow === wf.id
+                          ? 'border-[var(--text-primary)] bg-[var(--card-bg-alt)] text-[var(--text-primary)] font-semibold'
+                          : 'border-[var(--border-color)] bg-[var(--bg-main-alt)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${isSelected ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`} />
-                          <span className="font-semibold text-xs text-[var(--text-primary)]">{wf.name}</span>
-                        </div>
-                        <span className="rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
-                          {wf.badge}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <span>{wf.name}</span>
+                        {selectedWorkflow === wf.id && <Check className="h-3.5 w-3.5 text-emerald-400" />}
                       </div>
-                      <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{wf.desc}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Step Chaining */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-[var(--text-secondary)]">
-                  Chain Specific Steps (Optional Filters):
-                </label>
-                {selectedChain.length > 0 && (
-                  <button
-                    onClick={() => setSelectedChain([])}
-                    className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
-                  >
-                    Clear Filter ({selectedChain.length})
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_STEPS.map((st) => {
-                  const isChained = selectedChain.includes(st.id);
-                  return (
-                    <button
-                      key={st.id}
-                      onClick={() => toggleStepChain(st.id)}
-                      className={`rounded-md border px-2.5 py-1.5 text-xs font-medium transition ${
-                        isChained
-                          ? 'border-[var(--text-primary)] bg-[var(--card-bg)] text-[var(--text-primary)]'
-                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      {isChained ? `+ ${st.label}` : `+ ${st.label}`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Execute Button */}
-            <div className="flex items-center justify-between border-t border-[var(--border-color)] pt-4">
-              <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isVerbose}
-                  onChange={(e) => setIsVerbose(e.target.checked)}
-                  className="rounded border-[var(--border-color)] bg-[var(--card-bg)] accent-[var(--text-primary)]"
-                />
-                <span>Verbose Execution Logging</span>
-              </label>
-
-              <button
-                onClick={handleTrigger}
-                disabled={isTriggering}
-                className="flex items-center gap-2 rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-5 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition disabled:opacity-50 active:scale-95"
-              >
-                {isTriggering ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Dispatching...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4 fill-current" />
-                    <span>Execute Instantly</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* User-Friendly Schedule Creator Modal */}
-      {showScheduleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-md border border-[var(--border-color)] bg-black p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-[var(--text-primary)]" />
-                <h2 className="font-bold text-base">Schedule Automated Task</h2>
-              </div>
-              <button
-                onClick={() => setShowScheduleModal(false)}
-                className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Schedule Name */}
-            <div>
-              <label className="text-xs font-semibold text-[var(--text-primary)] mb-1 block">
-                Schedule Label:
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Daily Evening Intelligence Sweep"
-                value={scheduleName}
-                onChange={(e) => setScheduleName(e.target.value)}
-                className="w-full rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
-              />
-            </div>
-
-            {/* Target Workflow Task */}
-            <div>
-              <label className="text-xs font-semibold text-[var(--text-primary)] mb-1 block">
-                Target Intelligence Task:
-              </label>
-              <select
-                value={scheduleWorkflow}
-                onChange={(e) => setScheduleWorkflow(e.target.value)}
-                className="w-full rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition appearance-none"
-              >
-                {WORKFLOW_TYPES.map((wf) => (
-                  <option key={wf.id} value={wf.id} className="bg-black text-[var(--text-primary)]">
-                    {wf.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Frequency Selection */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-[var(--text-primary)] block">
-                Frequency:
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: 'daily', label: 'Daily' },
-                  { id: 'weekdays', label: 'Weekdays' },
-                  { id: 'weekly', label: 'Weekly' },
-                  { id: 'monthly', label: 'Monthly' },
-                ].map((freq) => (
-                  <button
-                    key={freq.id}
-                    type="button"
-                    onClick={() => setScheduleFrequency(freq.id as any)}
-                    className={`rounded-md border py-2 px-3 text-xs font-semibold transition ${
-                      scheduleFrequency === freq.id
-                        ? 'border-[var(--text-primary)] bg-[var(--card-bg)] text-[var(--text-primary)]'
-                        : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    {freq.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Day of Week Selection (If Weekly) */}
-            {scheduleFrequency === 'weekly' && (
-              <div>
-                <label className="text-xs font-semibold text-[var(--text-primary)] mb-1 block">
-                  Select Day of Week:
-                </label>
-                <div className="grid grid-cols-7 gap-1">
-                  {DAYS_OF_WEEK.map((d) => (
-                     <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => setSelectedWeeklyDay(d.id)}
-                      className={`rounded-md border py-1.5 text-xs font-medium transition ${
-                        selectedWeeklyDay === d.id
-                          ? 'border-[var(--text-primary)] bg-[var(--card-bg)] text-[var(--text-primary)]'
-                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      {d.label.slice(0, 3)}
                     </button>
                   ))}
                 </div>
+
+                <div className="flex items-center justify-between pt-3 text-xs text-[var(--text-secondary)]">
+                  <span>Verbose Logging</span>
+                  <button
+                    onClick={() => setIsVerbose(!isVerbose)}
+                    className="cursor-pointer"
+                  >
+                    {isVerbose ? <ToggleRight className="h-5 w-5 text-emerald-400" /> : <ToggleLeft className="h-5 w-5" />}
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => handleTrigger()}
+                  disabled={isTriggering}
+                  className="w-full mt-2 py-2.5 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                  <span>{isTriggering ? 'Triggering...' : 'Launch Workflow'}</span>
+                </button>
               </div>
-            )}
-
-            {/* User Local Time Picker */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-[var(--text-primary)]">
-                  Execution Time (Your Local Timezone):
-                </label>
-                {userTimezone && (
-                  <span className="text-[10px] font-mono text-[var(--text-secondary)]">
-                    {userTimezone}
-                  </span>
-                )}
-              </div>
-              <input
-                type="time"
-                value={scheduleTime}
-                onChange={(e) => setScheduleTime(e.target.value)}
-                className="w-full rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
-              />
             </div>
 
-            {/* Human Readable Summary Box */}
-            <div className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] p-3.5 flex items-center gap-2 text-xs">
-              <Info className="h-4 w-4 text-[var(--text-primary)] shrink-0" />
-              <span className="text-[var(--text-secondary)]">
-                Will run:{' '}
-                <strong className="text-[var(--text-primary)]">
-                  {formatCronToHuman(computeCronFromUserSelection())}
-                </strong>
-              </span>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 border-t border-[var(--border-color)] pt-4">
-              <button
-                type="button"
-                onClick={() => setShowScheduleModal(false)}
-                className="rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] px-5 py-2.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateSchedule}
-                disabled={!scheduleName.trim()}
-                className="rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] px-5 py-2.5 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--border-color)]/10 transition disabled:opacity-50 active:scale-95"
-              >
-                Save Schedule
-              </button>
-            </div>
           </div>
+
         </div>
-      )}
+
+      </div>
+
+      {/* ── CREATE SCHEDULE MODAL ── */}
+      <AnimatePresence>
+        {showScheduleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">Create Automated Schedule</h3>
+                <button
+                  onClick={() => setShowScheduleModal(false)}
+                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Schedule Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Daily Evening Competitor Sweep"
+                    value={scheduleName}
+                    onChange={(e) => setScheduleName(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Workflow Target</label>
+                  <select
+                    value={scheduleWorkflow}
+                    onChange={(e) => setScheduleWorkflow(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                  >
+                    {WORKFLOW_TYPES.map((wf) => (
+                      <option key={wf.id} value={wf.id}>{wf.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Frequency</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['daily', 'weekdays', 'weekly', 'monthly'] as const).map((freq) => (
+                      <button
+                        key={freq}
+                        type="button"
+                        onClick={() => setScheduleFrequency(freq)}
+                        className={`py-2 rounded-lg border text-center capitalize transition-all cursor-pointer ${
+                          scheduleFrequency === freq
+                            ? 'border-[var(--text-primary)] bg-[var(--card-bg-alt)] text-[var(--text-primary)] font-semibold'
+                            : 'border-[var(--border-color)] text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        {freq}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {scheduleFrequency === 'weekly' && (
+                  <div>
+                    <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Day of Week</label>
+                    <select
+                      value={selectedWeeklyDay}
+                      onChange={(e) => setSelectedWeeklyDay(e.target.value)}
+                      className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none"
+                    >
+                      {DAYS_OF_WEEK.map((d) => (
+                        <option key={d.id} value={d.id}>{d.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Execution Time ({userTimezone || 'Local'})</label>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                  />
+                </div>
+
+                <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] p-3 flex items-center gap-2 text-xs">
+                  <Info className="h-4 w-4 text-[var(--text-primary)] shrink-0" />
+                  <span className="text-[var(--text-secondary)]">
+                    Will run:{' '}
+                    <strong className="text-[var(--text-primary)]">
+                      {formatCronToHuman(computeCronFromUserSelection())}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
+                <button
+                  onClick={() => setShowScheduleModal(false)}
+                  className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateSchedule}
+                  disabled={!scheduleName.trim()}
+                  className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  Save Schedule
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -454,9 +454,9 @@ export default function CampaignsPage() {
                       <div
                         className="floating-bubble"
                         style={{ bottom: 45, left: -20 }}
-                        title={camp.roi === null ? 'No ROI recorded for this campaign' : 'Return on investment'}
+                        title={camp.roi == null ? 'No ROI recorded for this campaign' : 'Return on investment'}
                       >
-                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> {camp.roi === null ? '—' : camp.roi.toFixed(1)}
+                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> {camp.roi == null ? '—' : Number(camp.roi).toFixed(1)}
                       </div>
                     </div>
 

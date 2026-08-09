@@ -12,7 +12,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "OShift",
   description: "Campaigns and Partnerships Dashboard",
-  icons: { icon: "/icon.png" },
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({
@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans`}>
+      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <ThemeProvider>
           <PinnedProvider>
             <AppShell>{children}</AppShell>
