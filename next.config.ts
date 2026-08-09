@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
 
-const backendUrl =
-  process.env.API_BACKEND_URL ?? "http://localhost:8000";
-
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
     '192.168.1.2',
@@ -14,14 +11,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/:path*`,
-      },
-    ];
-  },
+  // `/api/*` is proxied by src/app/api/[...path]/route.ts, not by a rewrite.
+  // A rewrite buffers text/event-stream and truncates it, which broke agent
+  // chat; the route handler forwards the response body stream untouched.
 };
 
 export default nextConfig;
