@@ -1354,11 +1354,14 @@ body {
   background: var(--v0-action-hover);
 }
 
+/* The agent's own mark. This was a stock portrait from i.pravatar.cc — a
+   stranger's face standing in for the assistant on two pages. */
 .v0-avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: url('https://i.pravatar.cc/100?img=11') center/cover;
+  background: var(--card-bg) url('/mascot.png') center/78% no-repeat;
+  border: 1px solid var(--border-color);
 }
 
 .v0-action-text {
