@@ -453,7 +453,7 @@ export default function PromptField({
                   </div>
                   <div className="chat-bubble assistant-bubble">
                     {streamingText ? (
-                      <ChatMarkdown content={streamingText} />
+                      <ChatMarkdown content={streamingText} streaming />
                     ) : (
                       <div className="typing-indicator">
                         <div className="typing-dot" />

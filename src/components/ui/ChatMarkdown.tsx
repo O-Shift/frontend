@@ -4,17 +4,27 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ExternalLink } from 'lucide-react';
 import { cleanMessageContent } from '@/lib/utils/chat';
+import { citationIndexFromTitle, transformCitations } from '@/lib/utils/citations';
+import CitationChip from './CitationChip';
 
 interface ChatMarkdownProps {
   content: string;
+  /** While tokens are still arriving, so a half-typed citation marker is hidden. */
+  streaming?: boolean;
 }
 
-export default function ChatMarkdown({ content }: ChatMarkdownProps) {
+export default function ChatMarkdown({ content, streaming = false }: ChatMarkdownProps) {
   const cleanedContent = cleanMessageContent(content);
 
   if (!cleanedContent) {
     return null;
   }
+
+  // Citation markers become titled links here, then the `a` renderer below
+  // turns those back into chips. Going through markdown rather than splitting
+  // the string ourselves means a citation inside a table cell, a list item or
+  // a bold run still lands in the right place.
+  const { content: markdown, citations } = transformCitations(cleanedContent, { streaming });
 
   return (
     <div className="chat-markdown-container text-sm leading-relaxed overflow-x-auto">
@@ -97,20 +107,34 @@ export default function ChatMarkdown({ content }: ChatMarkdownProps) {
               </div>
             );
           },
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--accent)] hover:underline font-medium inline-flex items-center gap-1 break-all"
-            >
-              <span>{children}</span>
-              <ExternalLink className="h-3 w-3 inline shrink-0" />
-            </a>
-          ),
+          a: ({ href, title, children }) => {
+            const citeIndex = citationIndexFromTitle(title);
+            if (citeIndex !== null && href) {
+              const cite = citations[citeIndex - 1];
+              return (
+                <CitationChip
+                  index={citeIndex}
+                  url={href}
+                  label={cite?.label ?? String(children)}
+                />
+              );
+            }
+            return (
+              <a
+                href={href}
+                title={title}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--accent)] hover:underline font-medium inline-flex items-center gap-1 break-all"
+              >
+                <span>{children}</span>
+                <ExternalLink className="h-3 w-3 inline shrink-0" />
+              </a>
+            );
+          },
         }}
       >
-        {cleanedContent}
+        {markdown}
       </ReactMarkdown>
     </div>
   );
