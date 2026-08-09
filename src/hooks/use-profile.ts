@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch, fetchCompany, Company, Workspace } from '@/lib/api';
+import { logoUrl } from '@/lib/logos';
 import { createClient } from '@/utils/supabase/client';
 
 export interface Member {
@@ -34,20 +35,12 @@ export interface CompetitorDisplay extends Competitor {
 }
 
 /**
- * Competitors carry no logo. Google's favicon service takes a URL, and the
- * record has the real one — guessing `${name}.com` misses whenever the domain
- * is not the name (Career180 lives at career-180.com), which is most of them.
+ * Competitors carry no logo. The favicon service takes a URL and the record has
+ * the real one — guessing `${name}.com` misses whenever the domain is not the
+ * name (Career180 lives at career-180.com), which is most of them.
  */
 function competitorLogo(competitor: Competitor): string | undefined {
-    const site = competitor.website?.trim();
-    if (!site) return undefined;
-    let host: string;
-    try {
-        host = new URL(site.includes('://') ? site : `https://${site}`).hostname;
-    } catch {
-        return undefined;
-    }
-    return `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${host}&size=128`;
+    return logoUrl(competitor.website) ?? undefined;
 }
 
 /**

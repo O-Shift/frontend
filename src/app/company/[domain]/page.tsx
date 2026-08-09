@@ -5,6 +5,7 @@ import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'rec
 import PromptField from '@/components/PromptField';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCompany } from '@/hooks/use-company';
+import { logoUrl as companyLogoUrl } from '@/lib/logos';
 
 
 
@@ -100,7 +101,7 @@ function CompanyPageContent() {
 
     const companyName = competitor?.name || (domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1));
     const [brandColor1, brandColor2] = getBrandColors(domain);
-    const [logoUrl, setLogoUrl] = useState(`https://logo.clearbit.com/${domain}`);
+    const [logoUrl, setLogoUrl] = useState(companyLogoUrl(domain) ?? '');
     
     const [pinnedState, setPinnedState] = useState(false);
     const togglePin = () => setPinnedState(!pinnedState);
