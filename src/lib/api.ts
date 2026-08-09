@@ -281,7 +281,12 @@ export interface InsightGap {
   competitor_id: string | null;
   layer: "gap" | "act_now" | "alarm_for_us";
   title: string;
-  description: string | null;
+  /**
+   * The gap narrative. The column is `description`, but the endpoint selects it
+   * as `description AS body` (app/insights/router.py), so `description` never
+   * arrives over the wire — reading it yields blank cards.
+   */
+  body: string | null;
   confidence: number | null;
   detected_at: string | null;
   signal_ids: string[];
