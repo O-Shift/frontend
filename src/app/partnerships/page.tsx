@@ -527,6 +527,16 @@ export default function PartnershipsPage() {
         const tr = transform.current;
         const tt = targetTransform.current;
         const mode = currentView.toLowerCase();
+
+        // Read once per frame. Everything below picks its colour from this: the
+        // canvas has no stylesheet, so a hardcoded white stroke is invisible on
+        // the light theme's white background — which is what made the graph
+        // look empty even with nodes and edges present.
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+        const ink = isLightMode ? '0, 0, 0' : '255, 255, 255';
+        const haloColor = isLightMode ? 'rgba(255, 255, 255, 0.92)' : 'rgba(0, 0, 0, 0.78)';
+        const labelColor = isLightMode ? '#27272a' : '#e4e4e7';
+        const labelMutedColor = isLightMode ? '#71717a' : '#a1a1aa';
         
         tr.x += (tt.x - tr.x) * 0.15;
         tr.y += (tt.y - tr.y) * 0.15;
@@ -552,7 +562,7 @@ export default function PartnershipsPage() {
                   ctx.strokeStyle = gradient;
                   ctx.lineWidth = 2.0 / tr.k;
               } else if (link.source.isHub && link.target.isHub) {
-                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                  ctx.strokeStyle = `rgba(${ink}, 0.45)`;
                   ctx.lineWidth = 1.5 / tr.k;
               } else {
                   ctx.strokeStyle = 'rgba(142, 142, 147, 0.4)';
@@ -564,7 +574,6 @@ export default function PartnershipsPage() {
         
         // Draw Timeline Mode
         if (mode === 'timeline') {
-            const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
             const TIMELINE_BASE_Y = 0;
 
             if (timelineEvents.length > 0) {
@@ -617,7 +626,6 @@ export default function PartnershipsPage() {
 
         // Render Empty State if 0 DB records
         if (nodes.length === 0) {
-          const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
           ctx.fillStyle = isLightMode ? '#52525b' : '#a1a1aa';
           ctx.font = `600 ${18 / tr.k}px Inter, sans-serif`;
           ctx.textAlign = 'center';
@@ -648,7 +656,7 @@ export default function PartnershipsPage() {
                 ctx.rotate(-t * 0.8);
                 ctx.beginPath();
                 ctx.arc(0, 0, scaledRadius + 14 / tr.k, Math.PI * 0.5, Math.PI * 2);
-                ctx.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.5)' : 'rgba(142, 142, 147, 0.2)';
+                ctx.strokeStyle = isActive ? `rgba(${ink}, 0.5)` : 'rgba(142, 142, 147, 0.2)';
                 ctx.lineWidth = 1 / tr.k;
                 ctx.stroke();
                 ctx.restore();
@@ -667,7 +675,9 @@ export default function PartnershipsPage() {
                 const imgSource = pImg.canvas || pImg.img;
                 if (isActive) {
                     ctx.save();
-                    ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                    // The node's own brand colour, not white — a white glow is
+                    // invisible against the light theme's background.
+                    ctx.shadowColor = n.color || `rgba(${ink}, 0.6)`;
                     ctx.shadowBlur = 20 * tr.k;
                     ctx.drawImage(imgSource, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
                     ctx.restore();
@@ -683,7 +693,9 @@ export default function PartnershipsPage() {
                 } else {
                     ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
                 }
-                ctx.strokeStyle = isActive ? '#ffffff' : (n.isHub ? n.color : 'rgba(142, 142, 147, 0.4)');
+                ctx.strokeStyle = isActive
+                    ? (isLightMode ? '#18181b' : '#ffffff')
+                    : (n.isHub ? n.color : 'rgba(142, 142, 147, 0.4)');
                 ctx.lineWidth = (isActive ? 2.5 : 1.0) / tr.k;
                 ctx.stroke();
             } else {
@@ -695,20 +707,66 @@ export default function PartnershipsPage() {
                 } else {
                     ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
                 }
-                ctx.fillStyle = isActive ? '#ffffff' : n.color;
-                
+                ctx.fillStyle = n.color;
+
                 if (isActive) {
-                    ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                    ctx.shadowColor = n.color || `rgba(${ink}, 0.6)`;
                     ctx.shadowBlur = 20 * tr.k;
                 }
-                
+
                 ctx.fill();
-                
+
                 if (isActive) {
                     ctx.shadowBlur = 0;
+                    // An outline reads as "selected" in both themes, where the
+                    // old white fill only did in dark.
+                    ctx.strokeStyle = isLightMode ? '#18181b' : '#ffffff';
+                    ctx.lineWidth = 2.5 / tr.k;
+                    ctx.stroke();
                 }
             }
         }
+
+        // Node labels — a second pass so a label is never overdrawn by a node
+        // that comes later in the loop. `label` was already on every node object
+        // but nothing ever drew it, which is why the graph read as a field of
+        // anonymous dots.
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (const n of nodes) {
+            if (!n.label) continue;
+
+            const scaledRadius = n.radius / Math.max(tr.k * 0.5, 0.8);
+            const screenX = n.x * tr.k + tr.x;
+            const screenY = n.y * tr.k + tr.y;
+            const screenR = scaledRadius * tr.k;
+            if (screenX + screenR + 250 < 0 || screenX - screenR - 250 > width || screenY + screenR + 150 < 0 || screenY - screenR - 150 > height) {
+                continue;
+            }
+
+            const isActive = n === localSelectedNode || n === hoveredNode;
+            // Below a certain zoom every label collides with its neighbours, so
+            // keep only the hubs and whatever the pointer is on.
+            if (tr.k < 0.7 && !n.isHub && !isActive) continue;
+
+            const fontPx = (n.isHub ? 13 : 11.5) / tr.k;
+            ctx.font = `${n.isHub || isActive ? 600 : 500} ${fontPx}px Inter, sans-serif`;
+
+            const text = n.label.length > 24 ? `${n.label.slice(0, 23)}…` : n.label;
+            const ty = n.y + scaledRadius + 7 / tr.k;
+
+            // Halo first: labels sit over edges and other nodes, and without a
+            // backdrop they smear into whatever is behind them.
+            ctx.lineWidth = 3 / tr.k;
+            ctx.strokeStyle = haloColor;
+            ctx.lineJoin = 'round';
+            ctx.miterLimit = 2;
+            ctx.strokeText(text, n.x, ty);
+
+            ctx.fillStyle = isActive ? labelColor : (n.isHub ? labelColor : labelMutedColor);
+            ctx.fillText(text, n.x, ty);
+        }
+
         ctx.restore();
     };
 
