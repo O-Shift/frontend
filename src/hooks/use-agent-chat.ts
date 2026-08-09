@@ -13,6 +13,10 @@ export interface ChatMessage {
   isStreaming?: boolean;
   isThinking?: boolean;
   isError?: boolean;
+  /** The agent paused on ask_user_question; answering resumes the same conversation. */
+  isQuestion?: boolean;
+  /** Backend marked the error resumable — the user can say "continue". */
+  isRetryable?: boolean;
 }
 
 function toActiveVerb(word: string): string {
@@ -66,6 +70,13 @@ function deriveTitle(prompt: string): string {
   return firstLine.slice(0, 35).trim() + '...';
 }
 
+export interface ToolStep {
+  /** Backend tool_call id, so a fan-out of one tool doesn't collapse into a single row. */
+  id: string;
+  label: string;
+  done: boolean;
+}
+
 export function useAgentChat(initialConversationId?: string | null) {
   const [conversations, setConversations] = useState<ConversationOut[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(
@@ -76,6 +87,16 @@ export function useAgentChat(initialConversationId?: string | null) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  /**
+   * Completed work for the turn in progress, cleared on the next send.
+   *
+   * A spinner keeps spinning when a stream dies, so it cannot distinguish
+   * "working" from "hung" — which is why a long turn read as broken. Finished
+   * steps are evidence, and the backend already emits one per tool_result.
+   */
+  const [toolSteps, setToolSteps] = useState<ToolStep[]>([]);
+  /** When the current turn started, for the elapsed counter. null when idle. */
+  const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -134,6 +155,7 @@ export function useAgentChat(initialConversationId?: string | null) {
     setIsStreaming(false);
     setIsThinking(false);
     setActiveTool(null);
+    setTurnStartedAt(null);
   }, []);
 
   // Send message: instant sidebar insertion, active highlighting, & zero-latency SSE token streaming
@@ -197,6 +219,8 @@ export function useAgentChat(initialConversationId?: string | null) {
       setIsStreaming(true);
       setIsThinking(true);
       setActiveTool(null);
+      setToolSteps([]);
+      setTurnStartedAt(Date.now());
 
       const assistantMsgId = `asst-${Date.now()}`;
       let fullResponseText = '';
@@ -245,6 +269,15 @@ export function useAgentChat(initialConversationId?: string | null) {
             const rawTool = (dataObj?.tool as string) || 'action';
             const formatted = formatToolName(rawTool);
             setActiveTool(formatted);
+            // Key on the backend's tool_call id, not the name: the orchestrator
+            // routinely fans one tool out across parallel calls, and pairing by
+            // name would collapse or mis-resolve them.
+            const callId = typeof dataObj?.id === 'string' ? dataObj.id : `${rawTool}-${Date.now()}`;
+            setToolSteps((prev) =>
+              prev.some((s) => s.id === callId)
+                ? prev
+                : [...prev, { id: callId, label: formatted.replace(/\.\.\.$/, ''), done: false }]
+            );
             continue;
           }
 
@@ -256,7 +289,18 @@ export function useAgentChat(initialConversationId?: string | null) {
                 new CustomEvent('oshift:tool_executed', { detail: { tool: toolExecuted } })
               );
             }
+            const doneId = typeof dataObj?.id === 'string' ? dataObj.id : '';
+            if (doneId) {
+              setToolSteps((prev) =>
+                prev.map((s) => (s.id === doneId ? { ...s, done: true } : s))
+              );
+            }
             setActiveTool(null);
+            // A finished tool hands straight back to the model, which then thinks
+            // before its next token. Clearing the tool badge without restoring
+            // this leaves the UI blank for that whole stretch — with a 50-call
+            // budget that blank is most of a long turn, and it reads as a hang.
+            setIsThinking(true);
             continue;
           }
 
@@ -289,10 +333,58 @@ export function useAgentChat(initialConversationId?: string | null) {
             continue;
           }
 
+          // ask_user_question pauses the loop and the backend returns right after
+          // this event, having already persisted the question. Nothing handled it
+          // before, so the agent asking anything looked like the stream dying
+          // mid-turn. Render it as the assistant's turn; the next sendMessage
+          // resumes the same conversation_id, which is how the backend expects
+          // the answer to arrive.
+          if (event.type === 'question') {
+            setIsThinking(false);
+            setActiveTool(null);
+            const dataObj = event.data as Record<string, unknown>;
+            const questionStr =
+              typeof dataObj?.content === 'string' ? dataObj.content : 'Waiting for your input.';
+            const questionId =
+              typeof dataObj?.message_id === 'string' ? dataObj.message_id : `q-${assistantMsgId}`;
+            setMessages((prev) => {
+              // Keep whatever text already streamed this turn: the model often
+              // explains itself and then asks, and dropping the explanation
+              // leaves a bare question with no context.
+              const updated = [
+                ...prev.filter((m) => m.id !== assistantMsgId),
+                ...(fullResponseText
+                  ? [
+                      {
+                        id: assistantMsgId,
+                        role: 'assistant' as const,
+                        content: fullResponseText,
+                        timestamp: new Date().toISOString(),
+                      },
+                    ]
+                  : []),
+                {
+                  id: questionId,
+                  role: 'assistant' as const,
+                  content: questionStr,
+                  timestamp: new Date().toISOString(),
+                  isQuestion: true,
+                },
+              ];
+              if (activeRealConvId) {
+                conversationCacheRef.current.set(activeRealConvId, updated);
+              }
+              return updated;
+            });
+            break;
+          }
+
           if (event.type === 'error') {
             setIsThinking(false);
+            setActiveTool(null);
             const dataObj = event.data as Record<string, unknown>;
             const errStr = typeof dataObj?.content === 'string' ? dataObj.content : 'Streaming error';
+            const retryable = dataObj?.retryable === true;
             setError(errStr);
             setMessages((prev) => {
               const filtered = prev.filter((m) => m.id !== assistantMsgId);
@@ -304,6 +396,7 @@ export function useAgentChat(initialConversationId?: string | null) {
                   content: fullResponseText ? `${fullResponseText}\n\n⚠️ *${errStr}*` : `⚠️ ${errStr}`,
                   timestamp: new Date().toISOString(),
                   isError: true,
+                  isRetryable: retryable,
                 },
               ];
               if (activeRealConvId) {
@@ -350,6 +443,7 @@ export function useAgentChat(initialConversationId?: string | null) {
         setIsStreaming(false);
         setIsThinking(false);
         setActiveTool(null);
+        setTurnStartedAt(null);
         abortControllerRef.current = null;
 
         setMessages((prev) => {
@@ -383,6 +477,8 @@ export function useAgentChat(initialConversationId?: string | null) {
     isStreaming,
     isThinking,
     activeTool,
+    toolSteps,
+    turnStartedAt,
     error,
     createConversation,
     loadConversation,

@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AgentProgress from '@/components/chat/AgentProgress';
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -30,6 +31,8 @@ function ChatContent() {
     isStreaming,
     isThinking,
     activeTool,
+    toolSteps,
+    turnStartedAt,
     error,
     createConversation,
     loadConversation,
@@ -47,7 +50,7 @@ function ChatContent() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isStreaming, isThinking, activeTool]);
+  }, [messages, isStreaming, isThinking, activeTool, toolSteps]);
 
   useEffect(() => {
     if (initialQuery && !autoSentQuery && !isStreaming && !isLoading) {
@@ -182,7 +185,9 @@ function ChatContent() {
                       className={`w-full max-w-2xl p-5 text-sm leading-relaxed rounded-xl border ${
                         isUser
                           ? 'border-[var(--border-color)] bg-[var(--card-bg-alt)] text-[var(--text-primary)]'
-                          : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)]'
+                          : msg.isQuestion
+                            ? 'border-[var(--accent,#f97316)]/50 bg-[var(--card-bg)] text-[var(--text-primary)]'
+                            : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)]'
                       }`}
                     >
                       {isUser ? (
@@ -190,35 +195,39 @@ function ChatContent() {
                       ) : (
                         <ChatMarkdown content={msg.content} />
                       )}
+
+                      {/* The agent paused on a question, so say what happens next.
+                          Without this the reply just sits there and it is not
+                          obvious the turn is waiting on the user rather than
+                          still working. */}
+                      {msg.isQuestion && (
+                        <div className="mt-3 pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+                          Reply below to continue — the agent picks up this same session.
+                        </div>
+                      )}
+
+                      {/* Backend flagged the failure resumable and told the user
+                          the exact word that resumes it. Repeat it rather than
+                          leaving the phrasing to chance. */}
+                      {msg.isRetryable && (
+                        <div className="mt-3 pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+                          Send <span className="font-semibold text-[var(--text-primary)]">continue</span> to resume from where it stopped.
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
 
-              {/* Thinking State */}
-              {isThinking && (
-                <div className="flex flex-col items-start gap-2">
-                  <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold">
-                    <div className="w-7 h-7 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-0.5 shrink-0 flex items-center justify-center">
-                      <img src="/mascot.png" alt="Mascot" className="w-full h-full object-contain" />
-                    </div>
-                    <span>Processing</span>
-                  </div>
-                  <div className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded-xl text-xs flex items-center gap-3 text-[var(--text-secondary)]">
-                    <Loader2 className="h-4 w-4 animate-spin text-[var(--text-primary)]" />
-                    <span>Analyzing data streams...</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Active Tool Badge (Clean border, no AI slop glow) */}
-              {activeTool && (
-                <div className="flex items-start gap-2">
-                  <div className="border border-[var(--border-color)] bg-[var(--card-bg-alt)] px-3 py-1.5 rounded-md text-xs font-mono text-[var(--text-secondary)]">
-                    Executing: <span className="text-[var(--text-primary)] font-semibold">{activeTool}</span>
-                  </div>
-                </div>
-              )}
+              {/* One panel for the whole turn: what is running now, what has
+                  already finished, and how long it has been going. The finished
+                  steps are what distinguish a slow turn from a dead one. */}
+              <AgentProgress
+                isThinking={isThinking}
+                activeTool={activeTool}
+                steps={toolSteps}
+                startedAt={turnStartedAt}
+              />
 
               {/* Error Banner */}
               {error && (
