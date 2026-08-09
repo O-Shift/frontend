@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import InfiniteCanvas, { InfiniteCanvasHandle } from '@/components/InfiniteCanvas';
 import PromptField from '@/components/PromptField';
-import { fetchCampaigns, type Campaign, type CampaignPost } from '@/lib/api';
+import { fetchCampaigns, campaignThemes, type Campaign, type CampaignPost } from '@/lib/api';
 
 // ─── Canvas regions ───────────────────────────────────────────────
 // Position and colour only. The names shown on the canvas come from the
-// `cluster` values the API actually returns, not from this list.
+// themes the clustering engine recorded, not from this list.
 interface Region {
   id: string;
   x: number;
@@ -29,24 +29,22 @@ interface HeatmapBucket extends Region {
 }
 
 const HEATMAP_CLUSTERS: HeatmapBucket[] = [
-  { id: 'high',   name: 'High ROI',    x: -580, y: -320, color: '#FF3300', polygon: CLUSTERS[0].polygon },
-  { id: 'avg',    name: 'Average ROI', x:  580, y: -320, color: '#FF9900', polygon: CLUSTERS[1].polygon },
-  { id: 'low',    name: 'Low ROI',     x:    0, y:  420, color: '#555555', polygon: CLUSTERS[2].polygon },
-  { id: 'unmeasured', name: 'ROI Not Recorded', x: 0, y: 1700, color: 'var(--text-secondary)', polygon: null },
+  { id: 'high',   name: 'High confidence',   x: -580, y: -320, color: '#FF3300', polygon: CLUSTERS[0].polygon },
+  { id: 'medium', name: 'Medium confidence', x:  580, y: -320, color: '#FF9900', polygon: CLUSTERS[1].polygon },
+  { id: 'low',    name: 'Low confidence',    x:    0, y:  420, color: '#555555', polygon: CLUSTERS[2].polygon },
 ];
 
-/** Bucket label for campaigns whose `cluster` column is null. */
-const UNCLUSTERED = 'Unclustered';
+/** Bucket label for campaigns the clustering engine recorded no theme for. */
+const UNTHEMED = 'Untagged';
 
 /**
- * A null roi means no return was ever recorded for the campaign, which is a
- * different fact from a poor return. Those campaigns get their own bucket
- * rather than being scored as 0 and sinking into "Low ROI".
+ * Confidence is how sure the clustering engine is that these posts are one
+ * campaign, and it is the only score on the record — the API returns no ROI or
+ * budget, so this is what a "heatmap" can honestly rank by.
  */
-function heatmapBucketFor(roi: number | null): HeatmapBucket {
-  if (roi === null) return HEATMAP_CLUSTERS[3];
-  if (roi >= 4) return HEATMAP_CLUSTERS[0];
-  if (roi >= 2) return HEATMAP_CLUSTERS[1];
+function heatmapBucketFor(confidence: number): HeatmapBucket {
+  if (confidence >= 70) return HEATMAP_CLUSTERS[0];
+  if (confidence >= 40) return HEATMAP_CLUSTERS[1];
   return HEATMAP_CLUSTERS[2];
 }
 
@@ -76,7 +74,7 @@ interface CampaignNode {
   heatmapCluster: HeatmapBucket;
   heatmapX: number;
   heatmapY: number;
-  roi: number | null;
+  confidence: number;
 }
 
 interface GhostLabel {
@@ -93,22 +91,24 @@ const GOLDEN_ANGLE = 137.508 * (Math.PI / 180);
 /**
  * Lays the campaigns out on the same phyllotaxis spirals the page has always
  * used: one spiral per canvas region, radius 235*sqrt(n+0.5) at the golden
- * angle. Distinct `cluster` values are what defines a group; the three regions
- * are reused in order when the workspace has more clusters than regions, and
- * groups sharing a region continue the same spiral so nodes never collide.
+ * angle. The grouping dimension is the campaign's leading theme — the
+ * clustering engine records themes in `metadata.themes`, and there is no
+ * `cluster` field on the wire. The three regions are reused in order when the
+ * workspace has more themes than regions, and groups sharing a region continue
+ * the same spiral so nodes never collide.
  */
 function layOutCampaigns(campaigns: Campaign[]): { nodes: CampaignNode[]; labels: GhostLabel[] } {
   const grouped = new Map<string, Campaign[]>();
   for (const c of campaigns) {
-    const key = c.cluster?.trim() || UNCLUSTERED;
+    const key = campaignThemes(c)[0] ?? UNTHEMED;
     const bucket = grouped.get(key);
     if (bucket) bucket.push(c);
     else grouped.set(key, [c]);
   }
 
   const groupNames = [...grouped.keys()].sort((a, b) => {
-    if (a === UNCLUSTERED) return 1;
-    if (b === UNCLUSTERED) return -1;
+    if (a === UNTHEMED) return 1;
+    if (b === UNTHEMED) return -1;
     return a.localeCompare(b);
   });
 
@@ -135,7 +135,7 @@ function layOutCampaigns(campaigns: Campaign[]): { nodes: CampaignNode[]; labels
       const radius = 235 * Math.sqrt(idx + 0.5);
       const theta = idx * GOLDEN_ANGLE;
 
-      const hCluster = heatmapBucketFor(campaign.roi);
+      const hCluster = heatmapBucketFor(campaign.confidence);
       const hIdx = heatmapCounts[hCluster.id] ?? 0;
       heatmapCounts[hCluster.id] = hIdx + 1;
       const hRadius = 235 * Math.sqrt(hIdx + 0.5);
@@ -152,7 +152,7 @@ function layOutCampaigns(campaigns: Campaign[]): { nodes: CampaignNode[]; labels
         heatmapCluster: hCluster,
         heatmapX: hCluster.x + Math.cos(hTheta) * hRadius,
         heatmapY: hCluster.y + Math.sin(hTheta) * hRadius,
-        roi: campaign.roi,
+        confidence: campaign.confidence,
       });
     }
   });
@@ -454,9 +454,9 @@ export default function CampaignsPage() {
                       <div
                         className="floating-bubble"
                         style={{ bottom: 45, left: -20 }}
-                        title={camp.roi == null ? 'No ROI recorded for this campaign' : 'Return on investment'}
+                        title={`${camp.confidence}% confidence this is one campaign`}
                       >
-                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> {camp.roi == null ? '—' : Number(camp.roi).toFixed(1)}
+                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> {camp.confidence}%
                       </div>
                     </div>
 

@@ -348,7 +348,7 @@ export interface CampaignPost {
   captured_at: string | null;
 }
 
-/** Free-form jsonb on a campaigns.campaigns row. */
+/** Free-form jsonb on a campaign row. */
 export interface CampaignMetadata {
   post_count?: number;
   date_range?: string | { start?: string; end?: string } | null;
@@ -357,36 +357,56 @@ export interface CampaignMetadata {
   [key: string]: unknown;
 }
 
-/** A row of campaigns.campaigns. `title` is the table's `name` column. */
+/**
+ * A campaign as `/v1/campaigns` actually returns it.
+ *
+ * Despite the name, this is not a row of `campaigns.campaigns`: the clustering
+ * engine writes campaigns into `insights.insights_gaps` with `layer='campaign'`,
+ * and both campaign routes read from there (app/campaigns/router.py). These
+ * eight fields are the whole contract — an earlier version of this interface
+ * declared budget_usd, roi, status, cluster, platforms, themes and start/end
+ * dates, none of which exist on the wire, so everything derived from them
+ * rendered blank.
+ *
+ * Themes and the date range live under `metadata`; platforms are derivable from
+ * `posts`. Use the helpers below rather than reaching for a top-level field.
+ */
 export interface Campaign {
   id: string;
-  workspace_id: string;
   competitor_id: string | null;
-  company_id: string | null;
-  owner_type: string | null;
   title: string;
   description: string | null;
-  cluster: string | null;
-  identified_target: string | null;
-  style: string | null;
-  status: string | null;
-  platforms: string[];
-  themes: string[];
-  signal_ids: string[];
-  start_date: string | null;
-  end_date: string | null;
+  confidence: number;
   detected_at: string | null;
-  budget_usd: number | null;
-  spent_usd: number | null;
-  progress: number | null;
-  roi: number | null;
-  /** Always null: campaigns.campaigns has no confidence column. */
-  confidence: number | null;
-  platform_metrics: Record<string, unknown>;
   metadata: CampaignMetadata;
-  created_at: string | null;
-  updated_at: string | null;
   posts: CampaignPost[];
+}
+
+/** Themes recorded by the clustering engine, or [] when it recorded none. */
+export function campaignThemes(campaign: Campaign): string[] {
+  const raw = campaign.metadata?.themes;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((t): t is string => typeof t === "string" && t.trim().length > 0);
+}
+
+/** Distinct platforms across the campaign's posts, in first-seen order. */
+export function campaignPlatforms(campaign: Campaign): string[] {
+  const seen = new Set<string>();
+  for (const post of campaign.posts ?? []) {
+    const p = post.platform?.trim();
+    if (p) seen.add(p);
+  }
+  return [...seen];
+}
+
+/** `{start, end}` from metadata.date_range, tolerating the string form. */
+export function campaignDateRange(campaign: Campaign): { start: string | null; end: string | null } {
+  const raw = campaign.metadata?.date_range;
+  if (raw && typeof raw === "object") {
+    return { start: raw.start ?? null, end: raw.end ?? null };
+  }
+  if (typeof raw === "string" && raw.trim()) return { start: raw, end: null };
+  return { start: null, end: null };
 }
 
 export async function fetchCampaigns(params?: {
