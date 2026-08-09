@@ -325,7 +325,7 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                             <div className="h-[280px] w-full rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] relative overflow-hidden flex items-center justify-center">
-                                <Globe className="profile-globe" />
+                                <Globe className="profile-globe" countries={PROFILE_DATA.markets.countries} />
                                 <div className="absolute bottom-3 left-3 flex gap-1.5 flex-wrap z-10">
                                     {PROFILE_DATA.markets.countries.length === 0 ? (
                                         <span className="text-[10px] font-medium text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)] px-2 py-0.5 rounded">
