@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import PromptField from '@/components/PromptField';
 import { apiFetch } from '@/lib/api';
+import { logoUrl } from '@/lib/logos';
 
 interface DBGraphNode {
   id: string;
@@ -75,11 +76,17 @@ function extractDomain(input?: string | null): string {
   return '';
 }
 
-function getDynamicDomain(name: string, metadata?: any): string {
+/**
+ * The domain a node's logo should be looked up by, or '' when the record has
+ * no site. Deliberately does not fall back to the node's name: "2U, Inc."
+ * parses as a domain because it contains a dot, and we would then ask the
+ * favicon service for `2u, inc.`. A node with no site gets a monogram.
+ */
+function getDynamicDomain(metadata?: any): string {
   if (metadata?.domain) return extractDomain(metadata.domain);
   if (metadata?.website) return extractDomain(metadata.website);
   if (metadata?.url) return extractDomain(metadata.url);
-  return extractDomain(name);
+  return '';
 }
 
 function getDynamicBrandColor(str: string): string {
@@ -224,8 +231,13 @@ export default function PartnershipsPage() {
         return;
       }
 
-      const imgUrl = `https://logo.clearbit.com/${domain}`;
+      const imgUrl = logoUrl(domain);
       const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+
+      if (!imgUrl) {
+        renderMonogramCanvas();
+        return;
+      }
 
       const img = new Image();
 
@@ -284,7 +296,7 @@ export default function PartnershipsPage() {
 
     if (dbGraphData?.nodes) {
       for (const gn of dbGraphData.nodes) {
-        const dom = getDynamicDomain(gn.name, gn.metadata);
+        const dom = getDynamicDomain(gn.metadata);
         rawEntities.push({
           id: gn.id,
           name: gn.name,
@@ -298,7 +310,7 @@ export default function PartnershipsPage() {
     }
 
     for (const comp of dbCompetitors) {
-      const dom = extractDomain(comp.website) || getDynamicDomain(comp.name);
+      const dom = extractDomain(comp.website);
       if (!rawEntities.some(e => e.id === comp.id || e.name.toLowerCase() === comp.name.toLowerCase())) {
         rawEntities.push({
           id: comp.id,
