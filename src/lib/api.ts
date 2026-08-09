@@ -466,6 +466,58 @@ export async function fetchCompany(): Promise<ApiResult<Company>> {
   return apiFetch<Company>("/company");
 }
 
+/** What PUT /company accepts. `website` must be an absolute URL — the backend
+ * validates it as one so the crawlers get a resolvable seed. */
+export interface CompanyUpsert {
+  name: string;
+  website: string;
+  description?: string | null;
+  industry?: string | null;
+  founding_year?: number | null;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Create or replace the workspace's own company profile. Upserts on
+ * workspace_id, so calling it twice updates one row rather than making two.
+ */
+export async function upsertCompany(
+  body: CompanyUpsert,
+): Promise<ApiResult<Company>> {
+  return apiFetch<Company>("/company", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+/** What POST /competitors and /competitors/batch accept. */
+export interface CompetitorCreate {
+  name: string;
+  website: string;
+  description?: string | null;
+  industry?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * `skipped` carries the names the backend rejected as duplicates (409). A
+ * partial success is the normal case when onboarding is re-run, so callers
+ * should report it rather than treat it as a failure.
+ */
+export interface CompetitorBatchResult {
+  created: { id: string; name: string; website: string | null }[];
+  skipped: string[];
+}
+
+export async function createCompetitorsBatch(
+  items: CompetitorCreate[],
+): Promise<ApiResult<CompetitorBatchResult>> {
+  return apiFetch<CompetitorBatchResult>("/competitors/batch", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+}
+
 export type AnalyticsRange = "1m" | "3m" | "6m" | "1y";
 export type AnalyticsGranularity = "day" | "week" | "month";
 
