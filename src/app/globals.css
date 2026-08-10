@@ -997,6 +997,259 @@ body {
   pointer-events: auto;
 }
 
+/* ── FLOATING CHAT PANEL ──────────────────────────────────────────────────
+   The transcript that sits above the command bar. Every class below was
+   rendered by PromptField with no rule behind it, so the panel was an
+   unstyled, zero-pointer-events block: invisible, and inert even where it
+   overlapped. `.command-wrapper` is `pointer-events: none` so clicks fall
+   through to the canvas underneath — the panel has to opt back in the same
+   way `.command-bar-container` does. */
+
+.command-wrapper.show-wrapper .chat-window {
+  pointer-events: auto;
+}
+
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  /* Never taller than half the viewport: the panel is a companion to the
+     page, not a takeover of it. */
+  max-height: min(52vh, 460px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-lg);
+  background: var(--command-bar-bg);
+  box-shadow: 0 24px 64px -24px var(--shadow-color);
+  overflow: hidden;
+  animation: chatPanelIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes chatPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+  padding: 8px 8px 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--card-bg-alt);
+}
+
+.chat-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chat-title-group img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.chat-title-group span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.chat-header-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chat-header-btn:hover {
+  background: var(--item-hover-alt);
+  color: var(--text-primary);
+}
+
+.chat-header-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.chat-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--space-md) 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.chat-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-body::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.chat-message-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.chat-message-wrapper.user {
+  flex-direction: row-reverse;
+}
+
+.chat-avatar-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.chat-avatar-icon img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.assistant-avatar {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.user-avatar {
+  background: var(--pill-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.chat-bubble {
+  max-width: 82%;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: var(--card-radius);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* The user's own turn is tinted rather than filled: white on #FF5A00 lands
+   at 3.1:1, under the 4.5:1 body-text floor. Mixing the accent into the
+   panel surface keeps the ownership cue and the legible foreground. */
+.user-bubble {
+  background: color-mix(in srgb, var(--accent) 13%, var(--command-bar-bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  border-bottom-right-radius: var(--space-xs);
+}
+
+.assistant-bubble {
+  background: var(--card-bg-alt);
+  border: 1px solid var(--border-color);
+  border-bottom-left-radius: var(--space-xs);
+}
+
+.error-bubble {
+  background: color-mix(in srgb, #ef4444 12%, var(--command-bar-bg));
+  border: 1px solid color-mix(in srgb, #ef4444 40%, transparent);
+  border-bottom-left-radius: var(--space-xs);
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 2px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: typingBounce 1.2s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typingBounce {
+
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .chat-window {
+    animation: none;
+  }
+
+  .typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-window {
+    max-height: 46vh;
+  }
+
+  .chat-bubble {
+    max-width: 88%;
+  }
+}
+
 .suggestions {
   display: flex;
   gap: 12px;
@@ -1681,40 +1934,18 @@ body.is-thinking-active .app-window::after {
   transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
 }
 
-/* Existing elements turn into skeletons during AI thinking */
-body.is-thinking-active .skeleton-target {
-  position: relative !important;
-  overflow: hidden !important;
-  color: transparent !important;
-  border-color: transparent !important;
-  background: var(--skeleton-base) !important;
-  box-shadow: none !important;
-  animation: skeletonPulse 1.5s ease-in-out infinite !important;
-}
+/* The agent working in this tab is signalled by the edge glow above and
+   nothing else. It deliberately does not blank the page: the previous rules
+   here painted every .skeleton-target opaque and set visibility:hidden on all
+   of their children, which hid the whole route and swallowed every click for
+   as long as the agent ran. Reading the page while the agent works on it is
+   the point. `.skeleton-target` is now inert — Skeleton/SkeletonOverlay handle
+   real first-load placeholders. */
 
-body.is-thinking-active .skeleton-target * {
-  visibility: hidden !important;
-}
-
-body.is-thinking-active .skeleton-target::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 20%,
-    var(--skeleton-shine) 50%,
-    rgba(255, 90, 0, 0.05) 55%,
-    var(--skeleton-shine) 60%,
-    transparent 80%
-  );
-  animation: shimmer 1.8s ease-in-out infinite;
-  z-index: 100;
-  border-radius: inherit;
-}
-
-[data-theme="light"] body.is-thinking-active .skeleton-target {
-  background: var(--skeleton-base) !important;
+@media (prefers-reduced-motion: reduce) {
+  body.is-thinking-active .app-window::after {
+    animation: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
