@@ -23,6 +23,90 @@ export type ApiResult<T> =
   | { ok: true; data: T; status: number }
   | { ok: false; error: string; status: number };
 
+const WORKSPACE_STORAGE_KEY = "oshift.workspace_id";
+
+/**
+ * Workspace resolution, in one place.
+ *
+ * sessionStorage is the source of truth: it holds the workspace the user picked
+ * on /workspaces, and it is read on every call rather than shadowed by a module
+ * variable. An earlier version cached the id in `cachedWorkspaceId` and checked
+ * that *first*, which meant an auto-resolved guess made before the user chose
+ * anything outranked the choice they then made, for the rest of the tab's life.
+ * getItem is a synchronous local read; there was never anything to save here.
+ * The network round trip was the cost worth removing, and `inFlight` below still
+ * removes it.
+ */
+let inFlightWorkspaceId: Promise<string | null> | null = null;
+
+function readStoredWorkspaceId(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(WORKSPACE_STORAGE_KEY);
+}
+
+/** Records the active workspace so apiFetch and sseStream both see it. */
+export function setActiveWorkspaceId(id: string): void {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(WORKSPACE_STORAGE_KEY, id);
+  }
+}
+
+/**
+ * The active workspace, or null when the user has not picked one yet.
+ *
+ * Exported so callers that need to *display* the active workspace read it from
+ * the same place apiFetch does, rather than repeating the storage key.
+ */
+export function getActiveWorkspaceId(): string | null {
+  return readStoredWorkspaceId();
+}
+
+/** Clears the cached workspace, e.g. on sign-out or an explicit switch. */
+export function clearActiveWorkspaceId(): void {
+  inFlightWorkspaceId = null;
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(WORKSPACE_STORAGE_KEY);
+  }
+}
+
+/**
+ * The workspace to send, resolving it from the API on a cache miss.
+ *
+ * Mirrors `require_role` in app/auth/deps.py exactly: a workspace is auto-
+ * resolved only when the user belongs to exactly one. Past that the backend
+ * refuses to guess, and so does this — `/core/workspaces` is ordered
+ * `created_at DESC`, so taking `data[0]` hands a multi-workspace user their
+ * newest workspace, which for anyone who has ever created a scratch workspace
+ * is an empty one. Returning null there produces an honest 403 the caller can
+ * route to /workspaces on, instead of silently rendering the wrong tenant's
+ * (usually empty) data as if it were theirs.
+ */
+export async function resolveWorkspaceId(): Promise<string | null> {
+  const stored = readStoredWorkspaceId();
+  if (stored) return stored;
+  if (inFlightWorkspaceId) return inFlightWorkspaceId;
+
+  inFlightWorkspaceId = (async () => {
+    try {
+      const res = await apiFetch<Array<{ id: string }>>("/core/workspaces", {
+        skipWorkspace: true,
+      });
+      if (res.ok && Array.isArray(res.data) && res.data.length === 1) {
+        setActiveWorkspaceId(res.data[0].id);
+        return res.data[0].id;
+      }
+    } catch {
+      // Falls through to null: a missing header is a 403 from the backend,
+      // which the caller surfaces, and is preferable to throwing here.
+    } finally {
+      inFlightWorkspaceId = null;
+    }
+    return null;
+  })();
+
+  return inFlightWorkspaceId;
+}
+
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { skipWorkspace?: boolean },
@@ -44,25 +128,14 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  let workspaceId =
-    typeof window !== "undefined"
-      ? sessionStorage.getItem("oshift.workspace_id")
-      : null;
-
-  if (!workspaceId && !init?.skipWorkspace && !normalized.includes("/workspaces")) {
-    try {
-      const wsRes = await apiFetch<Array<{ id: string }>>("/workspaces", { skipWorkspace: true });
-      if (wsRes.ok && Array.isArray(wsRes.data) && wsRes.data.length > 0) {
-        workspaceId = wsRes.data[0].id;
-        sessionStorage.setItem("oshift.workspace_id", workspaceId);
-      }
-    } catch {
-      // ignore
+  if (!init?.skipWorkspace) {
+    // The `/workspaces` guard keeps the resolver from recursing into itself.
+    const workspaceId = normalized.includes("/workspaces")
+      ? readStoredWorkspaceId()
+      : await resolveWorkspaceId();
+    if (workspaceId) {
+      headers.set("X-Workspace-ID", workspaceId);
     }
-  }
-
-  if (workspaceId && !init?.skipWorkspace) {
-    headers.set("X-Workspace-ID", workspaceId);
   }
 
   try {
@@ -107,10 +180,10 @@ export async function* sseStream(
   const url = normalized.startsWith("/v1/")
     ? `${base}${normalized}`
     : `${base}/v1${normalized}`;
-  const workspaceId =
-    typeof window !== "undefined"
-      ? sessionStorage.getItem("oshift.workspace_id")
-      : null;
+  // Uses the same resolver as apiFetch. Reading sessionStorage directly meant a
+  // user with more than one workspace who opened a streaming page first sent no
+  // X-Workspace-ID at all, and require_role answered 403 rather than guessing.
+  const workspaceId = await resolveWorkspaceId();
 
   const res = await fetch(url, {
     method: "POST",
