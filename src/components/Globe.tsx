@@ -14,9 +14,24 @@ import {
 
 type Marker = { lat: number; lng: number; kind: 'primary' | 'secondary'; label: string };
 
+/**
+ * Project lat/lng onto the globe.
+ *
+ * The land dots are the visible map, so they define the convention everything
+ * else has to match. The sampler below reads each dot's longitude back out with
+ * `atan2(z, x)` and then places it at `(-x, y, z)`, which works out to:
+ *
+ *     X = -R·cos(lat)·cos(lng)    Y = R·sin(lat)    Z = R·cos(lat)·sin(lng)
+ *
+ * This used to add 180° to the longitude — the usual copy-paste from
+ * equirectangular-texture globes, where the offset compensates for the seam in
+ * the texture. There is no texture here, so the offset negated both X and Z,
+ * spinning every marker half a turn about the polar axis and dropping it at the
+ * same latitude on the opposite side of the planet.
+ */
 function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (lng + 180) * (Math.PI / 180);
+  const theta = lng * (Math.PI / 180);
   return new THREE.Vector3(
     -radius * Math.sin(phi) * Math.cos(theta),
     radius * Math.cos(phi),
@@ -24,11 +39,18 @@ function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector
   );
 }
 
-/** Convert a globe-local 3D point back to lat/lng */
+/**
+ * Inverse of latLngToVector3, used to name the country under the cursor.
+ *
+ * Longitude comes back in (-180, 180]. That range is load-bearing: the polygon
+ * test in world-map.ts compares raw GeoJSON coordinates and does no wrapping, so
+ * the old `- 180` here both aimed at the wrong hemisphere and could return
+ * values below -180 that match no country at all.
+ */
 function vector3ToLatLng(v: THREE.Vector3, radius: number): [number, number] {
-  const lat = Math.asin(v.y / radius) * (180 / Math.PI);
-  const theta = Math.atan2(v.z, -v.x);
-  const lng = theta * (180 / Math.PI) - 180;
+  // A raycast hit can land a hair outside the sphere; asin(>1) is NaN.
+  const lat = Math.asin(Math.max(-1, Math.min(1, v.y / radius))) * (180 / Math.PI);
+  const lng = Math.atan2(v.z, -v.x) * (180 / Math.PI);
   return [lat, lng];
 }
 
@@ -213,13 +235,18 @@ export default function Globe({
 
     // ---------- Interaction ----------
     // Open facing the first market so it is the one the user sees, falling back
-    // to the old Cairo-centred angle when there is nothing to face.
-    // Solving x'=0 after the Y rotation gives azimuth = pi/2 - theta, where
-    // theta is the same (lng + 180) the marker projection uses.
+    // to Cairo when there is nothing to face.
+    //
+    // globeGroup.rotation.y = azimuth sends a local point to x' = x·cos a +
+    // z·sin a. Solving x' = 0 gives tan a = -x/z = cot(lng), so a = π/2 - lng.
+    // Of the two branches half a turn apart, that one leaves z' = +R·cos(lat) —
+    // the near face, toward the camera — and the other buries the marker behind
+    // the globe. This tracked the old marker projection, so it carried the same
+    // spurious 180°; both lose it together.
     const facing = markers[0];
     let targetAzimuth = facing
-      ? Math.PI / 2 - (facing.lng + 180) * (Math.PI / 180)
-      : 4.168;
+      ? Math.PI / 2 - facing.lng * (Math.PI / 180)
+      : 1.026; // π/2 - 31.2°, i.e. Cairo on the meridian facing the camera
     let targetPolar = Math.PI / 2 - 0.15;
     let azimuth = targetAzimuth;
     let polar = targetPolar;
@@ -352,7 +379,7 @@ export default function Globe({
       renderer.domElement.removeEventListener('pointercancel', onPointerUp);
       renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
-      [normalDotGeo, normalDotMat, hlDotGeo, hlDotMat, oceanGeo, oceanMat, atmGeo, atmMat, ringGeo, ringMat].forEach((o: any) => o.dispose());
+      [normalDotGeo, normalDotMat, hlDotGeo, hlDotMat, oceanGeo, oceanMat, atmGeo, atmMat, ringGeo, ringMat].forEach((o: { dispose: () => void }) => o.dispose());
       renderer.dispose();
     };
   }, [countryKey]);
