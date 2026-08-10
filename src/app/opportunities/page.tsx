@@ -138,9 +138,12 @@ export default function OpportunitiesPage() {
       const items = res.data?.items || [];
       const mapped = items.map((op: Opportunity) => {
         const af = op.analysis_fields || {};
+        // No invented provenance. An opportunity the backend produced without
+        // evidence gets an empty citation list and the UI says so, rather than
+        // being given a constant that renders as a "Source Citation".
         const highlights = Array.isArray(af.highlights) && af.highlights.length > 0
           ? af.highlights
-          : [{ text: op.title.slice(0, 35), citations: ['Signal Analysis', 'Database Intelligence'] }];
+          : [{ text: op.title.slice(0, 35), citations: [] }];
 
         const gapBullets = Array.isArray(af.gapBullets) && af.gapBullets.length > 0
           ? af.gapBullets
@@ -148,8 +151,8 @@ export default function OpportunitiesPage() {
             ? (af as any).gap_bullets
             : [{
               text: af.gapIdentified || (af as any).gap_identified || 'Market gap identified from DB competitor signals.',
-              citations: ['Market Competitor Audit'],
-              companies: ['stripe.com', 'slack.com', 'notion.so'],
+              citations: [],
+              companies: [],
             }];
 
         return {
@@ -157,7 +160,6 @@ export default function OpportunitiesPage() {
           title: op.title,
           description: op.description,
           highlights,
-          gaps: ['stripe.com', 'slack.com', 'notion.so'],
           gapBullets,
           effort: op.effort ? op.effort.charAt(0).toUpperCase() + op.effort.slice(1) : 'High',
           impact: op.impact ? op.impact.charAt(0).toUpperCase() + op.impact.slice(1) : 'High',
@@ -557,43 +559,65 @@ export default function OpportunitiesPage() {
                           >
                             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 16 }}>Source Citations</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                              {activeCitations.length === 0 && (
+                                <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0 }}>
+                                  No source recorded for this item. Run Generate to rebuild it from collected signals.
+                                </p>
+                              )}
                               {activeCitations.map((cit: any, i: number) => {
                                 const title = typeof cit === 'string' ? cit : cit.title || cit.name || 'Source Citation';
-                                let rawUrl = typeof cit === 'object' && cit.url ? cit.url : (typeof cit === 'string' && cit.startsWith('http') ? cit : '');
-                                if (rawUrl.startsWith('partnerships://')) {
-                                  const compName = title.replace(/^\[NEWS\]\s*Partnerships:\s*/i, '').trim();
-                                  rawUrl = `https://www.google.com/search?q=${encodeURIComponent(`${compName} partnership news`)}`;
-                                } else if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-                                  rawUrl = `https://www.google.com/search?q=${encodeURIComponent(title)}`;
+                                const rawUrl = typeof cit === 'object' && cit.url
+                                  ? String(cit.url)
+                                  : (typeof cit === 'string' && cit.startsWith('http') ? cit : '');
+
+                                // Only a real http(s) source becomes a link. A
+                                // `partnerships://<uuid>` signal is internal and a bare
+                                // label has no source at all — neither is worth
+                                // laundering into a web search that we then present as
+                                // provenance.
+                                const isWebSource = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+
+                                const rowStyle = {
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '12px 16px',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: 8,
+                                  background: 'var(--card-bg-alt)',
+                                  color: 'var(--text-primary)',
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                  textDecoration: 'none',
+                                } as const;
+
+                                const label = (
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>{title}</span>
+                                );
+
+                                if (!isWebSource) {
+                                  return (
+                                    <div key={i} style={{ ...rowStyle, color: 'var(--text-secondary)' }} title={title}>
+                                      {label}
+                                      <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0, marginLeft: 8 }}>
+                                        {rawUrl.startsWith('partnerships://') ? 'Internal' : 'No link'}
+                                      </span>
+                                    </div>
+                                  );
                                 }
-                                const url = rawUrl || `https://www.google.com/search?q=${encodeURIComponent(title)}`;
-                                const isExternal = true;
 
                                 return (
                                   <a
                                     key={i}
-                                    href={url}
-                                    target={isExternal ? "_blank" : "_self"}
+                                    href={rawUrl}
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                     title={title}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      padding: '12px 16px',
-                                      border: '1px solid var(--border-color)',
-                                      borderRadius: 8,
-                                      background: 'var(--card-bg-alt)',
-                                      color: 'var(--text-primary)',
-                                      fontSize: 13,
-                                      fontWeight: 500,
-                                      textDecoration: 'none',
-                                      transition: 'border-color 0.2s, background 0.2s'
-                                    }}
+                                    style={{ ...rowStyle, transition: 'border-color 0.2s, background 0.2s' }}
                                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--item-hover)'; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--card-bg-alt)'; }}
                                   >
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>{title}</span>
+                                    {label}
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0, marginLeft: 8 }}>
                                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                                       <polyline points="15 3 21 3 21 9" />
