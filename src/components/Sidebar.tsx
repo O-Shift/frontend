@@ -14,6 +14,12 @@ export default function Sidebar() {
     const { pinned } = usePinned();
     const { user, loading: userLoading } = useCurrentUser();
 
+    // The disclosure control is only meaningful when there is something to
+    // disclose. With nothing pinned it used to render anyway and toggle an
+    // empty list, so the chevron read as a broken menu.
+    const hasPinned = pinned.length > 0;
+    const showPinnedList = hasPinned && competitorsExpanded;
+
     return (
         <div className={`sidebar ${collapsed ? 'collapsed' : ''}`} id="appSidebar">
             <div className="sidebar-header">
@@ -117,9 +123,12 @@ export default function Sidebar() {
                                 </svg>
                                 {!collapsed && <span>Competitors</span>}
                             </Link>
-                            {!collapsed && (
-                                <div
+                            {!collapsed && hasPinned && (
+                                <button
+                                    type="button"
                                     className="p-1.5 cursor-pointer hover:bg-[var(--item-hover-alt)] rounded-md flex items-center justify-center transition-colors"
+                                    aria-expanded={competitorsExpanded}
+                                    aria-label={competitorsExpanded ? 'Hide pinned competitors' : 'Show pinned competitors'}
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCompetitorsExpanded(!competitorsExpanded); }}
                                 >
                                     <svg
@@ -128,12 +137,12 @@ export default function Sidebar() {
                                     >
                                         <polyline points="9 18 15 12 9 6" />
                                     </svg>
-                                </div>
+                                </button>
                             )}
                         </div>
 
                         {/* Nested Competitors List */}
-                        {competitorsExpanded && pinned && pinned.length > 0 && (
+                        {showPinnedList && (
                             <div className={`flex flex-col mt-1 mb-2 ${collapsed ? 'items-center gap-2' : 'pl-4 ml-4 border-l border-[var(--border-color)]'}`}>
                                 {pinned.map(comp => (
                                     <Link key={comp.competitor_id} href={`/company/${comp.domain}`} className={`flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] rounded-md transition-colors relative ${collapsed ? 'p-1' : 'py-2 px-3'}`}>
