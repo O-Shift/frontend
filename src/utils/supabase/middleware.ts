@@ -32,9 +32,22 @@ function denyToLogin(request: NextRequest, pathname: string, reason: string) {
 }
 
 export async function updateSession(request: NextRequest) {
+  // Reassigned by the cookie `setAll` handler below, which has to rebuild the
+  // response so refreshed auth cookies ride along on it.
   let supabaseResponse = NextResponse.next({ request });
 
   const { pathname } = request.nextUrl;
+
+  // `/api/*` is this app's own pass-through to FastAPI (`app/api/[...path]`).
+  // Those requests already carry a Supabase access token in the Authorization
+  // header and the backend verifies it itself, so the answer from `getUser()`
+  // is never read here — but the call is a real network round trip to Supabase,
+  // and it was being paid on every single API request, serially, ahead of the
+  // request it was delaying. Bail before the client is even constructed. The
+  // matcher in `proxy.ts` excludes `/api/` too; this is the second lock.
+  if (pathname === "/api" || pathname.startsWith("/api/")) {
+    return supabaseResponse;
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
