@@ -1,0 +1,479 @@
+/* ===== WORKSPACE CHOOSER =====
+   The doorway between auth and the product. It renders outside AppShell (no
+   sidebar), so it owns its own scroll container and page padding.
+
+   The design problem this page actually has: a workspace list is a list of
+   near-identical strings. Names repeat ("Test", "Test 2"), and everything a
+   workspace *contains* — competitors, signals, reports — is exactly what you
+   cannot see until after you have chosen. So the page's job is to make each
+   row distinguishable from the outside, using only what the API returns:
+   id, name, plan, timezone, created_at.
+
+   The sigil does that work. Everything else here stays deliberately quiet. */
+
+.ws-root {
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
+  box-sizing: border-box;
+}
+
+.ws-shell {
+  width: 100%;
+  max-width: 620px;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+
+.ws-logo {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.ws-title {
+  font-family: var(--font-poppins), var(--font-inter), sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 var(--space-sm);
+  color: var(--text-primary);
+}
+
+.ws-subtitle {
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 52ch;
+}
+
+/* ── Filter ───────────────────────────────────────────────────────────── */
+
+.ws-filter {
+  position: relative;
+}
+
+.ws-filter input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px var(--space-md) 11px 38px;
+  font-size: var(--text-base);
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+
+.ws-filter input::placeholder {
+  color: var(--text-secondary);
+}
+
+.ws-filter input:focus {
+  border-color: var(--accent);
+}
+
+.ws-filter-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  display: flex;
+}
+
+/* ── The list ─────────────────────────────────────────────────────────── */
+
+.ws-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.ws-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 14px var(--space-md);
+  text-align: left;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  /* Staggered entrance, delay set inline per row. */
+  opacity: 0;
+  animation: wsRowIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes wsRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ws-row:hover {
+  background: var(--item-hover-alt);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-color));
+}
+
+.ws-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ws-row:active {
+  transform: scale(0.995);
+}
+
+.ws-row:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/* The workspace sigil — the one place this page spends any boldness.
+   Colour is derived from the workspace id, so it is stable across sessions
+   and devices and differs between two workspaces that share a name. */
+.ws-sigil {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  /* A hairline inner edge keeps the tile from melting into a card of a
+     similar value in either theme. */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  user-select: none;
+}
+
+.ws-row-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ws-row-name {
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.ws-meta-dot {
+  opacity: 0.5;
+}
+
+.ws-plan {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--pill-bg);
+  color: var(--text-secondary);
+}
+
+.ws-plan.pro,
+.ws-plan.enterprise {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+/* "Current" is the recovery affordance: when a stale workspace is cached,
+   this is how you see which one you are actually on before you change it. */
+.ws-current {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.ws-row-arrow {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  display: flex;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.ws-row:hover .ws-row-arrow {
+  color: var(--accent);
+  transform: translateX(3px);
+}
+
+/* ── Empty / no-match states ──────────────────────────────────────────── */
+
+.ws-empty {
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--card-radius);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+.ws-empty strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* ── Create ───────────────────────────────────────────────────────────── */
+
+.ws-create-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.ws-create-toggle:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-color));
+}
+
+.ws-create-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ws-create-form {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: stretch;
+}
+
+.ws-create-form input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 11px var(--space-md);
+  font-size: var(--text-base);
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius-sm);
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+
+.ws-create-form input::placeholder {
+  color: var(--text-secondary);
+}
+
+.ws-create-form input:focus {
+  border-color: var(--accent);
+}
+
+.ws-create-submit {
+  flex: 0 0 auto;
+  padding: 0 var(--space-lg);
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--card-radius-sm);
+  cursor: pointer;
+  transition: filter 0.18s ease;
+}
+
+.ws-create-submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.ws-create-submit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ws-create-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Footer / error ───────────────────────────────────────────────────── */
+
+.ws-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-color);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.ws-signout {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.18s ease;
+}
+
+.ws-signout:hover {
+  color: var(--text-primary);
+}
+
+.ws-signout:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ws-error {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  padding: 11px var(--space-md);
+  font-size: var(--text-base);
+  line-height: 1.45;
+  border-radius: var(--card-radius-sm);
+  color: var(--text-primary);
+  background: color-mix(in srgb, #ef4444 12%, var(--card-bg));
+  border: 1px solid color-mix(in srgb, #ef4444 32%, transparent);
+}
+
+.ws-error svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #ef4444;
+}
+
+/* ── Loading ──────────────────────────────────────────────────────────── */
+
+.ws-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 14px var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+}
+
+.ws-skeleton-lines {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* ── Quality floor ────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .ws-root {
+    padding: var(--space-xl) var(--space-md);
+  }
+
+  .ws-title {
+    font-size: 25px;
+  }
+
+  .ws-create-form {
+    flex-direction: column;
+  }
+
+  .ws-create-submit {
+    padding: 12px var(--space-lg);
+  }
+
+  .ws-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-row {
+    animation: none;
+    opacity: 1;
+  }
+
+  .ws-row,
+  .ws-row-arrow,
+  .ws-create-toggle,
+  .ws-create-submit,
+  .ws-signout,
+  .ws-filter input,
+  .ws-create-form input {
+    transition: none;
+  }
+
+  .ws-row:active {
+    transform: none;
+  }
+
+  .ws-row:hover .ws-row-arrow {
+    transform: none;
+  }
+}
