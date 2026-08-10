@@ -1,7 +1,8 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiChevronLeft, FiChevronRight, FiSearch, FiX, FiCheck, FiUploadCloud, FiMessageSquare } from 'react-icons/fi';
+import { upsertCompany, createCompetitorsBatch } from '@/lib/api';
 import './onboarding.css';
 
 // Type Definitions
@@ -14,13 +15,32 @@ type BusinessProfile = {
     revenue: string, resources: string, activities: string, partners: string, costs: string
 };
 
-const MOCK_COMPETITORS = [
-    { name: 'Apple', domain: 'apple.com' },
-    { name: 'Tesla', domain: 'tesla.com' },
-    { name: 'Microsoft', domain: 'microsoft.com' },
-    { name: 'Google', domain: 'google.com' },
-    { name: 'Amazon', domain: 'amazon.com' }
-];
+/** Strip a bare domain down to its host. Returns '' when there is nothing usable. */
+const toHost = (input: string): string => {
+    const raw = input.trim().replace(/\s+/g, '');
+    if (!raw) return '';
+    try {
+        const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
+        return url.hostname.replace(/^www\./, '');
+    } catch {
+        return '';
+    }
+};
+
+/**
+ * The wizard collects bare domains; PUT /company and POST /competitors/batch
+ * both validate `website` as an absolute URL, so it gets a scheme here.
+ */
+const toWebsite = (input: string): string => {
+    const host = toHost(input);
+    return host ? `https://${host}` : '';
+};
+
+/** 'career180.com' -> 'Career180'. Prefills the name field; never invents one. */
+const nameFromHost = (host: string): string => {
+    const label = host.split('.')[0] ?? '';
+    return label ? label.charAt(0).toUpperCase() + label.slice(1) : '';
+};
 
 export default function IntelligenceBriefing() {
     const router = useRouter();
@@ -40,6 +60,8 @@ export default function IntelligenceBriefing() {
     // UI State
     const [isProcessing, setIsProcessing] = useState(false);
     const [processLabel, setProcessLabel] = useState('');
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [skipped, setSkipped] = useState<string[]>([]);
 
     // Step-Specific UI State
     const [compInput, setCompInput] = useState('');
@@ -48,9 +70,10 @@ export default function IntelligenceBriefing() {
     const [method, setMethod] = useState<'choice' | 'pdf' | 'interview' | 'review'>('choice');
     const [qIndex, setQIndex] = useState(0);
 
+    // Step 7 is the end of the road: leaving it goes through `activate`, so
+    // there is no path out of the wizard that skips the save.
     const nextStep = () => {
         if (step < 7) setStep(step + 1);
-        else router.push('/dashboard');
     };
 
     const prevStep = () => {
@@ -67,6 +90,66 @@ export default function IntelligenceBriefing() {
             setIsProcessing(false);
         }
         callback();
+    };
+
+    /**
+     * Write the wizard to the backend, then enter the app.
+     *
+     * The company profile goes first: the competitor rows are meaningless
+     * without something to compare them against, and a partial save that
+     * created competitors under no profile would be worse than none. Anything
+     * the wizard collects that has no column of its own (mission, market,
+     * stage, signals, sources, business model) rides along in `metadata`, so
+     * the agent can read back the same answers the user typed here.
+     */
+    const activate = async () => {
+        setSaveError(null);
+        setSkipped([]);
+        setIsProcessing(true);
+
+        setProcessLabel('Saving your company profile...');
+        const companyRes = await upsertCompany({
+            name: company.name.trim(),
+            website: toWebsite(company.website),
+            industry: company.industry.trim() || null,
+            metadata: {
+                mission,
+                market: company.market.trim(),
+                stage: company.stage,
+                signals,
+                sources,
+                business_profile: businessProfile,
+            },
+        });
+
+        if (!companyRes.ok) {
+            setIsProcessing(false);
+            setSaveError(`Could not save your company profile: ${companyRes.error}`);
+            return;
+        }
+
+        if (competitors.length > 0) {
+            setProcessLabel('Adding competitors to your watch list...');
+            const compRes = await createCompetitorsBatch(
+                competitors.map(c => ({
+                    name: c.name.trim(),
+                    website: toWebsite(c.domain),
+                    industry: company.industry.trim() || null,
+                    metadata: { relation: c.relation, added_during: 'onboarding' },
+                })),
+            );
+            if (!compRes.ok) {
+                setIsProcessing(false);
+                setSaveError(`Your profile is saved, but the competitors were not: ${compRes.error}`);
+                return;
+            }
+            // A name the backend already had is a re-run, not a failure — say so
+            // and keep going rather than blocking the user on it.
+            if (compRes.data.skipped.length > 0) setSkipped(compRes.data.skipped);
+        }
+
+        setProcessLabel('Preparing your first snapshot...');
+        router.push('/');
     };
 
     // --- STEP COMPONENTS ---
@@ -108,11 +191,14 @@ export default function IntelligenceBriefing() {
     );
 
     const renderStep2 = () => {
-        const handleAutoFill = () => {
-            if (!company.website) return;
-            simulateProcessing(['Scanning website...', 'Extracting profile...', 'Mapping industry...'], () => {
-                setCompany({ ...company, name: 'Acme Corp', industry: 'E-commerce', market: 'Global', stage: 'Established' });
-            });
+        const host = toHost(company.website);
+
+        // No backend endpoint profiles an arbitrary website, so this fills only
+        // what the domain genuinely tells us — the name. Industry and market are
+        // left for the user instead of being invented.
+        const fillNameFromDomain = () => {
+            if (!host) return;
+            setCompany({ ...company, name: nameFromHost(host) });
         };
 
         return (
@@ -135,8 +221,8 @@ export default function IntelligenceBriefing() {
                         <label className="ob-label">Company Website</label>
                         <input className="ob-input" placeholder="e.g. yourcompany.com" value={company.website} onChange={e => setCompany({ ...company, website: e.target.value })} />
                     </div>
-                    <button className="ob-btn-secondary" onClick={handleAutoFill} disabled={!company.website}>
-                        Import from website
+                    <button className="ob-btn-secondary" onClick={fillNameFromDomain} disabled={!host}>
+                        Use domain as name
                     </button>
                 </div>
 
@@ -169,7 +255,7 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
-                    <button className="ob-btn-primary" onClick={nextStep} disabled={!company.name} style={{ opacity: company.name ? 1 : 0.5 }}>
+                    <button className="ob-btn-primary" onClick={nextStep} disabled={!company.name || !host} style={{ opacity: company.name && host ? 1 : 0.5 }}>
                         Continue to competitors <FiChevronRight />
                     </button>
                 </div>
@@ -178,12 +264,25 @@ export default function IntelligenceBriefing() {
     };
 
     const renderStep3 = () => {
+        // Each competitor becomes a real row with a real crawl seed, so the
+        // domain has to come from the user. The previous version appended
+        // '.com' to whatever was typed, which sent the crawlers at a domain
+        // nobody had confirmed existed.
+        const typedHost = toHost(compInput);
+        const alreadyAdded = competitors.some(c => c.domain === typedHost);
+        const canAdd = Boolean(typedHost) && !alreadyAdded && competitors.length < 5;
 
-        const addCompetitor = (c: { name: string, domain: string }) => {
-            if (!competitors.find(x => x.domain === c.domain) && competitors.length < 5) {
-                setCompetitors([...competitors, { ...c, relation: 'Direct competitor' }]);
-            }
+        const addCompetitor = () => {
+            if (!canAdd) return;
+            setCompetitors([
+                ...competitors,
+                { name: nameFromHost(typedHost), domain: typedHost, relation: 'Direct competitor' },
+            ]);
             setCompInput('');
+        };
+
+        const renameCompetitor = (domain: string, name: string) => {
+            setCompetitors(competitors.map(c => (c.domain === domain ? { ...c, name } : c)));
         };
 
         const removeCompetitor = (domain: string) => {
@@ -196,16 +295,27 @@ export default function IntelligenceBriefing() {
                     {[1, 2, 3, 4, 5, 6, 7].map(s => <div key={s} className={`ob-step-dot ${s === 3 ? 'active' : ''}`} />)}
                 </div>
                 <h1 className="ob-title">Who should Oshift keep an eye on?</h1>
-                <p className="ob-desc">Add the companies competing for the same customers, attention, or market position. (Max 5)</p>
+                <p className="ob-desc">Add the companies competing for the same customers, attention, or market position. Enter each one&apos;s website — that is where Oshift starts looking. (Max 5)</p>
 
-                <div className="ob-chips-container">
-                    {competitors.map(c => (
-                        <div key={c.domain} className="ob-chip">
-                            {c.name}
-                            <FiX onClick={() => removeCompetitor(c.domain)} style={{ cursor: 'pointer' }} />
-                        </div>
-                    ))}
-                </div>
+                {competitors.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                        {competitors.map(c => (
+                            <div key={c.domain} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: '1px solid #ffcc80', borderRadius: 16, padding: '10px 16px' }}>
+                                <input
+                                    className="ob-input"
+                                    style={{ flex: 1, border: 'none', padding: 0, background: 'transparent', fontWeight: 600 }}
+                                    value={c.name}
+                                    aria-label={`Name for ${c.domain}`}
+                                    onChange={e => renameCompetitor(c.domain, e.target.value)}
+                                />
+                                <span style={{ color: '#8d6e63', fontSize: 13 }}>{c.domain}</span>
+                                <button className="ob-btn-text" style={{ padding: 0 }} aria-label={`Remove ${c.name}`} onClick={() => removeCompetitor(c.domain)}>
+                                    <FiX />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {competitors.length < 5 && (
                     <div className="ob-input-group" style={{ position: 'relative' }}>
@@ -213,29 +323,30 @@ export default function IntelligenceBriefing() {
                         <input
                             className="ob-input"
                             style={{ paddingLeft: 50 }}
-                            placeholder="Type competitor name or domain..."
+                            placeholder="competitor.com"
                             value={compInput}
                             onChange={e => setCompInput(e.target.value)}
                             onKeyDown={e => {
-                                if (e.key === 'Enter' && compInput) addCompetitor({ name: compInput, domain: compInput + '.com' })
+                                if (e.key === 'Enter') addCompetitor();
                             }}
                         />
-                        {compInput && (
-                            <div style={{ position: 'absolute', top: 60, left: 0, right: 0, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 16, zIndex: 10, padding: 8, boxShadow: '0 10px 20px rgba(0,0,0,0.05)' }}>
-                                {MOCK_COMPETITORS.filter(c => c.name.toLowerCase().includes(compInput.toLowerCase())).map(c => (
-                                    <div key={c.domain} onClick={() => addCompetitor(c)} style={{ padding: '12px 16px', cursor: 'pointer', borderRadius: 8 }}>
-                                        <strong>{c.name}</strong> <span style={{ color: '#8d6e63', fontSize: 13 }}>{c.domain}</span>
-                                    </div>
-                                ))}
+                        {compInput && !typedHost && (
+                            <div style={{ marginTop: 8, fontSize: 13, color: '#d84315' }}>
+                                That is not a website yet — try something like acme.com
+                            </div>
+                        )}
+                        {alreadyAdded && (
+                            <div style={{ marginTop: 8, fontSize: 13, color: '#8d6e63' }}>
+                                {typedHost} is already on the list
                             </div>
                         )}
                     </div>
                 )}
 
                 <div style={{ display: 'flex', gap: 12, marginBottom: 40 }}>
-                    <button className="ob-btn-text" style={{ padding: 0 }} onClick={() => {
-                        setCompetitors([{ name: 'Generic Corp', domain: 'generic.com', relation: 'Direct' }]);
-                    }}>Suggest competitors for me</button>
+                    <button className="ob-btn-secondary" onClick={addCompetitor} disabled={!canAdd} style={{ opacity: canAdd ? 1 : 0.5 }}>
+                        Add competitor
+                    </button>
                 </div>
 
                 <div className="ob-footer">
@@ -473,22 +584,36 @@ export default function IntelligenceBriefing() {
                     {[1, 2, 3, 4, 5, 6, 7].map(s => <div key={s} className={`ob-step-dot ${s === 7 ? 'active' : ''}`} />)}
                 </div>
                 <h1 className="ob-title">Your intelligence workspace is ready</h1>
-                <p className="ob-desc">Oshift will monitor {Math.max(1, competitors.length)} competitors, follow {signals.keywords.length + signals.categories.length + signals.trends.length} strategic signals, and focus on {mission || 'market intelligence'}.</p>
+                <p className="ob-desc">
+                    Oshift will monitor {competitors.length} {competitors.length === 1 ? 'competitor' : 'competitors'}, follow {signalCount} strategic {signalCount === 1 ? 'signal' : 'signals'}, and focus on {mission || 'market intelligence'}.
+                </p>
 
-                <div style={{ background: '#ffffff', border: '1px solid #ffcc80', borderRadius: 24, padding: 24, marginBottom: 40, boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+                <div style={{ background: '#ffffff', border: '1px solid #ffcc80', borderRadius: 24, padding: 24, marginBottom: 24, boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #f5f5f5', paddingBottom: 16 }}>
                         <div><span style={{ color: '#8d6e63', fontSize: 13, display: 'block' }}>Company</span><strong>{company.name || 'Setup Pending'}</strong></div>
                         <div><span style={{ color: '#8d6e63', fontSize: 13, display: 'block' }}>Briefing</span><strong>{sources.frequency}</strong></div>
                     </div>
                     <div style={{ color: '#d84315', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <FiCheck /> Workspace Configuration Complete
+                        <FiCheck /> Ready to save
                     </div>
                 </div>
 
+                {saveError && (
+                    <div role="alert" style={{ background: '#fff3e0', border: '1px solid #d84315', borderRadius: 16, padding: 16, marginBottom: 24, color: '#d84315', fontSize: 14 }}>
+                        {saveError}
+                    </div>
+                )}
+
+                {skipped.length > 0 && (
+                    <div style={{ background: '#fff8e1', border: '1px solid #ffcc80', borderRadius: 16, padding: 16, marginBottom: 24, color: '#8d6e63', fontSize: 14 }}>
+                        Already being tracked, so left as they are: {skipped.join(', ')}
+                    </div>
+                )}
+
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Edit setup</button>
-                    <button className="ob-btn-primary" onClick={() => simulateProcessing(['Activating Oshift...', 'Preparing first snapshot...'], () => router.push('/dashboard'), true)}>
-                        Activate Oshift <FiChevronRight />
+                    <button className="ob-btn-primary" onClick={activate} disabled={isProcessing || !company.name || !toHost(company.website)} style={{ opacity: isProcessing || !company.name || !toHost(company.website) ? 0.5 : 1 }}>
+                        {isProcessing ? 'Saving...' : saveError ? 'Try again' : 'Activate Oshift'} <FiChevronRight />
                     </button>
                 </div>
             </div>
@@ -572,6 +697,7 @@ export default function IntelligenceBriefing() {
     };
 
     const isActivating = isProcessing && step === 7;
+    const signalCount = signals.keywords.length + signals.categories.length + signals.trends.length;
 
     return (
         <div className={`onboarding-wrapper ${isActivating ? 'activating' : ''}`}>

@@ -4,18 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
-import { getCompetitors, deleteCompetitor, Competitor, apiFetch } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { usePinned } from '@/context/PinnedContext';
+import { extractDomain } from '@/lib/utils/domain';
+import { logoUrl } from '@/lib/logos';
 
-function extractDomain(website: string): string {
-  if (!website) return '';
-  try {
-    const urlStr = website.startsWith('http://') || website.startsWith('https://')
-      ? website
-      : `https://${website}`;
-    return new URL(urlStr).hostname.replace(/^www\./, '');
-  } catch {
-    return website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-  }
+interface Competitor {
+  id: string;
+  workspace_id?: string;
+  name: string;
+  website: string;
+  description?: string | null;
+  created_at?: string;
 }
 
 function getBrandColors(domain: string) {
@@ -58,6 +58,13 @@ function getPattern(index: number, c1: string, c2: string) {
   return patterns[index % patterns.length];
 }
 
+const SampleBadge = ({ title }: { title: string }) => (
+  <span style={{ fontSize: 10, background: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+    {title}
+  </span>
+);
+
+
 export default function CompetitorsPage() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +73,21 @@ export default function CompetitorsPage() {
   const [query, setQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const router = useRouter();
+
+  // Aliased: this page already owns a `loading`/`error` pair for the competitor
+  // list, which is a separate request from the watchlist.
+  const {
+    pin,
+    unpin,
+    isPinned,
+    loading: pinnedLoading,
+    error: pinnedError,
+  } = usePinned();
+
+  // competitor_ids with a pin write in flight. The context updates optimistically,
+  // so the icon flips before the request lands; without this a double-click would
+  // fire the opposite write against a state the server has not acknowledged yet.
+  const [pinPending, setPinPending] = useState<ReadonlySet<string>>(() => new Set());
 
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [commandActive, setCommandActive] = useState(false);
@@ -77,16 +99,15 @@ export default function CompetitorsPage() {
   const [newCompName, setNewCompName] = useState('');
   const [newCompWebsite, setNewCompWebsite] = useState('');
   const [newCompDesc, setNewCompDesc] = useState('');
-  const [newCompIndustry, setNewCompIndustry] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
-  const loadCompetitorsList = useCallback(async () => {
+  const loadCompetitors = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await getCompetitors();
+    const res = await apiFetch<Competitor[]>('/competitors');
     if (res.ok) {
-      setCompetitors(res.data || []);
+      setCompetitors(res.data);
     } else {
       setError(res.error || 'Failed to fetch competitors');
     }
@@ -94,8 +115,8 @@ export default function CompetitorsPage() {
   }, []);
 
   useEffect(() => {
-    loadCompetitorsList();
-  }, [loadCompetitorsList]);
+    loadCompetitors();
+  }, [loadCompetitors]);
 
   useEffect(() => {
     document.body.classList.toggle('is-thinking-active', isThinking);
@@ -131,7 +152,6 @@ export default function CompetitorsPage() {
         name: newCompName.trim(),
         website: formattedWebsite,
         description: newCompDesc.trim() || undefined,
-        industry: newCompIndustry.trim() || undefined,
       }),
     });
 
@@ -141,9 +161,8 @@ export default function CompetitorsPage() {
       setNewCompName('');
       setNewCompWebsite('');
       setNewCompDesc('');
-      setNewCompIndustry('');
       setIsAddModalOpen(false);
-      loadCompetitorsList();
+      loadCompetitors();
     } else {
       setAddError(res.error || 'Failed to add competitor');
     }
@@ -152,7 +171,7 @@ export default function CompetitorsPage() {
   const handleDeleteCompetitor = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to remove this competitor?')) return;
-    const res = await deleteCompetitor(id);
+    const res = await apiFetch(`/competitors/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setCompetitors((prev) => prev.filter((c) => c.id !== id));
     } else {
@@ -160,11 +179,55 @@ export default function CompetitorsPage() {
     }
   };
 
-  const filtered = (competitors || []).filter(
+  const handleTogglePin = async (company: Competitor, e: React.MouseEvent) => {
+    // The whole card is a click target that routes to /company/[domain], so
+    // without this the toggle would navigate away mid-write. Same guard the
+    // delete button above uses; preventDefault keeps the <button> inert beyond
+    // this handler.
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Nothing is known about membership until the watchlist has been read, and
+    // a second write for the same competitor must wait for the first.
+    if (pinnedLoading || pinPending.has(company.id)) return;
+
+    const domain = extractDomain(company.website);
+    const wasPinned = isPinned(company.id);
+
+    setPinPending((prev) => new Set(prev).add(company.id));
+
+    const ok = wasPinned
+      ? await unpin(company.id)
+      : await pin({
+          competitor_id: company.id,
+          domain,
+          // Normalised the same way PinnedContext normalises a watchlist row it
+          // read back, so the sidebar label does not change on the next reload.
+          name: company.name || domain || 'Unnamed competitor',
+          logo: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+          hasNews: false,
+        });
+
+    setPinPending((prev) => {
+      const next = new Set(prev);
+      next.delete(company.id);
+      return next;
+    });
+
+    if (!ok) {
+      // pin/unpin never throw; they record the reason on the context's `error`,
+      // which the banner renders. The banner is at the top of a scrolling grid
+      // and this card may be well below it, so write failures also alert — the
+      // same way handleDeleteCompetitor reports its own.
+      alert(wasPinned ? 'Failed to unpin this competitor.' : 'Failed to pin this competitor.');
+    }
+  };
+
+  const filtered = competitors.filter(
     (c) =>
-      (c?.name || '').toLowerCase().includes(query.toLowerCase()) ||
-      (c?.website || '').toLowerCase().includes(query.toLowerCase()) ||
-      extractDomain(c?.website || '').toLowerCase().includes(query.toLowerCase())
+      c.name.toLowerCase().includes(query.toLowerCase()) ||
+      c.website.toLowerCase().includes(query.toLowerCase()) ||
+      extractDomain(c.website).toLowerCase().includes(query.toLowerCase())
   );
 
   return (
@@ -184,30 +247,33 @@ export default function CompetitorsPage() {
             <button
               onClick={() => setIsAddModalOpen(true)}
               style={{
-                background: 'var(--accent, #f97316)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 16,
+                background: 'rgba(255, 255, 255, 0.03)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
                 padding: '14px 24px',
                 fontSize: 15,
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(249, 115, 22, 0.35)',
-                transition: 'transform 0.2s ease, opacity 0.2s ease',
+                transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
                 whiteSpace: 'nowrap'
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+              }}
             >
               <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Add Competitor
             </button>
 
             <motion.div className="competitors-search skeleton-target"
               animate={{ 
-                width: isSearchFocused ? '100%' : 280,
+                width: isSearchFocused ? '100%' : 320,
                 borderColor: isSearchFocused ? 'var(--text-secondary)' : 'var(--border-color)',
                 boxShadow: isSearchFocused ? '0 16px 48px var(--shadow-color)' : '0 8px 32px var(--shadow-color)'
               }}
@@ -219,10 +285,10 @@ export default function CompetitorsPage() {
                 background: 'var(--card-bg)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 16,
-                padding: '14px 20px'
+                padding: '16px 24px'
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 12, flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 16, flexShrink: 0 }}>
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
@@ -237,8 +303,8 @@ export default function CompetitorsPage() {
                   background: 'transparent',
                   border: 'none',
                   outline: 'none',
-                  color: 'var(--text-primary, #ffffff)',
-                  fontSize: 16,
+                  color: 'var(--text-primary)',
+                  fontSize: 18,
                   width: '100%',
                   fontFamily: 'inherit',
                   fontWeight: 500
@@ -249,8 +315,18 @@ export default function CompetitorsPage() {
         </div>
 
         {error && (
-          <div style={{ width: '100%', maxWidth: 1000, marginBottom: 24, padding: '16px 20px', borderRadius: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: 14 }}>
+          <div className="card" style={{ padding: '16px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: 14, width: '100%', maxWidth: 1000, marginBottom: 32 }}>
             {error}
+          </div>
+        )}
+
+        {/* The pinned context reports failures on `error` and never throws, so a
+            watchlist that failed to load would otherwise leave every pin control
+            silently inert with no explanation. This is the only surface a read
+            failure has; write failures additionally alert from handleTogglePin. */}
+        {pinnedError && (
+          <div className="card" style={{ padding: '16px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: 14, width: '100%', maxWidth: 1000, marginBottom: 32 }}>
+            Pinned competitors: {pinnedError}
           </div>
         )}
 
@@ -265,13 +341,11 @@ export default function CompetitorsPage() {
             {[1, 2, 3, 4].map((n) => (
               <div
                 key={n}
+                className="card"
                 style={{
                   height: '320px',
                   borderRadius: '24px',
-                  background: 'var(--card-bg, rgba(255,255,255,0.05))',
-                  border: '1px solid var(--border-color, rgba(255,255,255,0.1))',
                   animation: 'pulse 1.5s infinite ease-in-out',
-                  padding: 24,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between'
@@ -283,14 +357,12 @@ export default function CompetitorsPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{
+          <div className="card" style={{
             width: '100%',
             maxWidth: 1000,
             padding: '60px 40px',
             textAlign: 'center',
-            background: 'var(--card-bg, rgba(255,255,255,0.02))',
-            border: '1px dashed var(--border-color, rgba(255,255,255,0.15))',
-            borderRadius: 24,
+            borderStyle: 'dashed',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -306,15 +378,22 @@ export default function CompetitorsPage() {
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 style={{
-                  background: 'var(--accent, #f97316)',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 14,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
                   padding: '12px 24px',
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  marginTop: 8
+                  marginTop: 8,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
                 }}
               >
                 + Add Competitor
@@ -335,6 +414,20 @@ export default function CompetitorsPage() {
               const pattern = getPattern(i, c1, c2);
               const initial = (company.name || domain || 'C').charAt(0).toUpperCase();
 
+              // Keyed on the competitor id, never on `domain`: extractDomain
+              // answers '' for a competitor with no website, so a domain-keyed
+              // check would mark every websiteless competitor pinned as soon as
+              // one of them was.
+              const companyPinned = isPinned(company.id);
+              const pinBusy = pinPending.has(company.id);
+              // While the watchlist is still loading, `companyPinned` is false
+              // only because nothing has been read yet. Offering an active
+              // "pin" control there would state a membership we do not know, so
+              // it stays disabled and dimmed until the read resolves.
+              const pinDisabled = pinnedLoading || pinBusy;
+              const pinIdleBg = companyPinned ? 'rgba(245, 158, 11, 0.85)' : 'rgba(0, 0, 0, 0.4)';
+              const pinIdleFg = companyPinned ? '#ffffff' : 'rgba(255,255,255,0.8)';
+
               return (
                 <div
                   key={company.id}
@@ -347,10 +440,15 @@ export default function CompetitorsPage() {
                     position: 'relative',
                     overflow: 'hidden',
                     boxShadow: '0 20px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease'
+                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease',
+                    padding: 0
                   }}
-                  onClick={() => {
-                    router.push(`/competitors/${company.id}`);
+                  onClick={(e) => {
+                    const logoDiv = e.currentTarget.querySelector('.search-logo-container') as HTMLDivElement;
+                    if (logoDiv) {
+                      const rect = logoDiv.getBoundingClientRect();
+                      router.push(`/company/${domain}?startX=${rect.left}&startY=${rect.top}&startW=${rect.width}&round=false`);
+                    }
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-10px) scale(1.02)';
@@ -377,6 +475,72 @@ export default function CompetitorsPage() {
                 >
                   <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 80px rgba(0,0,0,0.2)', pointerEvents: 'none' }} />
 
+                  {/* PIN BUTTON */}
+                  <button
+                    type="button"
+                    onClick={(evt) => handleTogglePin(company, evt)}
+                    // aria-disabled rather than the native `disabled`: a disabled
+                    // button never runs our handler, and browsers disagree about
+                    // whether the click still bubbles — where it does, it would
+                    // reach the card and navigate. Letting the handler always run
+                    // means stopPropagation() is guaranteed, and it re-checks the
+                    // same condition before writing anything.
+                    aria-disabled={pinDisabled}
+                    title={
+                      pinnedLoading
+                        ? 'Loading pinned competitors...'
+                        : companyPinned
+                          ? 'Unpin from sidebar'
+                          : 'Pin to sidebar'
+                    }
+                    aria-label={companyPinned ? `Unpin ${company.name}` : `Pin ${company.name}`}
+                    aria-pressed={pinnedLoading ? undefined : companyPinned}
+                    style={{
+                      position: 'absolute',
+                      top: 14,
+                      right: 48,
+                      zIndex: 20,
+                      background: pinIdleBg,
+                      backdropFilter: 'blur(8px)',
+                      color: pinIdleFg,
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 6,
+                      width: 28,
+                      height: 28,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 14,
+                      cursor: pinDisabled ? 'not-allowed' : 'pointer',
+                      opacity: pinDisabled ? 0.45 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(btn) => {
+                      if (pinDisabled) return;
+                      btn.currentTarget.style.background = 'rgba(245, 158, 11, 0.8)';
+                      btn.currentTarget.style.color = '#ffffff';
+                    }}
+                    onMouseLeave={(btn) => {
+                      if (pinDisabled) return;
+                      btn.currentTarget.style.background = pinIdleBg;
+                      btn.currentTarget.style.color = pinIdleFg;
+                    }}
+                  >
+                    {/* Bookmark, filled once pinned so the state reads without hovering. */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill={companyPinned ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </button>
+
                   {/* DELETE BUTTON */}
                   <button
                     onClick={(evt) => handleDeleteCompetitor(company.id, evt)}
@@ -389,8 +553,8 @@ export default function CompetitorsPage() {
                       background: 'rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(8px)',
                       color: 'rgba(255,255,255,0.8)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: '50%',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 6,
                       width: 28,
                       height: 28,
                       display: 'flex',
@@ -435,7 +599,7 @@ export default function CompetitorsPage() {
                     >
                       {domain ? (
                         <img
-                          src={`https://logo.clearbit.com/${domain}`}
+                          src={logoUrl(domain, 64) ?? ''}
                           alt={company.name}
                           style={{ width: '70%', height: '70%', objectFit: 'contain' }}
                           onError={(e) => {
@@ -456,7 +620,7 @@ export default function CompetitorsPage() {
                       )}
                     </div>
                     <div style={{ zIndex: 2, color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: 16, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                      {company.industry ? `${company.industry} • ${domain || company.website}` : (domain || company.website)}
+                      {domain || company.website}
                     </div>
                     <div style={{ marginTop: 'auto', zIndex: 2 }}>
                       <div style={{ color: 'white', fontSize: 24, fontWeight: 800, lineHeight: 1.1, textTransform: 'uppercase', letterSpacing: '-0.5px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
@@ -480,10 +644,15 @@ export default function CompetitorsPage() {
                     }}
                   >
                     <div style={{ color: 'rgba(255,255,255,0.95)', fontSize: 12, lineHeight: 1.5, textShadow: '0 2px 4px rgba(0,0,0,0.3)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {company.description || `Monitored competitor profile for ${company.name}. Click to view signals and intelligence.`}
+                      {company.description || (
+                        <span>
+                          Monitored competitor profile for {company.name}. Click to view signals and intelligence.
+                          <SampleBadge title="Mock data" />
+                        </span>
+                      )}
                     </div>
                     <div style={{ marginTop: 16, padding: '8px 16px', background: 'white', color: c1, borderRadius: 20, fontSize: 12, fontWeight: 700, display: 'inline-flex', alignSelf: 'flex-start', boxShadow: `0 4px 12px rgba(0,0,0,0.2)` }}>
-                      View Intelligence
+                      Click to know more
                     </div>
                   </div>
                 </div>
@@ -511,25 +680,24 @@ export default function CompetitorsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="card card-lg"
               style={{
                 width: '100%',
                 maxWidth: 480,
-                background: 'var(--card-bg, #18181b)',
-                border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                borderRadius: 24,
-                padding: 32,
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary, #ffffff)', margin: 0 }}>Add Competitor</h2>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Add Competitor</h2>
                 <button
                   onClick={() => setIsAddModalOpen(false)}
                   style={{
                     background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-secondary, #a1a1aa)',
-                    fontSize: 20,
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                    color: 'var(--text-secondary)',
+                    fontSize: 16,
                     cursor: 'pointer'
                   }}
                 >
@@ -538,14 +706,14 @@ export default function CompetitorsPage() {
               </div>
 
               {addError && (
-                <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: 13 }}>
+                <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 6, background: 'transparent', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: 13 }}>
                   {addError}
                 </div>
               )}
 
               <form onSubmit={handleAddCompetitor} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Company Name *
                   </label>
                   <input
@@ -559,8 +727,8 @@ export default function CompetitorsPage() {
                       padding: '12px 16px',
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 15,
                       outline: 'none'
                     }}
@@ -568,7 +736,7 @@ export default function CompetitorsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Website / Domain *
                   </label>
                   <input
@@ -582,8 +750,8 @@ export default function CompetitorsPage() {
                       padding: '12px 16px',
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 15,
                       outline: 'none'
                     }}
@@ -591,29 +759,7 @@ export default function CompetitorsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
-                    Industry (optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. E-Commerce / SaaS"
-                    value={newCompIndustry}
-                    onChange={(e) => setNewCompIndustry(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: 12,
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
-                      fontSize: 15,
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Description (optional)
                   </label>
                   <textarea
@@ -626,8 +772,8 @@ export default function CompetitorsPage() {
                       padding: '12px 16px',
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 14,
                       outline: 'none',
                       resize: 'none'
@@ -641,10 +787,10 @@ export default function CompetitorsPage() {
                     onClick={() => setIsAddModalOpen(false)}
                     style={{
                       padding: '12px 20px',
-                      borderRadius: 12,
+                      borderRadius: 6,
                       background: 'transparent',
-                      border: '1px solid var(--border-color, rgba(255,255,255,0.15))',
-                      color: 'var(--text-primary, #ffffff)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 14,
                       fontWeight: 600,
                       cursor: 'pointer'
@@ -657,14 +803,21 @@ export default function CompetitorsPage() {
                     disabled={isSubmitting}
                     style={{
                       padding: '12px 24px',
-                      borderRadius: 12,
-                      background: 'var(--accent, #f97316)',
-                      border: 'none',
-                      color: '#ffffff',
+                      borderRadius: '6px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
                       fontSize: 14,
                       fontWeight: 600,
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                      opacity: isSubmitting ? 0.7 : 1
+                      opacity: isSubmitting ? 0.7 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSubmitting) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSubmitting) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
                     }}
                   >
                     {isSubmitting ? 'Adding...' : 'Add Competitor'}
@@ -684,6 +837,7 @@ export default function CompetitorsPage() {
         setSidebarCollapsed={setSidebarCollapsed}
         onThinkingChange={setIsThinking}
       />
+
     </>
   );
 }

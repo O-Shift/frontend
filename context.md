@@ -146,6 +146,16 @@ The goal for the 404 page was to transform a standard error screen into a memora
   - Merged both `Competitor` domain helpers/types (local) and `Opportunity` domain helpers/types + `triggerPipeline` (incoming) into `src/lib/api.ts` cleanly to preserve full API support for both modules.
 - **Verification**: Ran production build (`npm run build`) to ensure all routes, components, and hooks compile cleanly with zero TypeScript or Turbopack errors.
 
-## 17. Branch Switch to Master
+## 15. Citation Chip Feature Commit & Branch Switch
+- **Citation Feature Commit**: Staged and committed local citation rendering changes (`PromptField.tsx`, `ChatMarkdown.tsx`, `CitationChip.tsx`, `citations.ts`) with commit message `feat(ui): add citation chip rendering and streaming support in ChatMarkdown`.
+- **Branch Switch**: Checked out and switched tracking branch to `fix/wiring-frontend` (`origin/fix/wiring-frontend`).
+- **Build Status**: Verified with `npm run build` (0 TypeScript / Turbopack errors).
+
+## 16. Citation Verification Suite & Context Update Commit
+- **Citation Verification Suite**: Included `.citecheck/` containing ad-hoc test harness (`verify.mjs`, `citations.mjs`, `dbg.mjs`, `real.json`) for citation parsing and streaming transformation.
+- **Commit & Push**: Staged uncommitted changes (`context.md` and `.citecheck/`), committed, and pushed to `origin/fix/wiring-frontend`.
+
+## 17. Branch Switch & Main Branch Integration
 - **Branch Switch**: Switched from `fix/wiring-frontend` to `master` branch.
-- **Status**: Working tree is clean and checked out on `master`.
+- **Status**: Merged `origin/master` into `master` branch and resolved conflicts across context docs, frontend components, and API modules.
+

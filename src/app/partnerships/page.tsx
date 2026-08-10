@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import PromptField from '@/components/PromptField';
 import { apiFetch } from '@/lib/api';
+import { logoUrl } from '@/lib/logos';
 
 interface DBGraphNode {
   id: string;
@@ -30,6 +31,12 @@ interface DBGraphEdge {
   source_type?: string;
   target_name?: string;
   target_type?: string;
+  /**
+   * graph.graph_relationships.weight — relationship strength. Nullable, and
+   * nothing writes it today, so null is the common case rather than the rare
+   * one. A real 0 is a meaningful strength and is not the same as null.
+   */
+  weight?: number | null;
   metadata?: any;
 }
 
@@ -69,11 +76,17 @@ function extractDomain(input?: string | null): string {
   return '';
 }
 
-function getDynamicDomain(name: string, metadata?: any): string {
+/**
+ * The domain a node's logo should be looked up by, or '' when the record has
+ * no site. Deliberately does not fall back to the node's name: "2U, Inc."
+ * parses as a domain because it contains a dot, and we would then ask the
+ * favicon service for `2u, inc.`. A node with no site gets a monogram.
+ */
+function getDynamicDomain(metadata?: any): string {
   if (metadata?.domain) return extractDomain(metadata.domain);
   if (metadata?.website) return extractDomain(metadata.website);
   if (metadata?.url) return extractDomain(metadata.url);
-  return extractDomain(name);
+  return '';
 }
 
 function getDynamicBrandColor(str: string): string {
@@ -112,12 +125,10 @@ export default function PartnershipsPage() {
     ]);
 
     if (graphRes.ok && graphRes.data) {
-      const gData = (graphRes.data as any)?.data || graphRes.data;
-      setDbGraphData(gData);
+      setDbGraphData(graphRes.data);
     }
     if (compRes.ok && compRes.data) {
-      const cData = Array.isArray(compRes.data) ? compRes.data : (compRes.data as any)?.data || (compRes.data as any)?.competitors || [];
-      setDbCompetitors(cData);
+      setDbCompetitors(compRes.data);
     }
     setLoading(false);
   }, []);
@@ -220,8 +231,13 @@ export default function PartnershipsPage() {
         return;
       }
 
-      const imgUrl = `https://logo.clearbit.com/${domain}`;
+      const imgUrl = logoUrl(domain);
       const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+
+      if (!imgUrl) {
+        renderMonogramCanvas();
+        return;
+      }
 
       const img = new Image();
 
@@ -280,10 +296,10 @@ export default function PartnershipsPage() {
 
     if (dbGraphData?.nodes) {
       for (const gn of dbGraphData.nodes) {
-        const dom = getDynamicDomain(gn.name, gn.metadata);
+        const dom = getDynamicDomain(gn.metadata);
         rawEntities.push({
           id: gn.id,
-          name: gn.name || 'Unknown',
+          name: gn.name,
           domain: dom,
           type: gn.entity_type === 'content_creator' ? 'influencer' : 'company',
           color: gn.metadata?.color || getDynamicBrandColor(dom || gn.name),
@@ -293,12 +309,12 @@ export default function PartnershipsPage() {
       }
     }
 
-    for (const comp of dbCompetitors || []) {
-      const dom = extractDomain(comp.website || '') || getDynamicDomain(comp.name || '');
-      if (!rawEntities.some(e => e.id === comp.id || ((e.name || '').toLowerCase() === (comp.name || '').toLowerCase()))) {
+    for (const comp of dbCompetitors) {
+      const dom = extractDomain(comp.website);
+      if (!rawEntities.some(e => e.id === comp.id || e.name.toLowerCase() === comp.name.toLowerCase())) {
         rawEntities.push({
           id: comp.id,
-          name: comp.name || 'Unknown',
+          name: comp.name,
           domain: dom,
           type: 'company',
           color: getDynamicBrandColor(dom || comp.name),
@@ -329,10 +345,67 @@ export default function PartnershipsPage() {
       });
     }
 
+    // Node size carries one real measurement, never a random draw.
+    //
+    // The preferred metric is the summed weight of a node's incident edges,
+    // normalised into the size band the graph already used. But nothing in the
+    // backend writes graph_relationships.weight yet — app/agent/tools/
+    // partnerships.py inserts (workspace_id, source_id, target_id, rel_type,
+    // metadata) and no job backfills it — so on every real workspace today
+    // that map comes back empty. The fallback is therefore degree: how many
+    // partnerships the node actually has. That is present in the data right
+    // now, and it is what node size gets read as anyway.
+    //
+    // The two are never mixed. A graph with any weighted edge is scaled purely
+    // by weight, otherwise purely by degree; blending them would put two
+    // different units on one axis and make the sizes mean nothing.
+    //
+    // Edges are matched to entities exactly the way the link pass below matches
+    // them: by id first, then by lowercased name.
+    const entityIdByKey = new Map<string, string>();
+    for (const e of rawEntities) {
+      if (e.id) entityIdByKey.set(String(e.id), e.id);
+      if (e.name) entityIdByKey.set(String(e.name).toLowerCase(), e.id);
+    }
+
+    const summedWeight = new Map<string, number>();
+    const degree = new Map<string, number>();
+    for (const edge of dbGraphData?.edges ?? []) {
+      const srcId = entityIdByKey.get(edge.source) ?? entityIdByKey.get((edge.source_name || '').toLowerCase());
+      const tgtId = entityIdByKey.get(edge.target) ?? entityIdByKey.get((edge.target_name || '').toLowerCase());
+      if (srcId && srcId === tgtId) continue; // self-loops are dropped from the links too
+      const w = edge.weight;
+      const weighted = typeof w === 'number' && Number.isFinite(w);
+      for (const id of [srcId, tgtId]) {
+        if (!id) continue;
+        degree.set(id, (degree.get(id) ?? 0) + 1);
+        if (weighted) summedWeight.set(id, (summedWeight.get(id) ?? 0) + (w as number));
+      }
+    }
+
+    // Presence in the chosen map is the "has a real measurement" flag, so a
+    // node totalling a genuine 0 stays distinct from one with nothing recorded.
+    const sizeBy = summedWeight.size > 0 ? summedWeight : degree;
+    let maxSize = 0;
+    for (const total of sizeBy.values()) {
+      if (total > maxSize) maxSize = total;
+    }
+
     for (let i = 0; i < rawEntities.length; i++) {
       const entity = rawEntities[i];
       const isHub = entity.isHub;
-      const value = isHub ? 150 + Math.random() * 2000 : 15 + Math.random() * 50;
+      // A node with nothing recorded sits at the band floor rather than taking
+      // a random size: an unconnected node genuinely is the smallest thing in
+      // the graph, and a fixed floor stops it re-sizing on every render.
+      const total = sizeBy.get(entity.id);
+      const strength = total === undefined
+        ? null
+        : maxSize > 0
+          ? Math.min(1, Math.max(0, total / maxSize))
+          : 0;
+      const value = strength === null
+        ? (isHub ? 150 : 15)
+        : (isHub ? 150 + strength * 2000 : 15 + strength * 50);
       const radius = isHub ? 12 + Math.sqrt(value) * 0.25 : 6 + Math.sqrt(value) * 0.4;
       const cacheKey = entity.id || `${entity.name}_${i}`;
 
@@ -364,7 +437,7 @@ export default function PartnershipsPage() {
 
       nodes.push(nodeObj);
       nodeMap.set(entity.id, nodeObj);
-      if (entity.name) nodeMap.set(entity.name.toLowerCase(), nodeObj);
+      nodeMap.set(entity.name.toLowerCase(), nodeObj);
       if (entity.domain) nodeMap.set(entity.domain.toLowerCase(), nodeObj);
     }
 
@@ -466,6 +539,16 @@ export default function PartnershipsPage() {
         const tr = transform.current;
         const tt = targetTransform.current;
         const mode = currentView.toLowerCase();
+
+        // Read once per frame. Everything below picks its colour from this: the
+        // canvas has no stylesheet, so a hardcoded white stroke is invisible on
+        // the light theme's white background — which is what made the graph
+        // look empty even with nodes and edges present.
+        const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+        const ink = isLightMode ? '0, 0, 0' : '255, 255, 255';
+        const haloColor = isLightMode ? 'rgba(255, 255, 255, 0.92)' : 'rgba(0, 0, 0, 0.78)';
+        const labelColor = isLightMode ? '#27272a' : '#e4e4e7';
+        const labelMutedColor = isLightMode ? '#71717a' : '#a1a1aa';
         
         tr.x += (tt.x - tr.x) * 0.15;
         tr.y += (tt.y - tr.y) * 0.15;
@@ -491,7 +574,7 @@ export default function PartnershipsPage() {
                   ctx.strokeStyle = gradient;
                   ctx.lineWidth = 2.0 / tr.k;
               } else if (link.source.isHub && link.target.isHub) {
-                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                  ctx.strokeStyle = `rgba(${ink}, 0.45)`;
                   ctx.lineWidth = 1.5 / tr.k;
               } else {
                   ctx.strokeStyle = 'rgba(142, 142, 147, 0.4)';
@@ -503,7 +586,6 @@ export default function PartnershipsPage() {
         
         // Draw Timeline Mode
         if (mode === 'timeline') {
-            const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
             const TIMELINE_BASE_Y = 0;
 
             if (timelineEvents.length > 0) {
@@ -556,7 +638,6 @@ export default function PartnershipsPage() {
 
         // Render Empty State if 0 DB records
         if (nodes.length === 0) {
-          const isLightMode = document.documentElement.getAttribute('data-theme') === 'light';
           ctx.fillStyle = isLightMode ? '#52525b' : '#a1a1aa';
           ctx.font = `600 ${18 / tr.k}px Inter, sans-serif`;
           ctx.textAlign = 'center';
@@ -587,7 +668,7 @@ export default function PartnershipsPage() {
                 ctx.rotate(-t * 0.8);
                 ctx.beginPath();
                 ctx.arc(0, 0, scaledRadius + 14 / tr.k, Math.PI * 0.5, Math.PI * 2);
-                ctx.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.5)' : 'rgba(142, 142, 147, 0.2)';
+                ctx.strokeStyle = isActive ? `rgba(${ink}, 0.5)` : 'rgba(142, 142, 147, 0.2)';
                 ctx.lineWidth = 1 / tr.k;
                 ctx.stroke();
                 ctx.restore();
@@ -606,7 +687,9 @@ export default function PartnershipsPage() {
                 const imgSource = pImg.canvas || pImg.img;
                 if (isActive) {
                     ctx.save();
-                    ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                    // The node's own brand colour, not white — a white glow is
+                    // invisible against the light theme's background.
+                    ctx.shadowColor = n.color || `rgba(${ink}, 0.6)`;
                     ctx.shadowBlur = 20 * tr.k;
                     ctx.drawImage(imgSource, n.x - scaledRadius, n.y - scaledRadius, scaledRadius * 2, scaledRadius * 2);
                     ctx.restore();
@@ -622,7 +705,9 @@ export default function PartnershipsPage() {
                 } else {
                     ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
                 }
-                ctx.strokeStyle = isActive ? '#ffffff' : (n.isHub ? n.color : 'rgba(142, 142, 147, 0.4)');
+                ctx.strokeStyle = isActive
+                    ? (isLightMode ? '#18181b' : '#ffffff')
+                    : (n.isHub ? n.color : 'rgba(142, 142, 147, 0.4)');
                 ctx.lineWidth = (isActive ? 2.5 : 1.0) / tr.k;
                 ctx.stroke();
             } else {
@@ -634,20 +719,66 @@ export default function PartnershipsPage() {
                 } else {
                     ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
                 }
-                ctx.fillStyle = isActive ? '#ffffff' : n.color;
-                
+                ctx.fillStyle = n.color;
+
                 if (isActive) {
-                    ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                    ctx.shadowColor = n.color || `rgba(${ink}, 0.6)`;
                     ctx.shadowBlur = 20 * tr.k;
                 }
-                
+
                 ctx.fill();
-                
+
                 if (isActive) {
                     ctx.shadowBlur = 0;
+                    // An outline reads as "selected" in both themes, where the
+                    // old white fill only did in dark.
+                    ctx.strokeStyle = isLightMode ? '#18181b' : '#ffffff';
+                    ctx.lineWidth = 2.5 / tr.k;
+                    ctx.stroke();
                 }
             }
         }
+
+        // Node labels — a second pass so a label is never overdrawn by a node
+        // that comes later in the loop. `label` was already on every node object
+        // but nothing ever drew it, which is why the graph read as a field of
+        // anonymous dots.
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (const n of nodes) {
+            if (!n.label) continue;
+
+            const scaledRadius = n.radius / Math.max(tr.k * 0.5, 0.8);
+            const screenX = n.x * tr.k + tr.x;
+            const screenY = n.y * tr.k + tr.y;
+            const screenR = scaledRadius * tr.k;
+            if (screenX + screenR + 250 < 0 || screenX - screenR - 250 > width || screenY + screenR + 150 < 0 || screenY - screenR - 150 > height) {
+                continue;
+            }
+
+            const isActive = n === localSelectedNode || n === hoveredNode;
+            // Below a certain zoom every label collides with its neighbours, so
+            // keep only the hubs and whatever the pointer is on.
+            if (tr.k < 0.7 && !n.isHub && !isActive) continue;
+
+            const fontPx = (n.isHub ? 13 : 11.5) / tr.k;
+            ctx.font = `${n.isHub || isActive ? 600 : 500} ${fontPx}px Inter, sans-serif`;
+
+            const text = n.label.length > 24 ? `${n.label.slice(0, 23)}…` : n.label;
+            const ty = n.y + scaledRadius + 7 / tr.k;
+
+            // Halo first: labels sit over edges and other nodes, and without a
+            // backdrop they smear into whatever is behind them.
+            ctx.lineWidth = 3 / tr.k;
+            ctx.strokeStyle = haloColor;
+            ctx.lineJoin = 'round';
+            ctx.miterLimit = 2;
+            ctx.strokeText(text, n.x, ty);
+
+            ctx.fillStyle = isActive ? labelColor : (n.isHub ? labelColor : labelMutedColor);
+            ctx.fillText(text, n.x, ty);
+        }
+
         ctx.restore();
     };
 
@@ -832,49 +963,63 @@ export default function PartnershipsPage() {
   }, [currentView, loading, dbGraphData, dbCompetitors, router]);
 
   return (
-    <div className="main-content skeleton-target" id="graphContainer" ref={containerRef}>
+    <div className="page-canvas skeleton-target" id="graphContainer" ref={containerRef}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
             <canvas id="obsidianCanvas" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}></canvas>
         </div>
 
-        <div className="main-header">
-            <h1>Partnerships</h1>
-            <div className="view-toggle" id="viewToggleBtn" style={{ position: 'relative' }} onClick={() => setViewDropdownOpen(!viewDropdownOpen)}>
+        {/* ── Page header ────────────────────────────────────────── */}
+        <div className="page-header" style={{ position: 'absolute', top: 28, left: 28, zIndex: 10, pointerEvents: 'none', alignItems: 'center', marginBottom: 0, gap: 16 }}>
+          <div style={{ pointerEvents: 'auto' }}>
+            <h1 className="page-title">Partnerships</h1>
+          </div>
+          <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn-secondary card-sm"
+                id="viewToggleBtn"
+                onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="3" y1="12" x2="21" y2="12" />
-                    <line x1="3" y1="6" x2="21" y2="6" />
-                    <line x1="3" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
-                <span>View: <span>{currentView}</span></span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4 }}>
-                    <polyline points="6 9 12 15 18 9" />
+                <span>View:</span>
+                <span className="pill pill-accent">{currentView}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}>
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
-                {viewDropdownOpen && (
-                  <div className="view-dropdown show" id="viewDropdown">
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Graph'); setViewDropdownOpen(false); }}>Graph</div>
-                      <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Timeline'); setViewDropdownOpen(false); }}>Timeline</div>
-                  </div>
-                )}
+              </button>
+              {viewDropdownOpen && (
+                <div className="view-dropdown show" id="viewDropdown">
+                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('graph'); }}>Graph</div>
+                  <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); (window as any).setViewMode('timeline'); }}>Timeline</div>
+                </div>
+              )}
             </div>
+          </div>
         </div>
 
-        <div className="bottom-right-controls">
-            <div className="br-pill">
-                <button className="icon-btn" onClick={() => (window as any).zoomOut()}>
+        <div className="bottom-right-controls" style={{ zIndex: 20, pointerEvents: 'auto' }}>
+            <div className="br-pill card-sm">
+                <button className="icon-btn" onClick={() => (window as any).zoomOut()} title="Zoom Out">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
                 <div className="divider"></div>
-                <button className="icon-btn" onClick={() => (window as any).zoomIn()}>
+                <button className="icon-btn" onClick={() => (window as any).zoomIn()} title="Zoom In">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
             </div>
-            <div className="br-pill br-zoom" id="zoom-indicator" onClick={() => (window as any).resetView()}>{zoom}%</div>
-            <button className="br-circle">
+            <button className="btn-secondary card-sm pill" id="zoom-indicator" onClick={() => (window as any).resetView()} title="Reset View">
+              {zoom}%
+            </button>
+            <button className="btn-secondary card-sm" style={{ padding: '8px 12px' }} title="Help">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
@@ -897,8 +1042,8 @@ export default function PartnershipsPage() {
             <div className="v0-sidebar-header">
                 <button className="v0-toggle-btn" onClick={() => setSidebarCollapsed(true)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <circle cx="8" cy="12" r="2" fill="black" />
-                        <circle cx="16" cy="12" r="2" fill="black" />
+                        <circle cx="8" cy="12" r="2" fill="var(--text-primary)" />
+                        <circle cx="16" cy="12" r="2" fill="var(--text-primary)" />
                     </svg>
                 </button>
             </div>

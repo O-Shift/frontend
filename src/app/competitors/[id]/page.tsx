@@ -127,9 +127,9 @@ function CompetitorDetailPageContent() {
     if (engRes.ok) setVolumeData(engRes.data.points || []);
     if (sentRes.ok) setEngagementData(sentRes.data.points || []);
 
-    if (gapsRes.ok) setGaps(gapsRes.data || []);
-    if (campRes.ok) setCampaigns(campRes.data || []);
-    if (revRes.ok) setReviews(revRes.data || []);
+    if (gapsRes.ok) setGaps(Array.isArray(gapsRes.data) ? gapsRes.data : (gapsRes.data as any)?.gaps || []);
+    if (campRes.ok) setCampaigns(Array.isArray(campRes.data) ? campRes.data : (campRes.data as any)?.campaigns || []);
+    if (revRes.ok) setReviews(Array.isArray(revRes.data) ? revRes.data : (revRes.data as any)?.reviews || []);
 
 
     setLoading(false);
@@ -678,12 +678,12 @@ function CompetitorDetailPageContent() {
                       }} />
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          {rev.metadata?.avatar_url && (
-                            <img src={rev.metadata.avatar_url} alt="Avatar" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                          {(rev.metadata as any)?.avatar_url && (
+                            <img src={(rev.metadata as any).avatar_url} alt="Avatar" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
                           )}
                           <div>
                             <div className="review-author" style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700 }}>
-                              {rev.metadata?.author_name || (rev.platform ? rev.platform.toUpperCase() : 'Review')}
+                              {(rev.metadata as any)?.author_name || (rev.platform ? rev.platform.toUpperCase() : 'Review')}
                             </div>
                             <div className="review-date" style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
                               {rev.reviewed_at ? new Date(rev.reviewed_at).toLocaleDateString() : 'Recent'}

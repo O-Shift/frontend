@@ -338,7 +338,7 @@ export default function PromptField({
     handleSendMessage(promptText);
   };
 
-  const showChatWindow = commandActive || messages.length > 0;
+  // const showChatWindow = commandActive || messages.length > 0;
 
   return (
     <>
@@ -350,8 +350,8 @@ export default function PromptField({
           !commandActive
             ? 'mascot-idle'
             : selectedNode
-            ? 'mascot-active has-chip'
-            : 'mascot-active'
+              ? 'mascot-active has-chip'
+              : 'mascot-active'
         }
         alt="PShift Mascot"
         onMouseDown={(e) => e.stopPropagation()}
@@ -365,7 +365,7 @@ export default function PromptField({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Floating Chat Messages Panel */}
-        {showChatWindow && (
+        {(messages.length > 0 || isLoading) && (
           <div
             className="chat-window"
             onMouseDown={(e) => e.stopPropagation()}

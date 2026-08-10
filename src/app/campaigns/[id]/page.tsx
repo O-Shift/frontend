@@ -3,28 +3,148 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import { Playfair_Display, Inter } from 'next/font/google';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import {
+  fetchCampaign,
+  campaignThemes,
+  campaignPlatforms,
+  campaignDateRange,
+  type Campaign,
+  type CampaignPost,
+} from '@/lib/api';
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700', '800'], style: ['normal', 'italic'] });
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'] });
 
-const CLUSTERS = [
-  { id: 'holiday', name: 'Holiday Seasons' },
-  { id: 'tech',    name: 'Tech Product Launches' },
-  { id: 'sports',  name: 'Sports & eSports' },
-];
+type SlideProps = { campaign: Campaign };
 
-function getMockCampaign(idStr: string) {
-    const id = parseInt(idStr, 10) || 0;
-    const cluster = CLUSTERS[id % CLUSTERS.length];
-    return {
-        id,
-        cluster,
-        title: `${cluster.name.split(' ')[0]} Trends`,
-    };
+/**
+ * Deck ink tones. Tiles pick one by hash so a post keeps its fill across
+ * renders. Every tone gradates down to near-black, so none of them is black
+ * itself — that would render a flat, unreadable tile.
+ */
+const TILE_TONES = ['#9c1c31', '#0033a0', '#3d5a3a'];
+
+/** Stable ink tone for a given id, so a tile keeps its colour across renders. */
+function tileTone(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) % 100000;
+  }
+  return TILE_TONES[hash % TILE_TONES.length];
+}
+
+function tileFill(seed: string): string {
+  return `linear-gradient(150deg, ${tileTone(seed)} 0%, #0a0a0a 100%)`;
+}
+
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function dateRangeLabel(campaign: Campaign): string {
+  const { start: rawStart, end: rawEnd } = campaignDateRange(campaign);
+  const start = formatDate(rawStart);
+  const end = formatDate(rawEnd);
+  if (start && end) return start === end ? start : `${start} – ${end}`;
+  if (start) return `From ${start}`;
+  if (end) return `Through ${end}`;
+  const detected = formatDate(campaign.detected_at);
+  return detected ? `Detected ${detected}` : 'No dates recorded';
+}
+
+/**
+ * Confidence is the clustering engine's certainty that these posts are one
+ * campaign. It replaces the status/cluster labels this deck used to show: the
+ * API returns neither, so both rendered as constants on every campaign.
+ */
+function confidenceLabel(campaign: Campaign): string {
+  const c = campaign.confidence;
+  if (c >= 70) return `${c}% confidence`;
+  if (c >= 40) return `${c}% confidence · tentative`;
+  return `${c}% confidence · weak signal`;
+}
+
+/** Leading theme, or a neutral label when the engine recorded none. */
+function themeLabel(campaign: Campaign): string {
+  return campaignThemes(campaign)[0] ?? 'Uncategorised';
+}
+
+/** Groups captured posts by platform, keeping the first spelling seen as the label. */
+function postCountsByPlatform(posts: CampaignPost[]): Map<string, { label: string; count: number }> {
+  const counts = new Map<string, { label: string; count: number }>();
+  for (const post of posts) {
+    const raw = (post.platform || post.source || '').trim() || 'Unattributed';
+    const key = raw.toLowerCase();
+    const seen = counts.get(key);
+    if (seen) {
+      seen.count += 1;
+    } else {
+      counts.set(key, { label: raw, count: 1 });
+    }
+  }
+  return counts;
+}
+
+/** Marks deck furniture that is styling, not a fact about this campaign. */
+function SampleBadge({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        background: 'rgba(10,10,10,0.55)',
+        color: '#f3eedf',
+        border: '1px solid rgba(243,238,223,0.35)',
+        borderRadius: 4,
+        padding: '3px 8px',
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        fontFamily: inter.style.fontFamily,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function DeckMessage({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div style={{ width: '100%', height: '100%', background: '#f3eedf', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '120px 8% 6% 8%', textAlign: 'center' }}>
+      {icon}
+      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: 0, letterSpacing: '-0.01em' }}>
+        {title}
+      </h2>
+      <p style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0, maxWidth: 540, lineHeight: 1.5 }}>
+        {body}
+      </p>
+      {action}
+    </div>
+  );
 }
 
 // ─── Slide 1: Editorial Intro with "e" cutout mask ────────────────────────────
-function Slide1() {
+function Slide1({ campaign }: SlideProps) {
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '120px 8% 8% 8%' }}>
       {/* Stylized lowercase cursive 'e' mask */}
@@ -58,16 +178,19 @@ function Slide1() {
               />
             </clipPath>
           </defs>
-          <motion.image
-            href="/mushroom_botanical.png"
-            width="100%"
-            height="100%"
-            preserveAspectRatio="xMidYMid slice"
+          {/* The letterform is filled with the campaign's own ink tone. It used
+              to hold a stock photograph, which was the same on every campaign. */}
+          <motion.rect
+            x="-10%"
+            y="-10%"
+            width="120%"
+            height="120%"
+            fill={tileTone(campaign.id)}
             clipPath="url(#letter-e-clip)"
-            animate={{ 
-              scale: [1.12, 1.02, 1.12], 
-              x: [-15, 5, -15], 
-              y: [-15, 5, -15] 
+            animate={{
+              scale: [1.12, 1.02, 1.12],
+              x: [-15, 5, -15],
+              y: [-15, 5, -15]
             }}
             transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
           />
@@ -75,36 +198,51 @@ function Slide1() {
       </motion.div>
 
       <div style={{ zIndex: 10, maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <motion.h1 
-          initial={{ y: 40, opacity: 0 }} 
-          animate={{ y: 0, opacity: 1 }} 
-          transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
-          style={{ 
-            fontSize: 'clamp(36px, 5vw, 68px)', 
-            fontFamily: playfair.style.fontFamily, 
-            color: '#0a0a0a', 
-            lineHeight: 1.1, 
-            margin: 0, 
-            fontWeight: 700, 
-            letterSpacing: '-0.02em' 
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.15, duration: 0.8, ease: 'easeOut' }}
+          style={{
+            fontSize: 13,
+            letterSpacing: 2,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            color: '#9c1c31',
+            fontFamily: inter.style.fontFamily,
           }}
         >
-          At Empee, we don't guess trends...
+          {themeLabel(campaign)} · {confidenceLabel(campaign)}
+        </motion.div>
+        <motion.h1
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
+          style={{
+            fontSize: 'clamp(36px, 5vw, 68px)',
+            fontFamily: playfair.style.fontFamily,
+            color: '#0a0a0a',
+            lineHeight: 1.1,
+            margin: 0,
+            fontWeight: 700,
+            letterSpacing: '-0.02em'
+          }}
+        >
+          {campaign.title}
         </motion.h1>
-        <motion.p 
-          initial={{ y: 25, opacity: 0 }} 
-          animate={{ y: 0, opacity: 1 }} 
+        <motion.p
+          initial={{ y: 25, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.8, ease: 'easeOut' }}
-          style={{ 
-            fontSize: 'clamp(18px, 2vw, 24px)', 
-            color: '#1a1a1a', 
-            margin: 0, 
-            fontWeight: 500, 
+          style={{
+            fontSize: 'clamp(18px, 2vw, 24px)',
+            color: '#1a1a1a',
+            margin: 0,
+            fontWeight: 500,
             letterSpacing: '0.01em',
             fontFamily: inter.style.fontFamily
           }}
         >
-          We watch what's moving
+          {dateRangeLabel(campaign)}
         </motion.p>
       </div>
     </div>
@@ -112,55 +250,80 @@ function Slide1() {
 }
 
 // ─── Slide 2: Overlapping Spring Photo Collage (Flying from bottom) ────────────────────────────
-function Slide2({ campaign }: any) {
-  const collageItems = [
-    { src: '/mushroom_fashion.png', top: '12%', left: '10%', width: '22vw', height: '35vh', rot: -8, delay: 0.1 },
-    { src: '/mushroom_kids.png', top: '8%', right: '12%', width: '24vw', height: '36vh', rot: 10, delay: 0.25 },
-    { src: '/mushroom_botanical.png', top: '33%', left: '32%', width: '16vw', height: '24vh', rot: 5, delay: 0.4 },
-    { src: '/mushroom_corset.png', bottom: '10%', left: '14%', width: '22vw', height: '38vh', rot: -6, delay: 0.55 },
-    { src: '/mushroom_kids.png', bottom: '8%', right: '16%', width: '24vw', height: '34vh', rot: 4, delay: 0.7 }
-  ];
+/** Slots the collage lays post tiles into, outermost first. */
+const COLLAGE_SLOTS = [
+  { top: '12%', left: '10%', width: '22vw', height: '35vh', rot: -8, delay: 0.1 },
+  { top: '8%', right: '12%', width: '24vw', height: '36vh', rot: 10, delay: 0.25 },
+  { bottom: '10%', left: '14%', width: '22vw', height: '38vh', rot: -6, delay: 0.55 },
+  { bottom: '8%', right: '16%', width: '24vw', height: '34vh', rot: 4, delay: 0.7 },
+] as const;
+
+function Slide2({ campaign }: SlideProps) {
+  // The heading is the leading theme, so the subline carries the rest. Platform
+  // is a poor subline here: the collector records it as a generic "social" for
+  // every post, which reads as though nothing was captured.
+  const themes = campaignThemes(campaign);
+  const platforms = campaignPlatforms(campaign);
+  const subline =
+    themes.slice(1).join(' · ') ||
+    (platforms.length > 0 ? platforms.join(' · ') : 'No themes recorded');
+
+  // Campaigns carry no artwork, so the collage is built from the posts that
+  // were actually captured — the stock photography this slide used to show was
+  // identical on every campaign.
+  const collageItems = campaign.posts
+    .slice(0, COLLAGE_SLOTS.length)
+    .map((post, i) => ({ post, ...COLLAGE_SLOTS[i] }));
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#9c1c31', position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      {/* Blurred dynamic background underlay */}
-      <div 
-        style={{ 
-          position: 'absolute', inset: 0, 
-          backgroundImage: `url('/mushroom_kids.png')`, 
-          backgroundSize: 'cover', backgroundPosition: 'center',
-          filter: 'blur(30px) brightness(0.4)',
-          opacity: 0.65,
+      {/* Ink wash underlay, seeded from the campaign so it stays put across renders */}
+      <div
+        style={{
+          position: 'absolute', inset: 0,
+          background: tileFill(campaign.id),
+          filter: 'blur(30px) brightness(0.5)',
+          opacity: 0.6,
           zIndex: 1
-        }} 
+        }}
       />
 
-      {/* Collage images flying up from the bottom */}
-      {collageItems.map((item, i) => (
-        <motion.div 
-          key={i}
+      {/* Collage tiles flying up from the bottom, one per captured post */}
+      {collageItems.map((item) => (
+        <motion.div
+          key={item.post.id}
           initial={{ y: '100vh', opacity: 0, rotate: 0 }}
           animate={{ y: 0, opacity: 1, rotate: item.rot }}
           transition={{ type: 'spring', stiffness: 100, damping: 18, delay: item.delay }}
           style={{
             position: 'absolute',
-            top: item.top,
-            left: item.left,
-            right: item.right,
-            bottom: item.bottom,
+            top: 'top' in item ? item.top : undefined,
+            left: 'left' in item ? item.left : undefined,
+            right: 'right' in item ? item.right : undefined,
+            bottom: 'bottom' in item ? item.bottom : undefined,
             width: item.width,
             height: item.height,
             zIndex: 5,
             boxShadow: '0 20px 45px rgba(0,0,0,0.4)',
             borderRadius: 8,
             overflow: 'hidden',
+            background: tileFill(item.post.id),
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            gap: 8,
+            padding: 18,
           }}
+          title={item.post.title}
         >
-          <img 
-            src={item.src} 
-            alt="" 
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-          />
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'rgba(243,238,223,0.7)', fontFamily: inter.style.fontFamily }}>
+            {item.post.platform || item.post.source}
+          </span>
+          {/* The clamp lives on a block child: a `-webkit-box` flex item is not
+              laid out as a flex item, and its text overlapped the label above. */}
+          <div style={{ fontSize: 'clamp(12px, 1.1vw, 15px)', color: '#f3eedf', fontFamily: inter.style.fontFamily, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {item.post.title || item.post.content}
+          </div>
         </motion.div>
       ))}
 
@@ -178,118 +341,137 @@ function Slide2({ campaign }: any) {
           borderRadius: 4
         }}
       >
-        <h2 style={{ 
-          fontSize: 'clamp(36px, 5.5vw, 68px)', 
-          fontFamily: playfair.style.fontFamily, 
-          color: '#f3eedf', 
-          lineHeight: 1, 
-          margin: 0, 
-          letterSpacing: '-0.02em' 
+        <h2 style={{
+          fontSize: 'clamp(36px, 5.5vw, 68px)',
+          fontFamily: playfair.style.fontFamily,
+          color: '#f3eedf',
+          lineHeight: 1,
+          margin: 0,
+          letterSpacing: '-0.02em'
         }}>
-          {campaign.cluster.name}
+          {themeLabel(campaign)}
         </h2>
-        <div style={{ 
-          fontSize: 'clamp(28px, 4vw, 44px)', 
-          fontFamily: playfair.style.fontFamily, 
-          color: '#ebdcb9', 
-          fontStyle: 'italic', 
-          marginTop: 12 
+        <div style={{
+          fontSize: 'clamp(28px, 4vw, 44px)',
+          fontFamily: playfair.style.fontFamily,
+          color: '#ebdcb9',
+          fontStyle: 'italic',
+          marginTop: 12
         }}>
-          & Mycology
+          {subline}
         </div>
       </motion.div>
+
+      {campaign.posts.length === 0 && (
+        <div style={{ position: 'absolute', left: '4%', bottom: 24, zIndex: 20 }}>
+          <SampleBadge label="No posts captured" />
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Slide 3: Animated Bar Chart ────────────────────────────
-function Slide3() {
-  const bars = [
-    { year: 2021, val: 0.5, h: '20%' },
-    { year: 2022, val: 1.0, h: '40%' },
-    { year: 2023, val: 1.5, h: '60%' },
-    { year: 2024, val: 2.1, h: '84%' }
-  ];
+function Slide3({ campaign }: SlideProps) {
+  const bars = [...postCountsByPlatform(campaign.posts).values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  const step = Math.max(1, Math.ceil(Math.max(...bars.map((b) => b.count), 1) / 5));
+  const axisTop = step * 5;
+  const ticks = [0, 1, 2, 3, 4, 5].map((i) => i * step);
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '120px 8% 6% 8%' }}>
-      <motion.h2 
+      <motion.h2
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
-        style={{ 
-          fontSize: 'clamp(24px, 4vw, 40px)', 
-          color: '#0a0a0a', 
-          marginBottom: 80, 
-          fontWeight: 700, 
+        style={{
+          fontSize: 'clamp(24px, 4vw, 40px)',
+          color: '#0a0a0a',
+          marginBottom: 80,
+          fontWeight: 700,
           letterSpacing: '-0.02em',
           fontFamily: playfair.style.fontFamily,
           textAlign: 'center'
         }}
       >
-        #Goblincore TikTok Views (Approx.)
+        Captured Posts by Platform
       </motion.h2>
-      
+
+      {bars.length === 0 ? (
+        <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0, textAlign: 'center', maxWidth: 520, lineHeight: 1.5 }}>
+          No posts have been captured for this campaign yet, so there is nothing to chart.
+        </p>
+      ) : (
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(16px, 4vw, 48px)', height: '42vh', width: '100%', maxWidth: 650, position: 'relative' }}>
          {/* Y-Axis Value Labels & Grid Lines */}
-         {[0.0, 0.5, 1.0, 1.5, 2.0, 2.5].map((val, i) => (
-           <motion.div 
-             key={i} 
+         {ticks.map((val, i) => (
+           <motion.div
+             key={i}
              initial={{ opacity: 0, x: -20 }}
              animate={{ opacity: 1, x: 0 }}
              transition={{ delay: i * 0.08, duration: 0.5 }}
-             style={{ position: 'absolute', bottom: `${(val/2.5)*100}%`, left: 0, right: 0, borderBottom: '1px solid rgba(10,10,10,0.1)' }}
+             style={{ position: 'absolute', bottom: `${(val/axisTop)*100}%`, left: 0, right: 0, borderBottom: '1px solid rgba(10,10,10,0.1)' }}
            >
              <span style={{ position: 'absolute', left: -44, bottom: -9, fontSize: 15, color: '#1a1a1a', fontWeight: 600, fontFamily: inter.style.fontFamily }}>
-               {val.toFixed(1)}
+               {val}
              </span>
            </motion.div>
          ))}
 
          {/* Legend Tag */}
-         <motion.div 
+         <motion.div
            initial={{ opacity: 0, scale: 0.8 }}
            animate={{ opacity: 1, scale: 1 }}
            transition={{ delay: 0.5 }}
            style={{ position: 'absolute', top: -45, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 10 }}
          >
              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#0033a0' }} />
-             <span style={{ fontSize: 16, color: '#1a1a1a', fontWeight: 600, fontFamily: inter.style.fontFamily }}>Billion</span>
+             <span style={{ fontSize: 16, color: '#1a1a1a', fontWeight: 600, fontFamily: inter.style.fontFamily }}>Posts captured</span>
          </motion.div>
-         
+
          {/* Bars */}
          {bars.map((bar, i) => (
-           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, height: '100%', justifyContent: 'flex-end' }}>
-             <motion.div 
+           <div key={bar.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, height: '100%', justifyContent: 'flex-end' }}>
+             <motion.div
                initial={{ scaleY: 0 }}
                animate={{ scaleY: 1 }}
                transition={{ type: 'spring', stiffness: 100, damping: 15, delay: 0.4 + i * 0.15 }}
-               style={{ 
-                 width: '100%', 
-                 background: '#0033a0', 
+               style={{
+                 width: '100%',
+                 background: '#0033a0',
                  borderRadius: '6px 6px 0 0',
-                 height: bar.h,
+                 height: `${(bar.count / axisTop) * 100}%`,
                  originY: 1,
-               }} 
+               }}
                whileHover={{ scale: 1.05, filter: 'brightness(1.15)' }}
              />
-             <motion.div 
+             <motion.div
                initial={{ opacity: 0, y: 10 }}
                animate={{ opacity: 1, y: 0 }}
                transition={{ delay: 0.8 + i * 0.1 }}
-               style={{ marginTop: 20, fontSize: 18, color: '#0a0a0a', fontWeight: 700, fontFamily: inter.style.fontFamily }}
+               style={{ marginTop: 20, fontSize: 18, color: '#0a0a0a', fontWeight: 700, fontFamily: inter.style.fontFamily, textAlign: 'center', wordBreak: 'break-word' }}
              >
-               {bar.year}
+               {bar.label}
              </motion.div>
            </div>
          ))}
       </div>
+      )}
     </div>
   );
 }
 
 // ─── Slide 4: Strategic Quote Overlay ────────────────────────────
-function Slide4() {
+function Slide4({ campaign }: SlideProps) {
+  const themes = campaignThemes(campaign);
+  const quote =
+    campaign.description?.trim() ||
+    (themes.length > 0
+      ? `Recurring themes across this campaign: ${themes.join(', ')}.`
+      : 'No description has been recorded for this campaign.');
+
   return (
     <div 
       style={{ 
@@ -309,9 +491,7 @@ function Slide4() {
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundImage: `url('/mushroom_kids.png')`, 
-          backgroundSize: 'cover', 
-          backgroundPosition: 'center',
+          background: tileFill(campaign.id),
         }}
       />
       {/* Spotify-style deep solid blue-to-transparent overlay */}
@@ -330,34 +510,48 @@ function Slide4() {
           maxWidth: 950 
         }}
       >
-        <motion.p 
+        <motion.p
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
-          style={{ 
-            fontSize: 'clamp(24px, 4.5vw, 48px)', 
-            color: '#ffffff', 
-            lineHeight: 1.25, 
-            fontWeight: 400, 
+          style={{
+            fontSize: 'clamp(24px, 4.5vw, 48px)',
+            color: '#ffffff',
+            lineHeight: 1.25,
+            fontWeight: 400,
             letterSpacing: '-0.015em',
             fontFamily: playfair.style.fontFamily,
             margin: 0
           }}
         >
-          Mushroom motifs perform especially strongly in childrenswear, quilting and interiors, where whimsy, nostalgia and softness drive repeat sales.
+          {quote}
         </motion.p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, ease: 'easeOut', delay: 0.9 }}
+          style={{
+            marginTop: 24,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            fontFamily: inter.style.fontFamily,
+            color: 'rgba(255,255,255,0.85)',
+          }}
+        >
+          <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            {themeLabel(campaign)} · {confidenceLabel(campaign)}
+          </span>
+        </motion.div>
       </div>
     </div>
   );
 }
 
 // ─── Slide 5: Products Showcase Grid ────────────────────────────
-function Slide5() {
-  const swatches = [
-    { src: '/fabric_pattern_1.png' },
-    { src: '/fabric_pattern_2.png' },
-    { src: '/fabric_pattern_3.png' }
-  ];
+function Slide5({ campaign }: SlideProps) {
+  const platforms = campaignPlatforms(campaign).slice(0, 6);
+  const counts = postCountsByPlatform(campaign.posts);
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '120px 8% 6% 8%' }}>
@@ -374,87 +568,105 @@ function Slide5() {
        </motion.div>
 
        <div>
-         <motion.h1 
+         <motion.h1
            initial={{ y: -40, opacity: 0 }}
            animate={{ y: 0, opacity: 1 }}
            transition={{ type: 'spring', stiffness: 100, damping: 15 }}
-           style={{ 
-             fontSize: 'clamp(50px, 9vw, 120px)', 
-             fontFamily: playfair.style.fontFamily, 
-             color: '#0a0a0a', 
-             margin: 0, 
-             lineHeight: 0.95, 
-             letterSpacing: '-0.03em' 
+           style={{
+             fontSize: 'clamp(50px, 9vw, 120px)',
+             fontFamily: playfair.style.fontFamily,
+             color: '#0a0a0a',
+             margin: 0,
+             lineHeight: 0.95,
+             letterSpacing: '-0.03em'
            }}
          >
-           Mushrooms
+           {campaign.title}
          </motion.h1>
-         <motion.h2 
+         <motion.h2
            initial={{ x: -30, opacity: 0 }}
            animate={{ x: 0, opacity: 1 }}
            transition={{ type: 'spring', stiffness: 100, damping: 15, delay: 0.3 }}
-           style={{ 
-             fontSize: 'clamp(20px, 3.8vw, 44px)', 
-             color: '#1a1a1a', 
-             fontWeight: 600, 
-             marginTop: 32, 
+           style={{
+             fontSize: 'clamp(20px, 3.8vw, 44px)',
+             color: '#1a1a1a',
+             fontWeight: 600,
              letterSpacing: '-0.02em',
              fontFamily: inter.style.fontFamily,
              margin: '24px 0 8px 0'
            }}
          >
-           We saw it coming.
+           {themeLabel(campaign)}
          </motion.h2>
-         <motion.h2 
+         <motion.h2
            initial={{ x: -30, opacity: 0 }}
            animate={{ x: 0, opacity: 1 }}
            transition={{ type: 'spring', stiffness: 100, damping: 15, delay: 0.45 }}
-           style={{ 
-             fontSize: 'clamp(20px, 3.8vw, 44px)', 
-             color: '#1a1a1a', 
-             fontWeight: 600, 
+           style={{
+             fontSize: 'clamp(20px, 3.8vw, 44px)',
+             color: '#1a1a1a',
+             fontWeight: 600,
              letterSpacing: '-0.02em',
              fontFamily: inter.style.fontFamily,
              margin: 0
            }}
          >
-           We've got the fabric.
+           {dateRangeLabel(campaign)}
          </motion.h2>
        </div>
-       
+
        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'clamp(16px, 3vw, 40px)', marginTop: 60, maxWidth: 1100 }}>
-         {swatches.map((swatch, i) => (
-           <motion.div 
-             key={i}
+         {platforms.length === 0 ? (
+           <p style={{ gridColumn: '1 / -1', fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0 }}>
+             No platforms have been recorded for this campaign yet.
+           </p>
+         ) : platforms.map((platform, i) => (
+           <motion.div
+             key={platform}
              initial={{ y: 80, opacity: 0, rotate: -4 }}
              animate={{ y: 0, opacity: 1, rotate: 0 }}
              transition={{ type: 'spring', stiffness: 100, damping: 14, delay: 0.6 + i * 0.15 }}
              whileHover={{ y: -10, scale: 1.02 }}
            >
-             <div 
-               style={{ 
-                 width: '100%', 
-                 aspectRatio: '2/3', 
-                 overflow: 'hidden', 
+             <div
+               style={{
+                 width: '100%',
+                 aspectRatio: '2/3',
+                 overflow: 'hidden',
                  boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-                 borderRadius: 4
+                 borderRadius: 4,
+                 background: tileFill(platform),
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 padding: 20,
+                 textAlign: 'center',
                }}
              >
-               <img 
-                 src={swatch.src} 
-                 alt="" 
-                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-               />
+               <span style={{
+                 fontFamily: playfair.style.fontFamily,
+                 fontWeight: 700,
+                 fontSize: 'clamp(22px, 3vw, 34px)',
+                 color: '#f3eedf',
+                 letterSpacing: '-0.01em',
+                 lineHeight: 1.15,
+                 wordBreak: 'break-word',
+               }}>
+                 {platform}
+               </span>
              </div>
-             <div style={{ 
-               marginTop: 20, 
-               fontSize: 14, 
-               letterSpacing: 2, 
-               color: '#1a1a1a', 
-               fontWeight: 700, 
-               fontFamily: inter.style.fontFamily 
+             <div style={{
+               marginTop: 20,
+               fontSize: 14,
+               letterSpacing: 2,
+               color: '#1a1a1a',
+               fontWeight: 700,
+               fontFamily: inter.style.fontFamily
              }}>
-               COMING SOON
+               {(() => {
+                 const count = counts.get(platform.trim().toLowerCase())?.count ?? 0;
+                 return `${count} POST${count === 1 ? '' : 'S'} CAPTURED`;
+               })()}
              </div>
            </motion.div>
          ))}
@@ -464,12 +676,15 @@ function Slide5() {
 }
 
 // ─── Slide 6: Moodboard Slide ────────────────────────────
-function Slide6() {
-  const images = [
-    { src: '/mushroom_fashion.png', gridArea: '1 / 1 / 3 / 2' },
-    { src: '/mushroom_botanical.png', gridArea: '1 / 2 / 2 / 3' },
-    { src: '/mushroom_corset.png', gridArea: '2 / 2 / 4 / 3' },
-    { src: '/mushroom_kids.png', gridArea: '3 / 1 / 4 / 2' }
+function Slide6({ campaign }: SlideProps) {
+  const gridAreas = ['1 / 1 / 3 / 2', '1 / 2 / 2 / 3', '2 / 2 / 4 / 3', '3 / 1 / 4 / 2'];
+  const posts = campaign.posts.slice(0, 4);
+  const themes = campaignThemes(campaign).slice(0, 4);
+  const themeStyles: React.CSSProperties[] = [
+    { fontSize: 'clamp(28px, 4vw, 44px)', fontFamily: playfair.style.fontFamily, fontStyle: 'italic', color: '#0033a0' },
+    { fontSize: 'clamp(20px, 3vw, 28px)', fontFamily: inter.style.fontFamily, fontWeight: 700, letterSpacing: 5, color: '#9c1c31', textTransform: 'uppercase' },
+    { fontSize: 'clamp(32px, 4.5vw, 50px)', fontFamily: playfair.style.fontFamily, fontWeight: 800, color: '#0a0a0a', lineHeight: 1 },
+    { fontSize: 'clamp(18px, 2.5vw, 24px)', fontFamily: inter.style.fontFamily, fontWeight: 500, color: '#3a3a3a', letterSpacing: '0.05em' },
   ];
 
   return (
@@ -478,85 +693,126 @@ function Slide6() {
         The Moodboard
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(3, 14vh)', gap: 20, flex: 1, maxWidth: 750 }}>
-        {images.map((img, i) => (
-          <motion.div 
-            key={i}
+        {posts.length === 0 ? (
+          <p style={{ gridColumn: '1 / -1', fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0 }}>
+            No posts have been captured for this campaign yet.
+          </p>
+        ) : posts.map((post, i) => (
+          <motion.a
+            key={post.id}
+            href={post.url || undefined}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 100, damping: 15, delay: i * 0.15 }}
-            style={{ gridArea: img.gridArea, overflow: 'hidden', borderRadius: 6, boxShadow: '0 15px 35px rgba(0,0,0,0.12)' }}
+            style={{
+              gridArea: gridAreas[i],
+              overflow: 'hidden',
+              borderRadius: 6,
+              boxShadow: '0 15px 35px rgba(0,0,0,0.12)',
+              background: tileFill(post.id),
+              padding: 18,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 10,
+              textDecoration: 'none',
+              color: '#f3eedf',
+            }}
             whileHover={{ scale: 1.02 }}
           >
-            <img src={img.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </motion.div>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.75, fontFamily: inter.style.fontFamily }}>
+              {post.platform || post.source || 'Captured'}
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, fontFamily: inter.style.fontFamily, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {post.title || post.content || 'Untitled post'}
+            </span>
+            <span style={{ fontSize: 11, opacity: 0.7, fontFamily: inter.style.fontFamily }}>
+              {formatDate(post.captured_at) ?? 'Capture date unknown'}
+            </span>
+          </motion.a>
         ))}
       </div>
-      
-      {/* Floating design keywords with custom delays */}
-      <div style={{ position: 'absolute', right: '10%', top: '28%', display: 'flex', flexDirection: 'column', gap: 28, zIndex: 10 }}>
-        <motion.span 
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5, type: 'spring' }}
-          style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontFamily: playfair.style.fontFamily, fontStyle: 'italic', color: '#0033a0' }}
-        >
-          Whimsy
-        </motion.span>
-        <motion.span 
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.7, type: 'spring' }}
-          style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontFamily: inter.style.fontFamily, fontWeight: 700, letterSpacing: 5, color: '#9c1c31' }}
-        >
-          NOSTALGIA
-        </motion.span>
-        <motion.span 
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.9, type: 'spring' }}
-          style={{ fontSize: 'clamp(32px, 4.5vw, 50px)', fontFamily: playfair.style.fontFamily, fontWeight: 800, color: '#0a0a0a', lineHeight: 1 }}
-        >
-          Softness
-        </motion.span>
-        <motion.span 
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 1.1, type: 'spring' }}
-          style={{ fontSize: 'clamp(18px, 2.5vw, 24px)', fontFamily: inter.style.fontFamily, fontWeight: 500, color: '#3a3a3a', letterSpacing: '0.05em' }}
-        >
-          Earthy Tones
-        </motion.span>
+
+      {/* Themes recorded on the campaign, styled with the deck's keyword treatments */}
+      <div style={{ position: 'absolute', right: '10%', top: '28%', maxWidth: '32%', display: 'flex', flexDirection: 'column', gap: 28, zIndex: 10, textAlign: 'right' }}>
+        {themes.length === 0 ? (
+          <span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily }}>
+            No themes recorded
+          </span>
+        ) : themes.map((theme, i) => (
+          <motion.span
+            key={theme}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 + i * 0.2, type: 'spring' }}
+            style={themeStyles[i]}
+          >
+            {theme}
+          </motion.span>
+        ))}
       </div>
     </div>
   );
 }
 
-// ─── Slide 7: Color Palette Slide ────────────────────────────
-function Slide7() {
-  const colors = [
-    { name: 'Forest Burgundy', hex: '#9c1c31', desc: 'Primary brand accent representing wild forest mushrooms.' },
-    { name: 'Goblincore Blue', hex: '#0033a0', desc: 'Contrast shade representing twilight shadows and dusk.' },
-    { name: 'Moss Spore Cream', hex: '#f3eedf', desc: 'Warm organic neutral background base.' },
-    { name: 'Gills Ochre', hex: '#ebdcb9', desc: 'Secondary accent for organic soil details.' }
+// ─── Slide 7: Recorded Metrics Slide ────────────────────────────
+/**
+ * The four figures the campaign record actually carries. This slide used to
+ * show budget, spend, progress and ROI — none of which exist on the wire, so
+ * all four read "Not recorded" on every campaign in the workspace.
+ */
+function Slide7({ campaign }: SlideProps) {
+  const platforms = campaignPlatforms(campaign);
+  const postCount = campaign.posts.length;
+  const themes = campaignThemes(campaign);
+
+  const metrics = [
+    {
+      name: 'Confidence',
+      value: `${campaign.confidence}%`,
+      accent: '#9c1c31',
+      desc: 'How sure the clustering engine is that these posts are one campaign.',
+    },
+    {
+      name: 'Posts captured',
+      value: String(postCount),
+      accent: '#0033a0',
+      desc: postCount === 0 ? 'No posts were clustered into this campaign.' : 'Signals clustered into this campaign.',
+    },
+    {
+      name: 'Platforms',
+      value: platforms.length > 0 ? String(platforms.length) : 'None',
+      accent: '#0a0a0a',
+      desc: platforms.length > 0 ? platforms.join(' · ') : 'No platform was attributed to these posts.',
+    },
+    {
+      name: 'Window',
+      value: dateRangeLabel(campaign),
+      accent: '#ebdcb9',
+      desc: themes.length > 0 ? `Themes: ${themes.join(', ')}.` : 'No themes were recorded for this campaign.',
+    },
   ];
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', display: 'flex', flexDirection: 'column', padding: '120px 8% 6% 8%', overflow: 'hidden' }}>
       <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: '0 0 40px 0', letterSpacing: '-0.01em' }}>
-        Color Palette
+        Recorded Metrics
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 30, flex: 1, alignItems: 'center', maxWidth: 1050 }}>
-        {colors.map((color, i) => (
+        {metrics.map((metric, i) => (
           <motion.div
-            key={i}
+            key={metric.name}
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 100, damping: 15, delay: i * 0.15 }}
             whileHover={{ y: -8 }}
-            style={{ 
-              background: '#ffffff', 
-              borderRadius: 8, 
-              overflow: 'hidden', 
+            style={{
+              background: '#ffffff',
+              borderRadius: 8,
+              overflow: 'hidden',
               boxShadow: '0 15px 35px rgba(0,0,0,0.06)',
               display: 'flex',
               flexDirection: 'column',
@@ -565,11 +821,11 @@ function Slide7() {
               border: '1px solid rgba(0,0,0,0.05)'
             }}
           >
-            <div style={{ background: color.hex, flex: 1, width: '100%' }} />
+            <div style={{ background: metric.accent, flex: 1, width: '100%' }} />
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#0a0a0a', fontFamily: inter.style.fontFamily }}>{color.name}</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#888888', fontFamily: inter.style.fontFamily }}>{color.hex}</div>
-              <div style={{ fontSize: 13, color: '#555555', fontFamily: inter.style.fontFamily, lineHeight: 1.3, marginTop: 4 }}>{color.desc}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#0a0a0a', fontFamily: inter.style.fontFamily }}>{metric.name}</div>
+              <div style={{ fontSize: metric.value.length > 12 ? 17 : 24, fontWeight: 700, color: '#0033a0', fontFamily: playfair.style.fontFamily, lineHeight: 1.2 }}>{metric.value}</div>
+              <div style={{ fontSize: 13, color: '#555555', fontFamily: inter.style.fontFamily, lineHeight: 1.3, marginTop: 4 }}>{metric.desc}</div>
             </div>
           </motion.div>
         ))}
@@ -578,53 +834,68 @@ function Slide7() {
   );
 }
 
-// ─── Slide 8: Typography Slide ────────────────────────────
-function Slide8() {
+// ─── Slide 8: Sources ────────────────────────────
+/**
+ * The deck's closing slide is the evidence it was built from. This used to be a
+ * font specimen — two cards naming Playfair and Inter — which said nothing
+ * about the campaign and was identical on every one.
+ */
+function Slide8({ campaign }: SlideProps) {
+  const posts = campaign.posts;
+
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', display: 'flex', flexDirection: 'column', padding: '120px 8% 6% 8%', overflow: 'hidden' }}>
-      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: '0 0 40px 0', letterSpacing: '-0.01em' }}>
-        Typography System
+      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: '0 0 8px 0', letterSpacing: '-0.01em' }}>
+        Sources
       </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 40, flex: 1, maxWidth: 1050, alignItems: 'center' }}>
-        {/* Playfair card */}
-        <motion.div
-          initial={{ x: -50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 100, damping: 15, delay: 0.1 }}
-          style={{ background: '#ffffff', borderRadius: 8, padding: 30, boxShadow: '0 15px 35px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '38vh', minHeight: '300px' }}
-        >
-          <div>
-            <div style={{ fontSize: 13, letterSpacing: 1.5, fontWeight: 700, color: '#888888', fontFamily: inter.style.fontFamily, marginBottom: 12 }}>DISPLAY HEADERS</div>
-            <div style={{ fontSize: 36, fontFamily: playfair.style.fontFamily, fontWeight: 700, color: '#0a0a0a', lineHeight: 1 }}>Playfair Display</div>
-            <div style={{ fontSize: 24, fontFamily: playfair.style.fontFamily, fontStyle: 'italic', color: '#0033a0', marginTop: 4 }}>Serif Font Family</div>
-          </div>
-          <div style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', fontFamily: playfair.style.fontFamily, color: '#333333', lineBreak: 'anywhere', margin: '20px 0', lineHeight: 1.4, letterSpacing: '0.02em' }}>
-            Aa Bb Cc Dd Ee Ff Gg Hh Ii Jj Kk Ll Mm Nn Oo Pp Qq Rr Ss Tt Uu Vv Ww Xx Yy Zz
-          </div>
-          <div style={{ fontSize: 13, color: '#555555', fontFamily: inter.style.fontFamily, lineHeight: 1.4 }}>
-            Used for bold, high-contrast editorial statements that establish layout hierarchy and capture human attention.
-          </div>
-        </motion.div>
+      <p style={{ fontSize: 14, color: '#555555', fontFamily: inter.style.fontFamily, margin: '0 0 32px 0' }}>
+        {posts.length === 0
+          ? 'No posts were clustered into this campaign.'
+          : `Every claim in this deck comes from ${posts.length} captured post${posts.length === 1 ? '' : 's'}.`}
+      </p>
 
-        {/* Inter card */}
-        <motion.div
-          initial={{ x: 50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 100, damping: 15, delay: 0.3 }}
-          style={{ background: '#ffffff', borderRadius: 8, padding: 30, boxShadow: '0 15px 35px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '38vh', minHeight: '300px' }}
-        >
-          <div>
-            <div style={{ fontSize: 13, letterSpacing: 1.5, fontWeight: 700, color: '#888888', fontFamily: inter.style.fontFamily, marginBottom: 12 }}>BODY & DATA</div>
-            <div style={{ fontSize: 36, fontFamily: inter.style.fontFamily, fontWeight: 700, color: '#0a0a0a', lineHeight: 1, letterSpacing: '-0.02em' }}>Inter</div>
-            <div style={{ fontSize: 20, fontFamily: inter.style.fontFamily, fontWeight: 500, color: '#9c1c31', marginTop: 6 }}>Sans-Serif Font Family</div>
-          </div>
-          <div style={{ fontSize: 'clamp(13px, 1.6vw, 16px)', fontFamily: inter.style.fontFamily, color: '#333333', letterSpacing: '-0.01em', margin: '20px 0', lineHeight: 1.4 }}>
-            Aa Bb Cc Dd Ee Ff Gg Hh Ii Jj Kk Ll Mm Nn Oo Pp Qq Rr Ss Tt Uu Vv Ww Xx Yy Zz
-          </div>
-          <div style={{ fontSize: 13, color: '#555555', fontFamily: inter.style.fontFamily, lineHeight: 1.4 }}>
-            Used for structural grid labels, quantitative axis units, and highly legible description copy across digital surfaces.
-          </div>
-        </motion.div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 1050, overflowY: 'auto', paddingRight: 8 }}>
+        {posts.map((post, i) => (
+          <motion.a
+            key={post.id}
+            href={post.url || undefined}
+            target={post.url ? '_blank' : undefined}
+            rel={post.url ? 'noopener noreferrer' : undefined}
+            initial={{ y: 24, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 110, damping: 16, delay: i * 0.08 }}
+            whileHover={post.url ? { x: 6 } : undefined}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr auto',
+              alignItems: 'center',
+              gap: 18,
+              background: '#ffffff',
+              borderRadius: 8,
+              padding: '16px 20px',
+              border: '1px solid rgba(0,0,0,0.06)',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.04)',
+              textDecoration: 'none',
+              cursor: post.url ? 'pointer' : 'default',
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#9c1c31', fontFamily: inter.style.fontFamily, fontVariantNumeric: 'tabular-nums' }}>
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: '#0a0a0a', fontFamily: inter.style.fontFamily, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {post.title || post.content || 'Untitled post'}
+              </span>
+              <span style={{ display: 'block', fontSize: 12, color: '#555555', fontFamily: inter.style.fontFamily, marginTop: 3 }}>
+                {(post.platform || post.source || 'Unattributed')}
+                {formatDate(post.captured_at) ? ` · captured ${formatDate(post.captured_at)}` : ''}
+              </span>
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: post.url ? '#0033a0' : '#999999', fontFamily: inter.style.fontFamily, whiteSpace: 'nowrap' }}>
+              {post.url ? 'Open ↗' : 'No link'}
+            </span>
+          </motion.a>
+        ))}
       </div>
     </div>
   );
@@ -636,8 +907,37 @@ export default function WrappedCampaignPage() {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [direction, setDirection] = useState(1);
     const [isExiting, setIsExiting] = useState(false);
-    
-    const campaign = getMockCampaign(params.id as string);
+    const [campaign, setCampaign] = useState<Campaign | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [notFound, setNotFound] = useState(false);
+
+    const rawId = params.id;
+    const campaignId = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    useEffect(() => {
+        if (!campaignId) return;
+        let cancelled = false;
+        fetchCampaign(campaignId).then((res) => {
+            if (cancelled) return;
+            if (res.ok) {
+                setCampaign(res.data);
+                setNotFound(false);
+                setError(null);
+            } else if (res.status === 404) {
+                setNotFound(true);
+                setCampaign(null);
+                setError(null);
+            } else {
+                setError(res.error);
+                setCampaign(null);
+                setNotFound(false);
+            }
+            setIsLoading(false);
+        });
+        return () => { cancelled = true; };
+    }, [campaignId]);
+
     const totalSlides = 8;
 
     const handleClose = () => {
@@ -664,12 +964,12 @@ export default function WrappedCampaignPage() {
     };
 
     useEffect(() => {
-        if (isExiting) return;
+        if (isExiting || !campaign) return;
         const timer = setTimeout(() => {
             nextSlide();
         }, 6000);
         return () => clearTimeout(timer);
-    }, [currentSlide, isExiting]);
+    }, [currentSlide, isExiting, campaign]);
 
     useEffect(() => {
         if (isExiting) return;
@@ -701,6 +1001,58 @@ export default function WrappedCampaignPage() {
 
     const Slides = [Slide1, Slide2, Slide3, Slide4, Slide5, Slide6, Slide7, Slide8];
     const CurrentComponent = Slides[currentSlide];
+
+    // Every hook above runs unconditionally; these early returns come after them.
+    // The deck renders campaign data on all eight slides, so there is nothing to
+    // show until the fetch resolves — and `campaign` stays null on both failure
+    // paths, which is what the type error at CurrentComponent was pointing at.
+    if (isLoading || notFound || error) {
+        const heading = notFound
+            ? 'Campaign not found'
+            : error
+              ? 'Could not load this campaign'
+              : 'Loading campaign…';
+        // A 404 means the id is not in this workspace — a dead link, not an
+        // outage. Keeping it distinct from a transport failure tells the reader
+        // whether retrying is worth anything.
+        const detail = notFound
+            ? 'It may have been deleted, or it belongs to a different workspace.'
+            : error ?? '';
+        return (
+            <div
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 99999, background: '#0a0a0c',
+                    fontFamily: inter.style.fontFamily,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24,
+                }}
+            >
+                <p style={{ color: '#fff', fontSize: 18, fontWeight: 500, margin: 0 }} role={error ? 'alert' : undefined}>
+                    {heading}
+                </p>
+                {detail ? (
+                    <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, margin: 0, maxWidth: 420, textAlign: 'center' }}>
+                        {detail}
+                    </p>
+                ) : null}
+                {!isLoading ? (
+                    <button
+                        type="button"
+                        onClick={handleClose}
+                        style={{
+                            marginTop: 8, padding: '8px 18px', borderRadius: 8, cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.1)', color: '#fff',
+                            border: '1px solid rgba(255,255,255,0.2)', fontSize: 14,
+                        }}
+                    >
+                        Go back
+                    </button>
+                ) : null}
+            </div>
+        );
+    }
+
+    if (!campaign) return null;
 
     // Card-deck horizontal slide animation variants for transitions between slides
     const slideVariants = {

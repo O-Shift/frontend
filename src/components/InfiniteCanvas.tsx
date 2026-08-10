@@ -93,7 +93,8 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
           (e.target as Element).closest('.command-wrapper')     ||
           (e.target as Element).closest('#mascot-img')          ||
           (e.target as Element).closest('.bottom-right-controls') ||
-          (e.target as Element).closest('.main-header')
+          (e.target as Element).closest('.main-header') ||
+          (e.target as Element).closest('.page-header')
         ) return;
 
         if (onCanvasMouseDown) {

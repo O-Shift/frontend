@@ -18,13 +18,49 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+/**
+ * Sends an unverifiable request to the login page, flagged so the failure is
+ * visible in the URL rather than looking like an ordinary logout.
+ */
+function denyToLogin(request: NextRequest, pathname: string, reason: string) {
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = "/login";
+  loginUrl.search = "";
+  loginUrl.searchParams.set("from", pathname);
+  loginUrl.searchParams.set("error", reason);
+  return NextResponse.redirect(loginUrl);
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
+  const { pathname } = request.nextUrl;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Without these we cannot build a Supabase client, and therefore cannot tell
+  // an authenticated request from an anonymous one. Returning `next()` here
+  // would hand every protected route to anybody who asks. Fail closed instead:
+  // public routes still work (so /login and /auth/callback stay reachable and
+  // the deployment is recoverable), everything else is refused and logged.
   if (!url || !anonKey) {
-    return supabaseResponse;
+    const missing = [
+      !url ? "NEXT_PUBLIC_SUPABASE_URL" : null,
+      !anonKey ? "NEXT_PUBLIC_SUPABASE_ANON_KEY" : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const allowed = isPublicPath(pathname);
+    console.error(
+      `[auth] Supabase is not configured (missing: ${missing}). Sessions cannot ` +
+        `be verified, so protected routes are being refused. ` +
+        `${pathname} -> ${allowed ? "allowed (public route)" : "denied"}`,
+    );
+    if (allowed) {
+      return supabaseResponse;
+    }
+    return denyToLogin(request, pathname, "auth_unavailable");
   }
 
   const supabase = createServerClient(url, anonKey, {
@@ -47,8 +83,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   if (!user && !isPublicPath(pathname)) {
     const loginUrl = request.nextUrl.clone();

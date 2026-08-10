@@ -146,6 +146,7 @@ export function useExports(initialMonth?: string) {
 
   // Initial load
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchDestinations();
     fetchJobs();
     fetchLogs(selectedMonth);

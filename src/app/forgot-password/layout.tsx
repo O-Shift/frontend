@@ -12,7 +12,7 @@ export default function ForgotPasswordLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="auth-root reversed">
+        <div className="auth-root reversed" data-theme="light">
             {children}
         </div>
     );
