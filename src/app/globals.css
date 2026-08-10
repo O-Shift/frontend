@@ -472,11 +472,22 @@ body {
   border-color: var(--accent);
 }
 
+/* Initials, not a photo. This used to be a hardcoded stock portrait, which
+   showed the same stranger's face to every signed-in user. */
 .avatar {
   width: 32px;
   height: 32px;
+  flex-shrink: 0;
   border-radius: 50%;
-  background: url('https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80') center/cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent, #f97316);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  user-select: none;
 }
 
 .user-info {
@@ -1343,11 +1354,14 @@ body {
   background: var(--v0-action-hover);
 }
 
+/* The agent's own mark. This was a stock portrait from i.pravatar.cc — a
+   stranger's face standing in for the assistant on two pages. */
 .v0-avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: url('https://i.pravatar.cc/100?img=11') center/cover;
+  background: var(--card-bg) url('/mascot.png') center/78% no-repeat;
+  border: 1px solid var(--border-color);
 }
 
 .v0-action-text {

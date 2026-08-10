@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
-import { apiFetch, updateOpportunityStatus, type Campaign, type SenseReview } from '@/lib/api';
+import { apiFetch, updateOpportunityStatus, campaignThemes, type Campaign, type SenseReview } from '@/lib/api';
 import { extractDomain } from '@/lib/utils/domain';
 
 const brandColor1 = '#FF5A00';
@@ -341,15 +341,17 @@ export default function DashboardPage() {
                                                 </div>
                                             </motion.div>
                                             <motion.div variants={childVariants} custom={direction} className="flex flex-col">
-                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Progress</span>
-                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)]">{activeCamp.progress === null ? '—' : `${activeCamp.progress}%`}</span>
-                                                <div className={`flex items-center gap-1 text-xs font-medium mt-1.5 ${activeCamp.progress !== null && activeCamp.progress >= 70 ? 'text-emerald-500' : 'text-[var(--text-secondary)]'}`}>
-                                                    {activeCamp.progress !== null && activeCamp.progress >= 70 ? <SolidArrowUp /> : null} {activeCamp.progress === null ? 'Not recorded' : 'Recorded'}
+                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Confidence</span>
+                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)]">{activeCamp.confidence}%</span>
+                                                <div className={`flex items-center gap-1 text-xs font-medium mt-1.5 ${activeCamp.confidence >= 70 ? 'text-emerald-500' : 'text-[var(--text-secondary)]'}`}>
+                                                    {activeCamp.confidence >= 70 ? <SolidArrowUp /> : null} {activeCamp.confidence >= 70 ? 'High' : 'Tentative'}
                                                 </div>
                                             </motion.div>
                                             <motion.div variants={childVariants} custom={direction} className="flex flex-col">
-                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Status</span>
-                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)] capitalize">{activeCamp.status ?? '—'}</span>
+                                                <span className="text-xs text-[var(--text-secondary)] mb-1.5">Themes</span>
+                                                <span className="text-xl font-medium tracking-tight text-[var(--text-primary)] capitalize truncate" title={campaignThemes(activeCamp).join(', ')}>
+                                                    {campaignThemes(activeCamp)[0] ?? '—'}
+                                                </span>
                                             </motion.div>
                                         </div>
                                     </div>

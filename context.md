@@ -21,3 +21,14 @@ The goal for the 404 page was to transform a standard error screen into a memora
 - **Tactile Environment:** To make the background feel "alive" without resorting to glowing particle effects, we implemented a hardware-accelerated 3D parallax grid.
 - **Physics Engine:** Using Framer Motion's `useSpring`, `useTransform`, and `useMotionValue`, the background tracks the user's cursor. The `rotateX`, `rotateY`, `x`, and `y` axes are mapped to the mouse coordinates with a perspective warp, creating the illusion of a physical, tilting room that reacts to the user's presence.
 - **Subtlety:** The grid is rendered via CSS linear-gradients at a very low 8% opacity. It provides continuous depth and motion but remains entirely secondary to the primary content.
+
+## 15. Citation Chip Feature Commit & Branch Switch
+- **Citation Feature Commit**: Staged and committed local citation rendering changes (`PromptField.tsx`, `ChatMarkdown.tsx`, `CitationChip.tsx`, `citations.ts`) with commit message `feat(ui): add citation chip rendering and streaming support in ChatMarkdown`.
+- **Branch Switch**: Checked out and switched tracking branch to `fix/wiring-frontend` (`origin/fix/wiring-frontend`).
+- **Build Status**: Verified with `npm run build` (0 TypeScript / Turbopack errors).
+
+## 16. Citation Verification Suite & Context Update Commit
+- **Citation Verification Suite**: Included `.citecheck/` containing ad-hoc test harness (`verify.mjs`, `citations.mjs`, `dbg.mjs`, `real.json`) for citation parsing and streaming transformation.
+- **Commit & Push**: Staged uncommitted changes (`context.md` and `.citecheck/`), committed, and pushed to `origin/fix/wiring-frontend`.
+
+

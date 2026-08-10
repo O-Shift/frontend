@@ -3,27 +3,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { drawWorldMapCanvas, makeLandSampler, makeCountryHighlighter, makeCountryIdSampler } from '@/lib/world-map';
-
-const HIGHLIGHTED_COUNTRY_IDS = [818, 784, 682, 276, 826];
-
-const COUNTRY_NAMES: Record<number, string> = {
-  818: 'Egypt',
-  784: 'United Arab Emirates',
-  682: 'Saudi Arabia',
-  276: 'Germany',
-  826: 'United Kingdom',
-};
+import {
+  drawWorldMapCanvas,
+  makeLandSampler,
+  makeCountryHighlighter,
+  makeCountryIdSampler,
+  resolveCountryIds,
+  countryCentroid,
+} from '@/lib/world-map';
 
 type Marker = { lat: number; lng: number; kind: 'primary' | 'secondary'; label: string };
-
-const MARKERS: Marker[] = [
-  { lat: 30.0444, lng: 31.2357, kind: 'primary',   label: 'Cairo, Egypt' },
-  { lat: 24.4539, lng: 54.3773, kind: 'primary',   label: 'Abu Dhabi, UAE' },
-  { lat: 24.6877, lng: 46.7219, kind: 'secondary', label: 'Riyadh, Saudi Arabia' },
-  { lat: 52.5200, lng: 13.4050, kind: 'secondary', label: 'Berlin, Germany' },
-  { lat: 51.5074, lng: -0.1278, kind: 'secondary', label: 'London, UK' },
-];
 
 function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -43,13 +32,45 @@ function vector3ToLatLng(v: THREE.Vector3, radius: number): [number, number] {
   return [lat, lng];
 }
 
-export default function Globe({ className }: { className?: string }) {
+export default function Globe({
+  className,
+  countries = [],
+}: {
+  className?: string;
+  /**
+   * Countries to highlight, as the free text stored in company.metadata.
+   * Entries the atlas does not recognize are dropped, and an empty list draws
+   * an unhighlighted globe — the profile card says "complete onboarding to
+   * record the markets you operate in", so the globe must not contradict it by
+   * showing coverage the workspace never claimed.
+   */
+  countries?: string[];
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredCountry, setHoveredCountry] = useState<{ name: string; x: number; y: number } | null>(null);
+
+  // The effect rebuilds the whole scene, so it depends on a string rather than
+  // the array: a caller passing a fresh array literal each render would
+  // otherwise tear down and re-seed 18k dots on every parent update.
+  const countryKey = countries.join('|');
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    const resolved = resolveCountryIds(countryKey ? countryKey.split('|') : []);
+    const countryIds = resolved.map((c) => c.id);
+    const countryNames: Record<number, string> = {};
+    const markers: Marker[] = [];
+    resolved.forEach((c, i) => {
+      countryNames[c.id] = c.name;
+      const centre = countryCentroid(c.id);
+      // Nothing in the profile ranks markets, so first-listed is the only
+      // signal for which one gets the emphasised pin.
+      if (centre) {
+        markers.push({ ...centre, kind: i === 0 ? 'primary' : 'secondary', label: c.name });
+      }
+    });
 
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -83,8 +104,8 @@ export default function Globe({ className }: { className?: string }) {
     // ---------- Land dots ----------
     const mapCanvas = drawWorldMapCanvas(1024, 512);
     const isLand = makeLandSampler(mapCanvas);
-    const isHighlighted = makeCountryHighlighter(HIGHLIGHTED_COUNTRY_IDS);
-    const getCountryId = makeCountryIdSampler(HIGHLIGHTED_COUNTRY_IDS);
+    const isHighlighted = makeCountryHighlighter(countryIds);
+    const getCountryId = makeCountryIdSampler(countryIds);
 
     const normalPoints: THREE.Vector3[] = [];
     const highlightPoints: THREE.Vector3[] = [];
@@ -151,7 +172,7 @@ export default function Globe({ className }: { className?: string }) {
     const pulseRings: THREE.Mesh[] = [];
     const markerObjects: { mesh: THREE.Mesh; marker: Marker }[] = [];
 
-    MARKERS.forEach((marker) => {
+    markers.forEach((marker) => {
       const pos = latLngToVector3(marker.lat, marker.lng, GLOBE_RADIUS * 1.02);
       const color = marker.kind === 'primary' ? 0xff5a00 : 0xffffff;
 
@@ -191,9 +212,14 @@ export default function Globe({ className }: { className?: string }) {
     scene.add(rimLight);
 
     // ---------- Interaction ----------
-    // Azimuth 4.168 = Cairo dead-center facing camera on load
-    // Auto-rotate slowly (0.012 rad/s) so it takes ~130s for Cairo to rotate to back
-    let targetAzimuth = 4.168;
+    // Open facing the first market so it is the one the user sees, falling back
+    // to the old Cairo-centred angle when there is nothing to face.
+    // Solving x'=0 after the Y rotation gives azimuth = pi/2 - theta, where
+    // theta is the same (lng + 180) the marker projection uses.
+    const facing = markers[0];
+    let targetAzimuth = facing
+      ? Math.PI / 2 - (facing.lng + 180) * (Math.PI / 180)
+      : 4.168;
     let targetPolar = Math.PI / 2 - 0.15;
     let azimuth = targetAzimuth;
     let polar = targetPolar;
@@ -240,7 +266,7 @@ export default function Globe({ className }: { className?: string }) {
         const countryId = getCountryId(lat, lng);
 
         if (countryId !== null) {
-          const name = COUNTRY_NAMES[countryId] ?? '';
+          const name = countryNames[countryId] ?? '';
           // Use canvas-relative position for tooltip
           setHoveredCountry({ name, x: e.clientX - rect.left, y: e.clientY - rect.top });
 
@@ -329,7 +355,7 @@ export default function Globe({ className }: { className?: string }) {
       [normalDotGeo, normalDotMat, hlDotGeo, hlDotMat, oceanGeo, oceanMat, atmGeo, atmMat, ringGeo, ringMat].forEach((o: any) => o.dispose());
       renderer.dispose();
     };
-  }, []);
+  }, [countryKey]);
 
   return (
     <div

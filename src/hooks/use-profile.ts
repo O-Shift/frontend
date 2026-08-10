@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch, fetchCompany, Company, Workspace } from '@/lib/api';
+import { logoUrl } from '@/lib/logos';
 import { createClient } from '@/utils/supabase/client';
 
 export interface Member {
@@ -14,7 +15,32 @@ export interface Member {
 
 export interface Competitor {
     name: string;
+    website?: string | null;
+}
+
+/**
+ * GET /graph/partnerships returns the whole graph. Only the counts matter here;
+ * the partnerships page reads nodes and edges in full.
+ */
+export interface PartnershipGraph {
+    node_count?: number;
+    edge_count?: number;
+    nodes?: unknown[];
+    edges?: unknown[];
+}
+
+/** A competitor plus the favicon URL derived from its website, for rendering. */
+export interface CompetitorDisplay extends Competitor {
     logo?: string;
+}
+
+/**
+ * Competitors carry no logo. The favicon service takes a URL and the record has
+ * the real one — guessing `${name}.com` misses whenever the domain is not the
+ * name (Career180 lives at career-180.com), which is most of them.
+ */
+function competitorLogo(competitor: Competitor): string | undefined {
+    return logoUrl(competitor.website) ?? undefined;
 }
 
 /**
@@ -48,7 +74,7 @@ export interface ProfileData {
         metric: string;
     }>;
     markets: ProfileMarkets;
-    competitors: Competitor[];
+    competitors: CompetitorDisplay[];
     partnershipsCount: number;
     companyProfileStatus: CompanyProfileStatus;
 }
@@ -118,21 +144,27 @@ export function useProfile() {
                 const workspaceId = sessionStorage.getItem('oshift.workspace_id');
                 const activeWorkspace = workspaces.find(w => w.id === workspaceId) || workspaces[0];
 
-                const membersRes = await apiFetch<Member[]>(`/core/workspaces/${activeWorkspace.id}/members`);
+                // These four only need the resolved workspace, not each other.
+                // Awaiting them in sequence is what made the page sit blank for
+                // seconds. The company profile is supplementary: a missing or
+                // unreachable row narrows what we show, it does not fail the page.
+                const [membersRes, compRes, partRes, companyRes] = await Promise.all([
+                    apiFetch<Member[]>(`/core/workspaces/${activeWorkspace.id}/members`),
+                    apiFetch<Competitor[]>('/competitors'),
+                    apiFetch<PartnershipGraph>('/graph/partnerships'),
+                    fetchCompany(),
+                ]);
+
                 if (!membersRes.ok) throw new Error(membersRes.error);
+                const member = membersRes.data.find(m => m.user_id === user.id || m.email === user.email);
 
-                const members = membersRes.data;
-                const member = members.find(m => m.user_id === user.id || m.email === user.email);
-
-                const compRes = await apiFetch<Competitor[]>('/competitors');
                 const competitors = compRes.ok ? compRes.data : [];
-
-                const partRes = await apiFetch<any[]>('/graph/partnerships');
-                const partnershipsCount = partRes.ok ? partRes.data.length : 0;
-
-                // The company profile is supplementary: a missing or unreachable
-                // row narrows what we can show, it does not fail the page.
-                const companyRes = await fetchCompany();
+                // /graph/partnerships returns a graph, not a list. Reading .length
+                // off it gave undefined, which rendered as "undefined Alliances".
+                // An alliance is an edge; nodes are the companies it connects.
+                const partnershipsCount = partRes.ok
+                    ? partRes.data.edge_count ?? partRes.data.edges?.length ?? 0
+                    : 0;
                 const company: Company | null = companyRes.ok ? companyRes.data : null;
                 const companyProfileStatus: CompanyProfileStatus = companyRes.ok
                     ? 'ok'
@@ -165,7 +197,8 @@ export function useProfile() {
                     markets,
                     competitors: competitors.map(c => ({
                         name: c.name,
-                        logo: c.logo || `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${c.name}.com&size=128`
+                        website: c.website ?? null,
+                        logo: competitorLogo(c),
                     })),
                     partnershipsCount,
                     companyProfileStatus,

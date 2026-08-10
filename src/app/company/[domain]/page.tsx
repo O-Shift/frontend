@@ -5,6 +5,7 @@ import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'rec
 import PromptField from '@/components/PromptField';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCompany } from '@/hooks/use-company';
+import { logoUrl as companyLogoUrl } from '@/lib/logos';
 
 
 
@@ -100,7 +101,7 @@ function CompanyPageContent() {
 
     const companyName = competitor?.name || (domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1));
     const [brandColor1, brandColor2] = getBrandColors(domain);
-    const [logoUrl, setLogoUrl] = useState(`https://logo.clearbit.com/${domain}`);
+    const [logoUrl, setLogoUrl] = useState(companyLogoUrl(domain) ?? '');
     
     const [pinnedState, setPinnedState] = useState(false);
     const togglePin = () => setPinnedState(!pinnedState);
@@ -167,14 +168,26 @@ function CompanyPageContent() {
         });
     }, [metrics]);
 
-    const displayGaps = backendGaps.map(g => ({ title: g.title, desc: g.description || '', severity: (g as any).severity || 'medium' }));
+    // `confidence` is the only urgency signal a gap actually carries: severity is
+    // a crises field, and layer is constant here because use-company only asks
+    // for layer='gap'. Some rows store 0..1 and others 0..100.
+    const displayGaps = backendGaps.map(g => ({
+        id: g.id,
+        title: g.title,
+        desc: g.body || '',
+        confidence: g.confidence === null ? null : Math.round(g.confidence <= 1 ? g.confidence * 100 : g.confidence),
+        sources: g.sources ?? [],
+    }));
 
+    // `stars` stays null when no rating was captured: defaulting to 5 turned
+    // every unrated review into a glowing one. sense_reviews stores no author
+    // avatar, so there is nothing to show but the initial.
     const displayReviews = backendReviews.map(r => ({
+        id: r.id,
         user: String(r.metadata?.author ?? "Anonymous"),
         date: r.reviewed_at ? new Date(r.reviewed_at).toLocaleDateString() : "Recently",
         text: r.body || "",
-        stars: r.rating ? Math.round(r.rating) : 5,
-        avatar: String(r.metadata?.avatar ?? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop")
+        stars: r.rating === null ? null : Math.round(r.rating),
     }));
 
     const displayCampaigns = backendCampaigns.map((c, i) => ({
@@ -379,7 +392,7 @@ function CompanyPageContent() {
                         <div className="flex flex-col gap-3">
                             {displayGaps.length === 0 && <div className="text-sm text-[var(--text-secondary)]">No gaps found.</div>}
                             {displayGaps.map((gap, i) => (
-                                <div key={i}>
+                                <div key={gap.id}>
                                     <div
                                         onClick={() => setExpandedGap(expandedGap === i ? null : i)}
                                         className="bg-[var(--card-bg-alt)] border border-[var(--border-color)] rounded-md p-3.5 flex flex-col gap-2 cursor-pointer hover:bg-[var(--item-hover)] transition-colors relative overflow-hidden"
@@ -387,7 +400,9 @@ function CompanyPageContent() {
                                         <div className="flex justify-between items-center gap-2">
                                             <div className="text-sm font-semibold text-[var(--text-primary)]">{gap.title}</div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
-                                                <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{gap.severity}</span>
+                                                {gap.confidence !== null && (
+                                                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{gap.confidence}% conf.</span>
+                                                )}
                                                 {chevron(expandedGap === i)}
                                             </div>
                                         </div>
@@ -401,12 +416,34 @@ function CompanyPageContent() {
                                                 className="overflow-hidden"
                                             >
                                                 <div className="p-3 border-t border-[var(--border-color)] mt-1 bg-[var(--card-bg)]">
-                                                    <div className="text-[10px] text-[var(--text-secondary)] font-bold mb-1 tracking-wider uppercase">Suggested Action</div>
-                                                    <div className="text-xs text-[var(--text-primary)] leading-relaxed font-medium">
-                                                        {gap.title === 'Gen-Z Reach' ? 'Launch short-form vertical video series targeting 18-24 demographic.' :
-                                                            gap.title === 'Sponsorship ROI' ? 'Diversify into micro-influencer partnerships with higher conversion rates.' :
-                                                                'Publish behind-the-scenes content and community AMA to rebuild trust.'}
+                                                    <div className="text-[10px] text-[var(--text-secondary)] font-bold mb-2 tracking-wider uppercase">
+                                                        Evidence{gap.sources.length > 0 && ` · ${gap.sources.length}`}
                                                     </div>
+                                                    {gap.sources.length === 0 ? (
+                                                        <div className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                                            No signals were cited for this gap.
+                                                        </div>
+                                                    ) : (
+                                                        <ul className="flex flex-col gap-1.5 m-0 p-0 list-none">
+                                                            {gap.sources.map((s) => (
+                                                                <li key={s.id} className="text-xs leading-relaxed">
+                                                                    {s.url ? (
+                                                                        <a
+                                                                            href={s.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            className="text-[var(--text-primary)] font-medium hover:underline"
+                                                                        >
+                                                                            {s.title || s.url}
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="text-[var(--text-primary)] font-medium">{s.title || 'Untitled signal'}</span>
+                                                                    )}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
                                                 </div>
                                             </motion.div>
                                         )}
@@ -496,8 +533,8 @@ function CompanyPageContent() {
                         onPointerLeave={handlePointerUp}
                     >
                         {displayReviews.length === 0 && <div className="text-sm text-[var(--text-secondary)]">No reviews captured yet.</div>}
-                        {displayReviews.map((rev, i) => (
-                            <div key={i} className="min-w-[280px] md:min-w-[340px] snap-start">
+                        {displayReviews.map((rev) => (
+                            <div key={rev.id} className="min-w-[280px] md:min-w-[340px] snap-start">
                                 <div className="flex flex-col h-full cursor-pointer hover:bg-[var(--bg-main-alt)] p-6 rounded-lg transition-colors border border-transparent hover:border-[var(--border-color)]">
                                     <div className="flex items-center gap-4 mb-6">
                                         <div className="w-10 h-10 rounded-full border border-[var(--border-color)] flex items-center justify-center text-[var(--text-primary)] text-sm font-bold uppercase">
@@ -511,13 +548,24 @@ function CompanyPageContent() {
                                     <div className="text-[var(--text-secondary)] text-sm leading-relaxed mb-6 flex-1">
                                         &ldquo;{rev.text}&rdquo;
                                     </div>
-                                    <div className="flex gap-1.5 text-[var(--text-primary)]">
-                                        {[...Array(5)].map((_, idx) => (
-                                            <svg key={idx} width="16" height="16" viewBox="0 0 24 24" fill={idx < rev.stars ? "currentColor" : "none"} stroke={idx < rev.stars ? "none" : "currentColor"} strokeWidth="2" className={idx >= rev.stars ? "opacity-20" : ""}>
-                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                            </svg>
-                                        ))}
-                                    </div>
+                                    {rev.stars === null ? (
+                                        <div className="text-[var(--text-secondary)] text-xs">No rating</div>
+                                    ) : (
+                                        (() => {
+                                            // Bound to a const: the null check above does not narrow
+                                            // `rev.stars` inside the map callback below.
+                                            const stars = rev.stars;
+                                            return (
+                                                <div className="flex gap-1.5 text-[var(--text-primary)]">
+                                                    {[...Array(5)].map((_, idx) => (
+                                                        <svg key={idx} width="16" height="16" viewBox="0 0 24 24" fill={idx < stars ? "currentColor" : "none"} stroke={idx < stars ? "none" : "currentColor"} strokeWidth="2" className={idx >= stars ? "opacity-20" : ""}>
+                                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                        </svg>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()
+                                    )}
                                 </div>
                             </div>
                         ))}

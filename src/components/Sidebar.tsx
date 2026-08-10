@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
 import { usePinned } from '@/context/PinnedContext';
+import { useCurrentUser } from '@/hooks/use-current-user';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
@@ -11,6 +12,7 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { theme, toggle } = useTheme();
     const { pinned } = usePinned();
+    const { user, loading: userLoading } = useCurrentUser();
 
     return (
         <div className={`sidebar ${collapsed ? 'collapsed' : ''}`} id="appSidebar">
@@ -187,10 +189,12 @@ export default function Sidebar() {
                 <div className="sidebar-bottom">
                     <Link href="/profile" style={{ textDecoration: 'none' }}>
                         <div className={`user-profile ${pathname === '/profile' ? 'active' : ''}`}>
-                            <div className="avatar"></div>
+                            <div className="avatar">{user?.initials ?? ''}</div>
                             <div className="user-info">
-                                <div className="user-name">Vasil S.</div>
-                                <div className="user-email">vasil@pshift.com</div>
+                                <div className="user-name">
+                                    {user?.name ?? (userLoading ? '' : 'Signed out')}
+                                </div>
+                                <div className="user-email">{user?.email ?? ''}</div>
                             </div>
                             <div className="chevron-up-down">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

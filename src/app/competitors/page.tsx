@@ -7,6 +7,7 @@ import PromptField from '@/components/PromptField';
 import { apiFetch } from '@/lib/api';
 import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
+import { logoUrl } from '@/lib/logos';
 
 interface Competitor {
   id: string;
@@ -598,7 +599,7 @@ export default function CompetitorsPage() {
                     >
                       {domain ? (
                         <img
-                          src={`https://logo.clearbit.com/${domain}`}
+                          src={logoUrl(domain, 64) ?? ''}
                           alt={company.name}
                           style={{ width: '70%', height: '70%', objectFit: 'contain' }}
                           onError={(e) => {

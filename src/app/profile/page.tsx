@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import Globe from '@/components/Globe';
 import { useProfile } from '@/hooks/use-profile';
+import { deriveInitials } from '@/hooks/use-current-user';
 
 const rise = (delay: number) => ({
     initial: { opacity: 0, y: 14 },
@@ -160,11 +161,14 @@ export default function ProfilePage() {
                     
                     {/* Top row: avatar + identity + actions */}
                     <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start relative z-10">
-                        {/* Avatar */}
+                        {/* Avatar. No avatar is stored for a user, so this is
+                            initials rather than a stock photo of a stranger. */}
                         <div className="w-20 h-20 md:w-24 md:h-24 flex-shrink-0">
-                            <div className="w-full h-full rounded-md bg-cover bg-center border border-[var(--border-color)] shadow-sm" 
-                                style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80)' }} 
-                            />
+                            <div className="w-full h-full rounded-md border border-[var(--border-color)] shadow-sm bg-[var(--card-bg-alt)] flex items-center justify-center select-none">
+                                <span className="text-2xl md:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
+                                    {deriveInitials(PROFILE_DATA.name)}
+                                </span>
+                            </div>
                         </div>
 
                         {/* Identity text */}
@@ -321,7 +325,7 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                             <div className="h-[280px] w-full rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] relative overflow-hidden flex items-center justify-center">
-                                <Globe className="profile-globe" />
+                                <Globe className="profile-globe" countries={PROFILE_DATA.markets.countries} />
                                 <div className="absolute bottom-3 left-3 flex gap-1.5 flex-wrap z-10">
                                     {PROFILE_DATA.markets.countries.length === 0 ? (
                                         <span className="text-[10px] font-medium text-[var(--text-secondary)] bg-[var(--card-bg)] border border-[var(--border-color)] px-2 py-0.5 rounded">
