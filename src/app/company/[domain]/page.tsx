@@ -6,6 +6,8 @@ import PromptField from '@/components/PromptField';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCompany } from '@/hooks/use-company';
 import { logoUrl as companyLogoUrl } from '@/lib/logos';
+import { usePinned } from '@/context/PinnedContext';
+import { extractDomain } from '@/lib/utils/domain';
 
 
 
@@ -103,8 +105,33 @@ function CompanyPageContent() {
     const [brandColor1, brandColor2] = getBrandColors(domain);
     const [logoUrl, setLogoUrl] = useState(companyLogoUrl(domain) ?? '');
     
-    const [pinnedState, setPinnedState] = useState(false);
-    const togglePin = () => setPinnedState(!pinnedState);
+    // Pin state is owned by PinnedContext, which is what the sidebar and the
+    // competitors grid both read. This button used to hold its own useState, so
+    // it lit up on click, persisted nothing, and disagreed with the pin icon on
+    // /competitors for the same company.
+    const { pin, unpin, isPinned } = usePinned();
+    const [pinPending, setPinPending] = useState(false);
+    const pinnedState = competitor ? isPinned(competitor.id) : false;
+
+    const togglePin = async () => {
+        if (!competitor || pinPending) return;
+        setPinPending(true);
+        try {
+            if (pinnedState) {
+                await unpin(competitor.id);
+            } else {
+                await pin({
+                    competitor_id: competitor.id,
+                    domain: extractDomain(competitor.website ?? '') || domain,
+                    name: competitor.name || companyName,
+                    logo: companyLogoUrl(domain) ?? '',
+                    hasNews: false,
+                });
+            }
+        } finally {
+            setPinPending(false);
+        }
+    };
 
     const startX = searchParams.get('startX');
     const startY = searchParams.get('startY');
@@ -293,9 +320,11 @@ function CompanyPageContent() {
                             <div className="flex md:justify-end gap-2 mb-2">
                                 <button
                                     onClick={togglePin}
-                                    className={`text-xs font-semibold px-3 py-1.5 rounded-md border transition-colors flex items-center gap-2 ${
-                                        pinnedState 
-                                        ? 'bg-[var(--text-primary)] text-[var(--card-bg)] border-[var(--text-primary)]' 
+                                    disabled={!competitor || pinPending}
+                                    aria-pressed={pinnedState}
+                                    className={`text-xs font-semibold px-3 py-1.5 rounded-md border transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        pinnedState
+                                        ? 'bg-[var(--text-primary)] text-[var(--card-bg)] border-[var(--text-primary)]'
                                         : 'bg-[var(--card-bg-alt)] text-[var(--text-primary)] border-[var(--border-color)] hover:bg-[var(--item-hover)]'
                                     }`}
                                 >
