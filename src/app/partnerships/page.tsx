@@ -177,8 +177,10 @@ export default function PartnershipsPage() {
     };
     window.addEventListener('resize', handleResize);
 
-    targetTransform.current = { x: width / 2, y: height / 2, k: 1 };
-    transform.current = { x: width / 2, y: height / 2, k: 1 };
+    // Camera starts unset — it is fitted to the graph's bounding box once the
+    // nodes exist, further down. The old hardcoded k=1 default with nodes
+    // seeded across 1.2× the viewport is what left a small graph half off-
+    // screen, looking "way too zoomed out" with links invisible.
     
     const nodes: any[] = [];
     const links: any[] = [];
@@ -414,11 +416,19 @@ export default function PartnershipsPage() {
       const evIdx = timelineEvents.findIndex(ev => ev.entityId === entity.id);
       const ev = evIdx !== -1 ? timelineEvents[evIdx] : null;
 
+      // Phyllotaxis seed rather than a random scatter across 1.2× the viewport.
+      // Two things follow from it: the same graph lays out the same way on every
+      // render instead of rearranging itself, and the nodes start close enough
+      // together that the simulation settles in a few hundred cheap steps rather
+      // than spending seconds on screen hauling them in from the edges.
+      const seedAngle = i * 2.399963229728653; // golden angle, radians
+      const seedRadius = Math.sqrt(i + 0.5) * 34;
+
       const nodeObj = {
         id: entity.id || cacheKey,
         cacheKey: cacheKey,
-        x: (Math.random() - 0.5) * width * 1.2,
-        y: (Math.random() - 0.5) * height * 1.2,
+        x: Math.cos(seedAngle) * seedRadius,
+        y: Math.sin(seedAngle) * seedRadius,
         vx: 0,
         vy: 0,
         isHub: isHub,
@@ -460,24 +470,33 @@ export default function PartnershipsPage() {
         setCurrentView(mode.charAt(0).toUpperCase() + mode.slice(1));
         setViewDropdownOpen(false);
 
-        if (mode === 'timeline') {
-            const targetK = 0.5;
-            targetTransform.current.x = 200;
-            targetTransform.current.y = height / 2;
-            targetTransform.current.k = targetK; 
-        } else {
-            targetTransform.current.x = width / 2;
-            targetTransform.current.y = height / 2;
-            targetTransform.current.k = 1;
-            nodes.forEach(n => {
-                n.vx += (Math.random() - 0.5) * 50;
-            });
-        }
+        // That's all that needs to happen here. The effect re-runs on the
+        // `currentView` change and rebuilds the graph from scratch — the init
+        // block re-seeds nodes, re-heats the simulation, and re-fits the
+        // camera to the view. Mutating `targetTransform` / velocities here used
+        // to be how the camera and the settle were steered, but those objects
+        // belong to the outgoing effect instance and are thrown away on the
+        // re-run, so the branches below were dead code that set the old
+        // hardcoded k=1 view.
     };
     
     let animFrameId: number;
     let time = 0;
+    // Last zoom percentage we pushed to React, so the loop only calls setZoom
+    // when the readout actually changes instead of firing a setState per frame.
+    let lastZoomPct = -1;
     
+    // Simulated annealing: `alpha` scales every inter-node force and decays
+    // toward `alphaMin` each tick, so the layout converges and then stops. The
+    // old loop ran the same forces at full strength forever, so the graph never
+    // stopped drifting — that is the "too long, doesn't feel good" animation —
+    // and it burned a requestAnimationFrame in perpetuity. Switching views
+    // re-runs this whole effect, which resets alpha to 1; that is the only path
+    // that restarts the simulation.
+    let alpha = 1;
+    const alphaDecay = 0.98;
+    const alphaMin = 0.001;
+
     const applyPhysics = () => {
         const repulsion = 150;
         const springLen = 60;
@@ -495,7 +514,7 @@ export default function PartnershipsPage() {
                 if (distSq === 0) distSq = 1;
                 if (distSq < 50000) {
                     const dist = Math.sqrt(distSq);
-                    const force = repulsion / distSq;
+                    const force = (repulsion / distSq) * alpha;
                     const fx = (dx / dist) * force;
                     const fy = (dy / dist) * force;
                     n1.vx += fx;
@@ -510,7 +529,7 @@ export default function PartnershipsPage() {
             const dx = link.target.x - link.source.x;
             const dy = link.target.y - link.source.y;
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            const force = (dist - springLen) * springK * (mode === 'timeline' ? 0.02 : 1);
+            const force = (dist - springLen) * springK * alpha * (mode === 'timeline' ? 0.02 : 1);
             const fx = (dx / dist) * force;
             const fy = (dy / dist) * force;
             link.source.vx += fx;
@@ -521,8 +540,8 @@ export default function PartnershipsPage() {
 
         for (const n of nodes) {
             if (mode === 'graph') {
-                n.vx -= n.x * 0.001;
-                n.vy -= n.y * 0.001;
+                n.vx -= n.x * 0.001 * alpha;
+                n.vy -= n.y * 0.001 * alpha;
             } else if (mode === 'timeline') {
                 n.vx += (n.timelineX - n.x) * 0.08;
                 n.vy += (n.timelineY - n.y) * 0.08;
@@ -533,7 +552,67 @@ export default function PartnershipsPage() {
             n.x += n.vx;
             n.y += n.vy;
         }
+
+        // Timeline mode pins nodes to fixed coordinates rather than relaxing
+        // into a layout, so it keeps running; only the graph simulation cools.
+        if (mode === 'graph' && alpha > alphaMin) {
+            alpha *= alphaDecay;
+            if (alpha <= alphaMin) alpha = 0;
+        }
     };
+
+    // Fit the whole graph into the viewport with breathing room, dead-centre.
+    // This is the "zoom just enough to fit everything on screen by default"
+    // the tab was asked for; it also sets the floor the settle happens inside,
+    // so the animation below reads as a short polish, not a long arrival.
+    // `animate` leaves the live transform alone so the camera lerps to the fit
+    // (what the reset button wants); the initial fit needs it applied outright,
+    // before the first frame is painted.
+    const fitToBounds = (animate = false) => {
+        if (nodes.length === 0) {
+            targetTransform.current = { x: width / 2, y: height / 2, k: 1 };
+            if (!animate) transform.current = { ...targetTransform.current };
+            return;
+        }
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const n of nodes) {
+            if (n.x - n.radius < minX) minX = n.x - n.radius;
+            if (n.y - n.radius < minY) minY = n.y - n.radius;
+            if (n.x + n.radius > maxX) maxX = n.x + n.radius;
+            if (n.y + n.radius > maxY) maxY = n.y + n.radius;
+        }
+        const PAD = 100; // screen pixels of margin on every side
+        const contentW = Math.max(maxX - minX, 1);
+        const contentH = Math.max(maxY - minY, 1);
+        // 1.4 caps the zoom-in so a two-node graph doesn't blow up past
+        // usability; small graphs get a modest enlargement, big ones shrink
+        // just enough to fit. The 0.1 floor matches the wheel-zoom clamp.
+        const k = Math.max(0.1, Math.min((width - PAD * 2) / contentW, (height - PAD * 2) / contentH, 1.4));
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+        targetTransform.current = { x: width / 2 - cx * k, y: height / 2 - cy * k, k };
+        if (!animate) transform.current = { ...targetTransform.current };
+    };
+
+    // The simulation runs a head start before the first paint — synchronous,
+    // off-screen, cheap at these node counts — so the graph appears already
+    // arranged and only finishes the last of its settling on screen. The old
+    // code showed the raw scatter and let the physics drag it together live for
+    // tens of seconds, which is the "weird, too long" animation the tab was
+    // reported for. `0.98^90 ≈ 0.16`, so the head start keeps the layout ~84%
+    // hot: the visible phase is a brief, gentle convergence rather than an
+    // already-frozen picture.
+    if (currentView.toLowerCase() === 'graph') {
+        for (let s = 0; s < 90; s++) applyPhysics();
+        fitToBounds();
+    } else {
+        // Timeline lays its axis out in world space; the camera parks at the
+        // left edge. Reached via the effect re-running on a view change, this
+        // mirrors what setViewMode below sets up.
+        targetTransform.current = { x: 200, y: height / 2, k: 0.5 };
+        transform.current = { ...targetTransform.current };
+    }
     
     const draw = (t: number) => {
         const tr = transform.current;
@@ -792,7 +871,11 @@ export default function PartnershipsPage() {
             n.radius += (targetRadius - n.radius) * 0.2;
         }
         draw(time);
-        setZoom(Math.round(transform.current.k * 100));
+        const zoomPct = Math.round(transform.current.k * 100);
+        if (zoomPct !== lastZoomPct) {
+            lastZoomPct = zoomPct;
+            setZoom(zoomPct);
+        }
         animFrameId = requestAnimationFrame(loop);
     };
     loop();
@@ -906,9 +989,11 @@ export default function PartnershipsPage() {
     };
 
     const resetView = () => {
-        targetTransform.current.x = width / 2;
-        targetTransform.current.y = height / 2;
-        targetTransform.current.k = 1;
+        // Recompute the fit from the nodes' current (settled) positions rather
+        // than snapping back to the old hardcoded k=1, which for any graph
+        // wider than the viewport left most of it off-screen. Animated, so the
+        // button reads as a camera move rather than a jump cut.
+        fitToBounds(true);
     };
 
     (window as any).zoomIn = zoomIn;
