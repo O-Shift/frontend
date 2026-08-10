@@ -2038,6 +2038,29 @@ body.is-thinking-active .app-window::after {
   height: 100%;
 }
 
+/*
+ * Holds the globe panel's space while three.js streams in on its own chunk.
+ * A faint radial disc rather than a spinner: the panel is a fixed 280px box
+ * that is already framed and labelled, so what is missing is the sphere, not
+ * the section. A spinner here would read as "this failed to load".
+ */
+.profile-globe-placeholder {
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, var(--text-secondary) 12%, transparent) 0%,
+    color-mix(in srgb, var(--text-secondary) 5%, transparent) 42%,
+    transparent 62%
+  );
+  animation: profileGlobeBreathe 1.9s ease-in-out infinite;
+}
+@keyframes profileGlobeBreathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-globe-placeholder { animation: none; }
+}
+
 /* ── Dashboard Bento Grid ── */
 .dash-grid {
   display: grid;

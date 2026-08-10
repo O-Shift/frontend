@@ -1,9 +1,32 @@
 'use client';
 import { useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import Globe from '@/components/Globe';
+import dynamic from 'next/dynamic';
 import { useProfile } from '@/hooks/use-profile';
 import { deriveInitials } from '@/hooks/use-current-user';
+
+/**
+ * three.js plus the world-atlas topology is 654 KB — 38% of this route's
+ * JavaScript, and the single largest chunk in the app. It is also the only
+ * place either dependency is used, and it sits in one 280px panel below the
+ * fold on most screens.
+ *
+ * `ssr: false` because Globe reaches for `document.createElement('canvas')`
+ * and `window.matchMedia` during its first effect and has no server rendering
+ * to contribute — the fallback below is what the server would have emitted
+ * anyway. Per the Next 16 lazy-loading guide, `ssr: false` is only valid in a
+ * Client Component, which this file is, and the import path must be a literal.
+ */
+const Globe = dynamic(() => import('@/components/Globe'), {
+    ssr: false,
+    loading: () => (
+        <div
+            className="profile-globe-placeholder"
+            aria-hidden="true"
+            style={{ width: '100%', height: '100%' }}
+        />
+    ),
+});
 
 const rise = (delay: number) => ({
     initial: { opacity: 0, y: 14 },
