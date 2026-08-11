@@ -113,7 +113,12 @@
   --card-shadow: none;
   --card-shadow-hover: none;
 
-  --skeleton-base: #e8e9ec;
+  /* #e8e9ec sat at ~1.07:1 against this theme's --bg-body (#eff1f5) and was
+     effectively invisible — the skeletons rendered, but as blank page. The dark
+     theme's pairing (#222226 on #0d0d11) is ~1.22:1, so the base is darkened to
+     match that ratio rather than to a fixed hex. Skeletons also sit on white
+     --card-bg inside DashboardLoading, where this reads ~1.40:1. */
+  --skeleton-base: #d5dae3;
   --skeleton-shine: rgba(255, 255, 255, 0.7);
 }
 
