@@ -2,7 +2,9 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, Suspense } from 'react';
-import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
+import ChartSkeleton from '@/components/charts/ChartSkeleton';
+import { ZINC_PALETTE } from '@/components/charts/palette';
 import PromptField from '@/components/PromptField';
 import {
   Competitor,
@@ -17,6 +19,12 @@ import {
   getSenseReviews,
   triggerCompetitorScrape,
 } from '@/lib/api';
+
+// Three charts on this page, one 340 KB dependency behind all of them, and all
+// three sit below the header and stat cards. One dynamic import covers them.
+const LineChartCard = dynamic(() => import('@/components/charts/LineChartCard'), {
+  loading: () => <ChartSkeleton />,
+});
 
 function getBrandColors(domain: string) {
   const knownBrands: Record<string, [string, string]> = {
@@ -432,14 +440,15 @@ function CompetitorDetailPageContent() {
             >
               <h3 style={{ margin: '0 0 24px 0', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Market Share (%)</h3>
               {scoreData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={scoreData}>
-                    <XAxis dataKey="timestamp" stroke="#52525b" tickFormatter={formatChartDate} tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                    <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} itemStyle={{ color: brandColor1 }} />
-                    <Line type="linear" dataKey="value" stroke={brandColor1} strokeWidth={2} dot={{ r: 2.5, fill: brandColor1, stroke: 'none' }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <LineChartCard
+                  data={scoreData}
+                  dataKey="value"
+                  xKey="timestamp"
+                  color={brandColor1}
+                  palette={ZINC_PALETTE}
+                  xTickFormatter={formatChartDate}
+                  dotRadius={2.5}
+                />
               ) : (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13, border: '1px dashed var(--border-color)', borderRadius: 8 }}>
                   No market share history yet
@@ -464,14 +473,15 @@ function CompetitorDetailPageContent() {
             >
               <h3 style={{ margin: '0 0 24px 0', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Social Media Engagement</h3>
               {volumeData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={volumeData}>
-                    <XAxis dataKey="timestamp" stroke="#52525b" tickFormatter={formatChartDate} tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                    <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} itemStyle={{ color: brandColor2 }} />
-                    <Line type="linear" dataKey="value" stroke={brandColor2} strokeWidth={2} dot={{ r: 2.5, fill: brandColor2, stroke: 'none' }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <LineChartCard
+                  data={volumeData}
+                  dataKey="value"
+                  xKey="timestamp"
+                  color={brandColor2}
+                  palette={ZINC_PALETTE}
+                  xTickFormatter={formatChartDate}
+                  dotRadius={2.5}
+                />
               ) : (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13, border: '1px dashed var(--border-color)', borderRadius: 8 }}>
                   No engagement data available
@@ -496,14 +506,15 @@ function CompetitorDetailPageContent() {
             >
               <h3 style={{ margin: '0 0 24px 0', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Brand Sentiment Score</h3>
               {engagementData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={engagementData}>
-                    <XAxis dataKey="timestamp" stroke="#52525b" tickFormatter={formatChartDate} tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                    <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#3f3f46' }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} itemStyle={{ color: brandColor1 }} />
-                    <Line type="linear" dataKey="value" stroke={brandColor1} strokeWidth={2} dot={{ r: 2.5, fill: brandColor1, stroke: 'none' }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <LineChartCard
+                  data={engagementData}
+                  dataKey="value"
+                  xKey="timestamp"
+                  color={brandColor1}
+                  palette={ZINC_PALETTE}
+                  xTickFormatter={formatChartDate}
+                  dotRadius={2.5}
+                />
               ) : (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13, border: '1px dashed var(--border-color)', borderRadius: 8 }}>
                   No sentiment index data

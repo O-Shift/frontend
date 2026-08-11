@@ -1,11 +1,21 @@
 'use client';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
+import ChartSkeleton from '@/components/charts/ChartSkeleton';
+import { TOKEN_PALETTE } from '@/components/charts/palette';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
 import { apiFetch, updateOpportunityStatus, campaignThemes, type Campaign, type SenseReview } from '@/lib/api';
 import { extractDomain } from '@/lib/utils/domain';
+
+// recharts is 340 KB and the analytics panel it draws is the last thing on the
+// dashboard, below three cards of content. Loading it on its own chunk lets the
+// rest of the page paint first. SSR stays on: the chart is deterministic from
+// props and prerendering it costs nothing.
+const AreaChartCard = dynamic(() => import('@/components/charts/AreaChartCard'), {
+    loading: () => <ChartSkeleton />,
+});
 
 const brandColor1 = '#FF5A00';
 const brandColor2 = '#64748b';
@@ -421,25 +431,15 @@ export default function DashboardPage() {
                                         ) : !seriesRecorded[key] ? (
                                             <div className="flex items-center h-full pl-4 text-sm text-[var(--text-secondary)]">Not recorded in any snapshot for this period.</div>
                                         ) : (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                                                <defs>
-                                                    <linearGradient id={`gradient-${key}`} x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor={color} stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor={color} stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                {activeChart === key && <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" opacity={0.6} />}
-                                                <XAxis dataKey="name" stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} />
-                                                {activeChart === key && <YAxis stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} tickMargin={8} />}
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: 'var(--bg-main-alt)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', boxShadow: 'none' }}
-                                                    itemStyle={{ color, fontWeight: 500 }}
-                                                    cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }}
-                                                />
-                                                <Area type="linear" dataKey={dataKey} stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#gradient-${key})`} activeDot={{ r: 4, fill: color, strokeWidth: 0 }} dot={{ r: 3, fill: color, strokeWidth: 0 }} />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
+                                        <AreaChartCard
+                                            data={chartData}
+                                            dataKey={dataKey}
+                                            xKey="name"
+                                            color={color}
+                                            palette={TOKEN_PALETTE}
+                                            gradientId={`gradient-${key}`}
+                                            showAxes={activeChart === key}
+                                        />
                                         )}
                                     </div>
                                 </div>

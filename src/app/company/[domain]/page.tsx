@@ -1,13 +1,21 @@
 'use client';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, Suspense, useMemo } from 'react';
-import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
 import PromptField from '@/components/PromptField';
 import { motion, AnimatePresence } from 'framer-motion';
+import ChartSkeleton from '@/components/charts/ChartSkeleton';
+import { TOKEN_PALETTE } from '@/components/charts/palette';
 import { useCompany } from '@/hooks/use-company';
 import { logoUrl as companyLogoUrl } from '@/lib/logos';
 import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
+
+// recharts is 340 KB and the trend card is below the fold on this page. Loading
+// it on its own chunk keeps it off the route's initial download.
+const LineChartCard = dynamic(() => import('@/components/charts/LineChartCard'), {
+    loading: () => <ChartSkeleton />,
+});
 
 
 
@@ -392,14 +400,13 @@ function CompanyPageContent() {
                                     }}
                                 >
                                     <h4 className="m-0 mb-3 text-xs font-semibold text-[var(--text-primary)] tracking-wide">{label}</h4>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={chartData}>
-                                            <XAxis dataKey="name" stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--border-color)' }} />
-                                            <YAxis stroke="var(--border-color)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--border-color)' }} />
-                                            <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-primary)' }} itemStyle={{ color }} />
-                                            <Line type="linear" dataKey={dataKey} stroke={color} strokeWidth={2} dot={false} activeDot={{ r: 4, fill: color, stroke: 'var(--card-bg)' }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
+                                    <LineChartCard
+                                        data={chartData}
+                                        dataKey={dataKey}
+                                        xKey="name"
+                                        color={color}
+                                        palette={TOKEN_PALETTE}
+                                    />
                                 </div>
                             ))}
                         </div>
