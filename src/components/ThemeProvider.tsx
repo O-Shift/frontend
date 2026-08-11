@@ -13,9 +13,22 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggle: () => {},
 });
 
+/**
+ * The initial <html data-theme> and the DOM at first paint are set by the
+ * inline script in src/app/layout.tsx, which runs while the browser is still
+ * parsing <head>. This provider must NOT gate rendering on a mount effect —
+ * it used to return null until one had run, which made the server render an
+ * empty <body> and left every page blank until the bundle hydrated, ahead of
+ * any loading.tsx skeleton. Instead the effect below re-reads the same storage
+ * (it can't assume the inline script ran — e.g. the script runs only on hard
+ * loads, and localStorage can throw) and keeps React's state in sync with the
+ * attribute it set. The server-rendered theme ('dark', matching :root) may
+ * differ from the resolved one for a light-mode user; the only visible effect
+ * is the two small toggle controls (icon + switch) re-rendering after
+ * hydration, which is the trade the guide's inline-script pattern prescribes.
+ */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('oshift-theme') as Theme | null;
@@ -23,7 +36,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const resolved = stored ?? preferred;
     setTheme(resolved);
     document.documentElement.setAttribute('data-theme', resolved);
-    setMounted(true);
   }, []);
 
   const toggle = () => {
@@ -34,9 +46,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return next;
     });
   };
-
-  // Prevent flash: render children only after mount
-  if (!mounted) return null;
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>
