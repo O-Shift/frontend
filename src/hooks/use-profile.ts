@@ -126,13 +126,29 @@ export function useProfile() {
         async function fetchProfile() {
             try {
                 const supabase = createClient();
-                const { data: { user }, error: userError } = await supabase.auth.getUser();
-                if (userError) throw userError;
+
+                // getUser() revalidates the JWT against the Supabase auth server
+                // on every call; getSession() reads the already-validated session
+                // from local storage. Nothing here is a trust boundary — the name
+                // is a display string and the id is only matched against a member
+                // row the API itself returned — and the real authorization check
+                // happens server-side on each apiFetch. So this no longer opens
+                // with a network round-trip before any data request is issued.
+                //
+                // The workspace list still has to precede the batch below: it
+                // supplies the id those calls are scoped by. resolveWorkspaceId()
+                // is not a substitute — it only caches when the user has exactly
+                // one workspace, and this hook renders the list either way.
+                const [{ data: { session } }, wsRes] = await Promise.all([
+                    supabase.auth.getSession(),
+                    apiFetch<Workspace[]>("/core/workspaces"),
+                ]);
+
+                const user = session?.user;
                 if (!user) throw new Error("No user found");
 
                 const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || "User";
 
-                const wsRes = await apiFetch<Workspace[]>("/core/workspaces");
                 if (!wsRes.ok) throw new Error(wsRes.error);
 
                 const workspaces = wsRes.data;

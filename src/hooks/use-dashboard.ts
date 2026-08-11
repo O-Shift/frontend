@@ -87,15 +87,19 @@ export function useDashboard(): DashboardData {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const { data } = await createClient().auth.getUser();
-      if (cancelled || !data.user) return;
-      const meta = data.user.user_metadata ?? {};
+      // getSession() reads the stored session; getUser() would revalidate the
+      // JWT against the auth server first. This only produces a greeting, so
+      // the round-trip bought nothing and delayed the header.
+      const { data } = await createClient().auth.getSession();
+      const sessionUser = data.session?.user;
+      if (cancelled || !sessionUser) return;
+      const meta = sessionUser.user_metadata ?? {};
       const name =
         (typeof meta.full_name === 'string' && meta.full_name.trim()) ||
         (typeof meta.name === 'string' && meta.name.trim()) ||
-        data.user.email?.split('@')[0] ||
+        sessionUser.email?.split('@')[0] ||
         'Your workspace';
-      setUser({ name, email: data.user.email ?? null });
+      setUser({ name, email: sessionUser.email ?? null });
     })();
     return () => {
       cancelled = true;
