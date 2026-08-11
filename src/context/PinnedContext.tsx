@@ -6,6 +6,7 @@ import {
     fetchWatchlist,
     fetchWatchlists,
     removeWatchlistItem,
+    resolveWorkspaceId,
     type WatchlistItem,
 } from '@/lib/api';
 import { extractDomain } from '@/lib/utils/domain';
@@ -83,12 +84,15 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
         let cancelled = false;
 
         const load = async () => {
-            const workspaceId =
-                typeof window !== 'undefined' ? sessionStorage.getItem('oshift.workspace_id') : null;
+            // resolveWorkspaceId rather than a bare sessionStorage read: this
+            // provider is the first thing that fires on a cold tab, so on a
+            // storage miss it used to give up and show an empty sidebar even
+            // for a single-workspace user the resolver could have identified.
+            const workspaceId = await resolveWorkspaceId();
+            if (cancelled) return;
             if (!workspaceId) {
-                // This provider is mounted in the root layout, so it also runs on
-                // /login and /workspaces where no workspace is chosen yet. Nothing
-                // to load and nothing has failed.
+                // Also runs on /login and /workspaces, where no workspace is
+                // chosen yet. Nothing to load and nothing has failed.
                 setLoading(false);
                 return;
             }
