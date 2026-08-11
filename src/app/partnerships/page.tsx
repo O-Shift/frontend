@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import PromptField from '@/components/PromptField';
 import { apiFetch } from '@/lib/api';
 import { logoUrl } from '@/lib/logos';
+import Skeleton from '@/components/Skeleton';
 
 interface DBGraphNode {
   id: string;
@@ -1052,6 +1053,29 @@ export default function PartnershipsPage() {
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
             <canvas id="obsidianCanvas" ref={canvasRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}></canvas>
         </div>
+
+        {/* The graph effect early-returns while `loading`, so the canvas above
+            stays empty and the page reads as finished-but-broken rather than
+            still working. The header and toolbar are already drawn, so this
+            covers only the canvas and leaves them interactive. */}
+        {loading && (
+          <div
+            style={{
+              position: 'absolute', inset: 0, zIndex: 5,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{ width: 'min(680px, 70%)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Skeleton variant="card" height={320} />
+              <div style={{ display: 'flex', gap: 16 }}>
+                <Skeleton variant="card" height={72} style={{ flex: 1 }} />
+                <Skeleton variant="card" height={72} style={{ flex: 1 }} />
+                <Skeleton variant="card" height={72} style={{ flex: 1 }} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Page header ────────────────────────────────────────── */}
         <div className="page-header" style={{ position: 'absolute', top: 28, left: 28, zIndex: 10, pointerEvents: 'none', alignItems: 'center', marginBottom: 0, gap: 16 }}>

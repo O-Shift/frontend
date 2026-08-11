@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { fetchOpportunities, generateOpportunities, triggerPipeline, Opportunity } from '@/lib/api';
 import Link from 'next/link';
+import PageSkeleton from '@/components/skeletons/PageSkeleton';
 
 function CompanyPile({ companies }: { companies: string[] }) {
   const [hovered, setHovered] = useState(false);
@@ -380,14 +381,10 @@ export default function OpportunitiesPage() {
           </div>
         </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, color: 'var(--text-secondary)' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid var(--border-color)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <p style={{ marginTop: 20, fontSize: 14 }}>Fetching real database opportunities...</p>
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-          </div>
-        )}
+        {/* Loading State. A skeleton rather than a centered spinner: this page's
+            header is already drawn above, so the shape of what is coming is
+            known, and a spinner discards that. */}
+        {loading && <PageSkeleton variant="grid" showHeader={false} />}
 
         {/* Auth Error State */}
         {!loading && error && (
