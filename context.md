@@ -3,6 +3,7 @@
 ## Core Objective
 The goal for the 404 page was to transform a standard error screen into a memorable, premium, and interactive brand experience. The user explicitly requested a highly minimalist approach, actively rejecting generic "AI slop" (e.g., unnecessary neon glows, heavy 3D rendering, or cluttered sidebars). 
 
+
 ## 1. Typography & Spatial Layout
 - **Bold Minimalism:** The layout is stripped of all navigation elements (no sidebars), using a massive `clamp()`-scaled "404" at the exact center of the screen, topped with a clean "Oops!".
 - **Interference & Depth:** We swapped the font to the brand's `Poppins` (`900` weight) and used negative margins (`-5vw`) to force the "4"s to overlap the "0". Combined with carefully tuned drop-shadows and z-indexing, this creates a physical, layered sense of depth while remaining strictly 2D.
