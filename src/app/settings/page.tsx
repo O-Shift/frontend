@@ -13,11 +13,9 @@ const SampleBadge = () => (
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { users, apiKeys, featureFlags, refreshing, refresh, createApiKey, deleteApiKey, updateFeatureFlag } = useSettings();
+  const { users, featureFlags, updateFeatureFlag } = useSettings();
   const [activeTab, setActiveTab] = useState('main');
   const [loggingOut, setLoggingOut] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [newKeyResult, setNewKeyResult] = useState<string | null>(null);
   const { theme, toggle } = useTheme();
 
   // PromptField State
@@ -208,14 +206,6 @@ export default function SettingsPage() {
               <div>
                 <h2 className="skeleton-target" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 16 }}>Developer</h2>
                 <div className="skeleton-target" style={{ background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                  <button onClick={() => setActiveTab('api-keys')} style={rowStyle} onMouseEnter={e => e.currentTarget.style.background = 'var(--item-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
-                      <span>API Keys</span>
-                    </div>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
-                  </button>
-                  <div style={{ height: 1, background: 'var(--border-color)', margin: '0 24px' }} />
                   <button onClick={() => setActiveTab('feature-flags')} style={rowStyle} onMouseEnter={e => e.currentTarget.style.background = 'var(--item-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
@@ -226,89 +216,6 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-            </div>
-          </motion.div>
-        );
-
-      case 'api-keys':
-        return (
-          <motion.div key="api-keys" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
-            {renderHeader('API Keys')}
-            
-            <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: 24, marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Create New Key</h2>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <input 
-                  type="text" 
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  placeholder="Key Name"
-                  className="rounded-md"
-                  style={{ flex: 1, padding: '10px 16px', border: '1px solid var(--border-color)', background: 'var(--bg-body)', color: 'var(--text-primary)' }}
-                />
-                <button 
-                  onClick={async () => {
-                    const res = await createApiKey(newKeyName);
-                    if (res.key) {
-                      setNewKeyResult(res.key);
-                      setNewKeyName('');
-                    } else if (res.error) {
-                      alert(res.error);
-                    }
-                  }}
-                  className="rounded-md"
-                  style={{ background: 'var(--text-primary)', color: 'var(--bg-body)', padding: '10px 20px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-                  Create
-                </button>
-              </div>
-              {newKeyResult && (
-                <div style={{ marginTop: 16, padding: 12, background: 'var(--item-hover)', borderRadius: 8, wordBreak: 'break-all' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: 13, color: 'var(--text-secondary)' }}>Please copy this key now, you won't be able to see it again:</p>
-                  <code style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{newKeyResult}</code>
-                </div>
-              )}
-            </div>
-
-            <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
-              {apiKeys.loading ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading keys...</div>
-              ) : apiKeys.error ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444' }}>{apiKeys.error}</div>
-              ) : apiKeys.items.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>No API keys found.</div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg-alt)' }}>
-                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Name</th>
-                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Key Hint</th>
-                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Created</th>
-                      <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {apiKeys.items.map((key) => (
-                      <tr key={key.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '16px 24px', color: 'var(--text-primary)', fontSize: 14 }}>{key.name}</td>
-                        <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                          <code style={{ background: 'var(--item-hover)', padding: '4px 8px', borderRadius: 4 }}>{key.key_hint}</code>
-                        </td>
-                        <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                          {new Date(key.created_at).toLocaleDateString()}
-                        </td>
-                        <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                          <button 
-                            onClick={() => deleteApiKey(key.id)}
-                            className="rounded-md"
-                            style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}>
-                            Revoke
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
             </div>
           </motion.div>
         );
