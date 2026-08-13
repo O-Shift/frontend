@@ -4,6 +4,18 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiFetch, sseStream } from '@/lib/api';
 import { ConversationOut, ConversationHistory, MessageOut } from '@/types/entities';
+import {
+  parseStoredChatMessage,
+  serializeChatMessage,
+  type ChatContextItem,
+} from '@/lib/utils/chat-context';
+
+export interface ToolStep {
+  /** Backend tool_call id, so a fan-out of one tool doesn't collapse into a single row. */
+  id: string;
+  label: string;
+  done: boolean;
+}
 
 export interface ChatMessage {
   id: string;
@@ -17,6 +29,8 @@ export interface ChatMessage {
   isQuestion?: boolean;
   /** Backend marked the error resumable — the user can say "continue". */
   isRetryable?: boolean;
+  context?: ChatContextItem[];
+  steps?: ToolStep[];
 }
 
 function toActiveVerb(word: string): string {
@@ -62,19 +76,15 @@ export function formatToolName(rawTool: string): string {
   return parts.join(' ') + '...';
 }
 
-function deriveTitle(prompt: string): string {
-  const cleaned = prompt.trim().replace(/^[^a-zA-Z0-9]+/, '');
-  if (!cleaned) return 'Market Query';
-  const firstLine = cleaned.split('\n')[0];
-  if (firstLine.length <= 35) return firstLine;
-  return firstLine.slice(0, 35).trim() + '...';
-}
-
-export interface ToolStep {
-  /** Backend tool_call id, so a fan-out of one tool doesn't collapse into a single row. */
-  id: string;
-  label: string;
-  done: boolean;
+export function deriveTitle(prompt: string, context: ChatContextItem[] = []): string {
+  if (context && context.length > 0) {
+    return context.length === 1 ? context[0].label : `${context[0].label} & ${context[1].label}`;
+  }
+  if (!prompt) return 'New conversation';
+  const clean = prompt.replace(/<oshift_context>[\s\S]*?<\/oshift_context>/gi, '').trim();
+  const firstLine = clean.split('\n')[0].replace(/^[#>\s*\-_`]+/g, '').trim();
+  const words = firstLine.split(/\s+/).filter(Boolean).slice(0, 4).join(' ');
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'New conversation';
 }
 
 export function useAgentChat(initialConversationId?: string | null) {
@@ -87,15 +97,7 @@ export function useAgentChat(initialConversationId?: string | null) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  /**
-   * Completed work for the turn in progress, cleared on the next send.
-   *
-   * A spinner keeps spinning when a stream dies, so it cannot distinguish
-   * "working" from "hung" — which is why a long turn read as broken. Finished
-   * steps are evidence, and the backend already emits one per tool_result.
-   */
   const [toolSteps, setToolSteps] = useState<ToolStep[]>([]);
-  /** When the current turn started, for the elapsed counter. null when idle. */
   const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,12 +127,18 @@ export function useAgentChat(initialConversationId?: string | null) {
     setIsLoading(true);
     const res = await apiFetch<ConversationHistory>(`/agent/conversations/${id}`);
     if (res.ok) {
-      const mappedMsgs: ChatMessage[] = res.data.messages.map((m: MessageOut) => ({
-        id: m.id,
-        role: m.role as 'user' | 'assistant' | 'system',
-        content: m.content,
-        timestamp: m.created_at,
-      }));
+      const mappedMsgs: ChatMessage[] = res.data.messages.map((m: MessageOut) => {
+        const parsed = m.role === 'user'
+          ? parseStoredChatMessage(m.content)
+          : { content: m.content, context: [] };
+        return {
+          id: m.id,
+          role: m.role as 'user' | 'assistant' | 'system',
+          content: parsed.content,
+          context: parsed.context,
+          timestamp: m.created_at,
+        };
+      });
       conversationCacheRef.current.set(id, mappedMsgs);
       setMessages(mappedMsgs);
     } else {
@@ -140,7 +148,7 @@ export function useAgentChat(initialConversationId?: string | null) {
   }, []);
 
   // Instant (0ms) new chat creation reset
-  const createConversation = useCallback((customTitle?: string) => {
+  const createConversation = useCallback(() => {
     setCurrentConversationId(null);
     setMessages([]);
     setError(null);
@@ -160,19 +168,20 @@ export function useAgentChat(initialConversationId?: string | null) {
 
   // Send message: instant sidebar insertion, active highlighting, & zero-latency SSE token streaming
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, context: ChatContextItem[] = []) => {
       const trimmed = content.trim();
       if (!trimmed || isStreaming) return;
 
       setError(null);
       stop();
 
-      const autoTitle = deriveTitle(trimmed);
+      const autoTitle = deriveTitle(trimmed, context);
       const userMsgId = `user-${Date.now()}`;
       const userMsg: ChatMessage = {
         id: userMsgId,
         role: 'user',
         content: trimmed,
+        context,
         timestamp: new Date().toISOString(),
       };
 
@@ -208,8 +217,19 @@ export function useAgentChat(initialConversationId?: string | null) {
         ];
       });
 
+      const assistantMsgId = `asst-${Date.now()}`;
+      const assistantMsg: ChatMessage = {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: '',
+        steps: [],
+        timestamp: new Date().toISOString(),
+        isStreaming: true,
+        isThinking: true,
+      };
+
       setMessages((prev) => {
-        const next = isNewChat ? [userMsg] : [...prev, userMsg];
+        const next = isNewChat ? [userMsg, assistantMsg] : [...prev, userMsg, assistantMsg];
         if (targetConvId) {
           conversationCacheRef.current.set(targetConvId, next);
         }
@@ -222,9 +242,9 @@ export function useAgentChat(initialConversationId?: string | null) {
       setToolSteps([]);
       setTurnStartedAt(Date.now());
 
-      const assistantMsgId = `asst-${Date.now()}`;
       let fullResponseText = '';
       let activeRealConvId = targetConvId!;
+      let liveSteps: ToolStep[] = [];
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
@@ -233,7 +253,7 @@ export function useAgentChat(initialConversationId?: string | null) {
         const stream = sseStream(
           '/agent/chat',
           {
-            content: trimmed,
+            content: serializeChatMessage(trimmed, context),
             ...(isNewChat ? {} : { conversation_id: targetConvId }),
           },
           controller.signal
@@ -263,20 +283,37 @@ export function useAgentChat(initialConversationId?: string | null) {
             continue;
           }
 
+          if (event.type === 'title') {
+            const dataObj = event.data as Record<string, unknown>;
+            const aiTitle =
+              typeof event.data === 'string'
+                ? event.data
+                : typeof dataObj?.title === 'string'
+                  ? dataObj.title
+                  : '';
+            if (aiTitle) {
+              setConversations((prev) =>
+                prev.map((c) => (c.id === activeRealConvId ? { ...c, title: aiTitle } : c))
+              );
+            }
+            continue;
+          }
+
           if (event.type === 'tool_call') {
             setIsThinking(false);
             const dataObj = event.data as Record<string, unknown>;
             const rawTool = (dataObj?.tool as string) || 'action';
             const formatted = formatToolName(rawTool);
             setActiveTool(formatted);
-            // Key on the backend's tool_call id, not the name: the orchestrator
-            // routinely fans one tool out across parallel calls, and pairing by
-            // name would collapse or mis-resolve them.
             const callId = typeof dataObj?.id === 'string' ? dataObj.id : `${rawTool}-${Date.now()}`;
-            setToolSteps((prev) =>
-              prev.some((s) => s.id === callId)
-                ? prev
-                : [...prev, { id: callId, label: formatted.replace(/\.\.\.$/, ''), done: false }]
+            
+            liveSteps = liveSteps.some((s) => s.id === callId)
+              ? liveSteps
+              : [...liveSteps, { id: callId, label: formatted.replace(/\.\.\.$/, ''), done: false }];
+            setToolSteps(liveSteps);
+
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantMsgId ? { ...m, steps: liveSteps, isThinking: false } : m))
             );
             continue;
           }
@@ -291,16 +328,15 @@ export function useAgentChat(initialConversationId?: string | null) {
             }
             const doneId = typeof dataObj?.id === 'string' ? dataObj.id : '';
             if (doneId) {
-              setToolSteps((prev) =>
-                prev.map((s) => (s.id === doneId ? { ...s, done: true } : s))
-              );
+              liveSteps = liveSteps.map((s) => (s.id === doneId ? { ...s, done: true } : s));
+              setToolSteps(liveSteps);
             }
             setActiveTool(null);
-            // A finished tool hands straight back to the model, which then thinks
-            // before its next token. Clearing the tool badge without restoring
-            // this leaves the UI blank for that whole stretch — with a 50-call
-            // budget that blank is most of a long turn, and it reads as a hang.
             setIsThinking(true);
+
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantMsgId ? { ...m, steps: liveSteps, isThinking: true } : m))
+            );
             continue;
           }
 
@@ -313,17 +349,17 @@ export function useAgentChat(initialConversationId?: string | null) {
 
               // Direct real-time token rendering
               setMessages((prev) => {
-                const filtered = prev.filter((m) => m.id !== assistantMsgId);
-                const updated = [
-                  ...filtered,
-                  {
-                    id: assistantMsgId,
-                    role: 'assistant' as const,
-                    content: fullResponseText,
-                    timestamp: new Date().toISOString(),
-                    isStreaming: true,
-                  },
-                ];
+                const updated = prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                        ...m,
+                        content: fullResponseText,
+                        steps: liveSteps,
+                        isStreaming: true,
+                        isThinking: false,
+                      }
+                    : m
+                );
                 if (activeRealConvId) {
                   conversationCacheRef.current.set(activeRealConvId, updated);
                 }
@@ -333,12 +369,6 @@ export function useAgentChat(initialConversationId?: string | null) {
             continue;
           }
 
-          // ask_user_question pauses the loop and the backend returns right after
-          // this event, having already persisted the question. Nothing handled it
-          // before, so the agent asking anything looked like the stream dying
-          // mid-turn. Render it as the assistant's turn; the next sendMessage
-          // resumes the same conversation_id, which is how the backend expects
-          // the answer to arrive.
           if (event.type === 'question') {
             setIsThinking(false);
             setActiveTool(null);
@@ -348,9 +378,6 @@ export function useAgentChat(initialConversationId?: string | null) {
             const questionId =
               typeof dataObj?.message_id === 'string' ? dataObj.message_id : `q-${assistantMsgId}`;
             setMessages((prev) => {
-              // Keep whatever text already streamed this turn: the model often
-              // explains itself and then asks, and dropping the explanation
-              // leaves a bare question with no context.
               const updated = [
                 ...prev.filter((m) => m.id !== assistantMsgId),
                 ...(fullResponseText
@@ -359,6 +386,7 @@ export function useAgentChat(initialConversationId?: string | null) {
                         id: assistantMsgId,
                         role: 'assistant' as const,
                         content: fullResponseText,
+                        steps: liveSteps,
                         timestamp: new Date().toISOString(),
                       },
                     ]
@@ -387,18 +415,19 @@ export function useAgentChat(initialConversationId?: string | null) {
             const retryable = dataObj?.retryable === true;
             setError(errStr);
             setMessages((prev) => {
-              const filtered = prev.filter((m) => m.id !== assistantMsgId);
-              const updated = [
-                ...filtered,
-                {
-                  id: assistantMsgId,
-                  role: 'assistant' as const,
-                  content: fullResponseText ? `${fullResponseText}\n\n⚠️ *${errStr}*` : `⚠️ ${errStr}`,
-                  timestamp: new Date().toISOString(),
-                  isError: true,
-                  isRetryable: retryable,
-                },
-              ];
+              const updated = prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      content: fullResponseText ? `${fullResponseText}\n\n⚠️ *${errStr}*` : `⚠️ ${errStr}`,
+                      steps: liveSteps,
+                      isError: true,
+                      isRetryable: retryable,
+                      isStreaming: false,
+                      isThinking: false,
+                    }
+                  : m
+              );
               if (activeRealConvId) {
                 conversationCacheRef.current.set(activeRealConvId, updated);
               }
@@ -416,17 +445,16 @@ export function useAgentChat(initialConversationId?: string | null) {
             setIsThinking(false);
             fullResponseText += event.data;
             setMessages((prev) => {
-              const filtered = prev.filter((m) => m.id !== assistantMsgId);
-              const updated = [
-                ...filtered,
-                {
-                  id: assistantMsgId,
-                  role: 'assistant' as const,
-                  content: fullResponseText,
-                  timestamp: new Date().toISOString(),
-                  isStreaming: true,
-                },
-              ];
+              const updated = prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      content: fullResponseText,
+                      steps: liveSteps,
+                      isStreaming: true,
+                    }
+                  : m
+              );
               if (activeRealConvId) {
                 conversationCacheRef.current.set(activeRealConvId, updated);
               }
@@ -448,7 +476,9 @@ export function useAgentChat(initialConversationId?: string | null) {
 
         setMessages((prev) => {
           const finalized = prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, isStreaming: false, isThinking: false } : m
+            m.id === assistantMsgId
+              ? { ...m, isStreaming: false, isThinking: false, steps: liveSteps.length > 0 ? liveSteps : m.steps }
+              : m
           );
           if (activeRealConvId) {
             conversationCacheRef.current.set(activeRealConvId, finalized);
@@ -463,6 +493,13 @@ export function useAgentChat(initialConversationId?: string | null) {
     [currentConversationId, isStreaming, stop, fetchConversations]
   );
 
+  const removeConversation = useCallback((id: string) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (conversationCacheRef.current.has(id)) {
+      conversationCacheRef.current.delete(id);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -471,6 +508,7 @@ export function useAgentChat(initialConversationId?: string | null) {
 
   return {
     conversations,
+    setConversations,
     currentConversationId,
     messages,
     isLoading,
@@ -482,6 +520,7 @@ export function useAgentChat(initialConversationId?: string | null) {
     error,
     createConversation,
     loadConversation,
+    removeConversation,
     sendMessage,
     stop,
     refreshConversations: fetchConversations,

@@ -1,117 +1,128 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  Brain,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { ToolStep } from '@/hooks/use-agent-chat';
 
-/**
- * Seconds since the turn started, ticking once a second.
- *
- * Its own component on purpose: this re-renders every second, and folding it
- * into the chat feed would re-render the whole message list with it.
- *
- * A spinner keeps spinning after a stream dies, so it cannot tell "working"
- * apart from "hung". An advancing number can.
- */
 function Elapsed({ since }: { since: number }) {
-    const [now, setNow] = useState(() => Date.now());
-
-    useEffect(() => {
-        const id = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(id);
-    }, []);
-
-    const seconds = Math.max(0, Math.floor((now - since) / 1000));
-    if (seconds < 2) return null;
-
-    const label = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-    // tabular-nums keeps the row from reflowing as the digits change.
-    return (
-        <span className="tabular-nums text-[var(--text-secondary)]" aria-hidden="true">
-            {label}
-        </span>
-    );
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const seconds = Math.max(0, Math.floor((now - since) / 1000));
+  return <span className="tabular-nums font-mono text-[11px] opacity-75">{seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`}</span>;
 }
 
-/**
- * What the agent is doing, and what it has already finished.
- *
- * Long turns are tool-heavy and the model can be quiet for a while between
- * calls. The finished steps are the evidence that the quiet is work rather
- * than a hang — they come from the backend's tool_result events, so nothing
- * here is invented.
- */
 export default function AgentProgress({
-    isThinking,
-    activeTool,
-    steps,
-    startedAt,
+  isThinking = false,
+  activeTool = null,
+  steps = [],
+  startedAt = null,
+  isLive = false,
 }: {
-    isThinking: boolean;
-    activeTool: string | null;
-    steps: ToolStep[];
-    startedAt: number | null;
+  isThinking?: boolean;
+  activeTool?: string | null;
+  steps?: ToolStep[];
+  startedAt?: number | null;
+  isLive?: boolean;
 }) {
-    const liveRef = useRef<HTMLDivElement>(null);
+  // Default to expanded during live turn so user sees progress. When complete, allow collapse/expand.
+  const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
+  const expanded = userExpanded ?? isLive;
 
-    if (!isThinking && !activeTool && steps.length === 0) return null;
+  if (!isThinking && !activeTool && steps.length === 0) return null;
 
-    const current = activeTool ?? (isThinking ? 'Thinking' : null);
+  const doneCount = steps.filter((step) => step.done).length;
+  const isRunning = isLive || isThinking || !!activeTool;
 
-    return (
-        <div className="flex flex-col items-start gap-2">
-            <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold">
-                <div className="w-7 h-7 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-0.5 shrink-0 flex items-center justify-center">
-                    <img src="/mascot.png" alt="" className="w-full h-full object-contain" />
+  const currentLabel = activeTool
+    ? activeTool.replace(/\.\.\.$/, '')
+    : isThinking
+      ? 'Reasoning over market signals...'
+      : `${doneCount} action${doneCount === 1 ? '' : 's'} completed`;
+
+  return (
+    <div className="agent-activity-inline my-2.5">
+      {/* Seamless collapsible trigger */}
+      <button
+        type="button"
+        onClick={() => setUserExpanded(!expanded)}
+        className="group flex items-center gap-2 py-1 text-left text-xs text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] focus:outline-none"
+        aria-expanded={expanded}
+      >
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
+          {isRunning ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
+          ) : (
+            <Check className="h-3.5 w-3.5 text-[#3ddc97]" />
+          )}
+        </span>
+
+        <span className="font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
+          {currentLabel}
+        </span>
+
+        {startedAt !== null && isRunning && (
+          <span className="ml-1 text-[var(--text-secondary)]">
+            · <Elapsed since={startedAt} />
+          </span>
+        )}
+
+        <span className="ml-1 text-[var(--text-secondary)] opacity-70 group-hover:opacity-100">
+          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </span>
+      </button>
+
+      {/* Seamless expandable details */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="relative ml-2 mt-1.5 space-y-1.5 border-l border-[var(--border-color)] pl-3.5 py-1">
+              {steps.map((step, index) => (
+                <div
+                  key={step.id || index}
+                  className="flex items-center gap-2 text-[12.5px] leading-tight text-[var(--text-secondary)]"
+                >
+                  <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                    {step.done ? (
+                      <Check className="h-3 w-3 text-[#3ddc97]" />
+                    ) : (
+                      <Loader2 className="h-3 w-3 animate-spin text-[var(--accent)]" />
+                    )}
+                  </span>
+                  <span className={step.done ? 'text-[var(--text-secondary)]' : 'font-medium text-[var(--text-primary)]'}>
+                    {step.label}
+                  </span>
                 </div>
-                <span>Agent</span>
-            </div>
+              ))}
 
-            <div className="w-full max-w-2xl border border-[var(--border-color)] bg-[var(--card-bg)] rounded-xl overflow-hidden">
-                {/* Finished work, oldest first — a record that survives the step
-                    that produced it, unlike the old badge which cleared on
-                    tool_result and left nothing behind. */}
-                {steps.length > 0 && (
-                    <ul className="divide-y divide-[var(--border-color)]">
-                        {steps.map((step) => (
-                            <li
-                                key={step.id}
-                                className="flex items-center gap-2.5 px-4 py-2 text-xs text-[var(--text-secondary)]"
-                            >
-                                {step.done ? (
-                                    <Check className="h-3.5 w-3.5 shrink-0 text-[var(--accent,#f97316)]" />
-                                ) : (
-                                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none text-[var(--text-primary)]" />
-                                )}
-                                <span className={step.done ? '' : 'text-[var(--text-primary)]'}>
-                                    {step.label}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-
-                {current && (
-                    <div
-                        ref={liveRef}
-                        role="status"
-                        aria-live="polite"
-                        className={`flex items-center gap-3 px-4 py-2.5 text-xs ${
-                            steps.length > 0 ? 'border-t border-[var(--border-color)]' : ''
-                        }`}
-                    >
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none text-[var(--text-primary)]" />
-                        <span className="text-[var(--text-primary)] font-medium">
-                            {current.replace(/\.\.\.$/, '')}
-                        </span>
-                        {startedAt !== null && (
-                            <span className="ml-auto">
-                                <Elapsed since={startedAt} />
-                            </span>
-                        )}
-                    </div>
-                )}
+              {isThinking && !activeTool && (
+                <div className="flex items-center gap-2 text-[12.5px] leading-tight text-[var(--text-primary)]">
+                  <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                    <Loader2 className="h-3 w-3 animate-spin text-[var(--accent)]" />
+                  </span>
+                  <Brain className="h-3 w-3 text-[var(--text-secondary)]" />
+                  <span>Synthesizing findings into response</span>
+                </div>
+              )}
             </div>
-        </div>
-    );
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
