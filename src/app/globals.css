@@ -1369,9 +1369,8 @@ body {
 .chat-window {
   display: flex;
   flex-direction: column;
-  /* Never taller than half the viewport: the panel is a companion to the
-     page, not a takeover of it. */
-  max-height: min(52vh, 460px);
+  /* Comfortably fits chat bubbles, live tool progress, and tables */
+  max-height: min(58vh, 520px);
   border: 1px solid var(--border-color);
   border-radius: var(--card-radius-lg);
   background: var(--command-bar-bg);
@@ -1516,7 +1515,7 @@ body {
 }
 
 .chat-bubble {
-  max-width: 82%;
+  max-width: 84%;
   min-width: 0;
   padding: 9px 12px;
   border-radius: var(--card-radius);
@@ -1599,21 +1598,23 @@ body {
 
 @media (max-width: 640px) {
   .chat-window {
-    max-height: 46vh;
+    max-height: 48vh;
   }
 
   .chat-bubble {
-    max-width: 88%;
+    max-width: 90%;
   }
 }
 
 .suggestions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   opacity: 0;
   transform: translateY(10px);
   transition: all 0.3s;
   pointer-events: none;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .suggestions.visible {
@@ -1628,25 +1629,29 @@ body {
   padding: 1px;
   background: linear-gradient(90deg, #ff7b00c7, var(--accent), #ff9b44ab);
   display: flex;
-  opacity: 0.4;
+  opacity: 0.85;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.sugg-btn-container:hover {
+  opacity: 1;
+  transform: translateY(-1px);
 }
 
 .sugg-btn {
   background: var(--sugg-btn-bg);
   color: var(--text-primary);
   border: none;
-  padding: 4px 10px;
+  padding: 4px 11px;
   border-radius: 16px;
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   transition: background 0.2s;
-}
-
-.sugg-btn-container:hover {
-  opacity: 1;
+  white-space: nowrap;
 }
 
 .sugg-btn:hover {
@@ -1655,8 +1660,8 @@ body {
 
 .sugg-btn .num {
   color: var(--text-secondary);
-  font-size: 12px;
-  margin-left: 4px;
+  font-size: 11px;
+  margin-left: 2px;
 }
 
 .command-bar-container {
@@ -1859,7 +1864,17 @@ body {
   color: var(--text-primary);
 }
 
-.command-wrapper.active-input .submit-btn-cb {
+.submit-btn-cb.streaming-stop {
+  background: color-mix(in srgb, var(--accent) 14%, var(--card-bg));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.submit-btn-cb.streaming-stop:hover {
+  background: color-mix(in srgb, var(--accent) 26%, var(--card-bg));
+}
+
+.command-wrapper.active-input .submit-btn-cb:not(:disabled) {
   background: var(--card-bg);
   color: var(--accent);
   border-color: var(--accent);

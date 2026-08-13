@@ -199,3 +199,27 @@ The goal for the 404 page was to transform a standard error screen into a memora
   - Replaced text "New" button in the chat history header ([`src/app/chat/page.tsx`](file:///c:/dev/OShift/Frontend/src/app/chat/page.tsx)) with a sleek `+` (`Plus` from `lucide-react`) icon button styled seamlessly via `.collapse-btn` with theme-adaptive hover state.
 - **Git Branch & Commits**: Grouped and staged changes into atomic commits on the `Cleaning` branch and pushed to `origin/Cleaning`.
 
+## 22. Floating AI Assistant Feature Parity & Complete Overhaul (Completed)
+- **Objective**: Upgraded the global floating AI assistant ([`src/components/PromptField.tsx`](file:///c:/dev/OShift/Frontend/src/components/PromptField.tsx)) to full architectural, feature, and visual parity with the recently redesigned 'AI Agent Chat' tab without breaking any existing page props or canvas interactions.
+- **Key Enhancements Implemented**:
+  1. **Unified Chat Engine (`useAgentChat`)**:
+     - Swapped legacy raw SSE stream loop for `useAgentChat()`, bringing real-time token streaming, active tool tracking, backend conversation persistence, retryable error handling, question prompts, and stream aborting (`stop()`).
+     - Added dynamic `turnStartedAt` elapsed timer tracking and `oshift:tool_executed` custom event dispatching to automatically trigger page data updates upon background tool completion.
+  2. **Live Agent Activity Tracker (`AgentProgress.tsx`)**:
+     - Embedded the collapsible `AgentProgress` step breakdown directly inside the floating assistant message feed.
+     - Live spinners for active steps, green checkmarks for completed actions, and brain icon for token synthesis.
+  3. **Context Attachments, Mention System & Canvas Adapter**:
+     - Added `nodeToContextItem()` adapter that seamlessly converts `selectedNode` from Canvas / Competitors / Campaigns / Opportunities / Partnerships pages into first-class `ChatContextItem` objects.
+     - Embedded workspace context search popover triggered via `+` button or `@` keyboard mention with real competitor logos (`logoUrl`), category badges, and keyboard navigation.
+     - Standardized context payload serialization via `serializeChatMessage()` (`<oshift_context>...`) matching backend agent contracts.
+     - Rendered `MessageContext` tags on user chat bubbles with logo/icon badges.
+  4. **Interactive Controls & Stop Button**:
+     - Added streaming toggle button in the floating command bar that automatically morphs from `ArrowUp` (Send) to `Square` (Stop generation) when streaming.
+     - Integrated modern suggestion pills with crisp Lucide outline icons (`Building2`, `Sparkles`, `Lightbulb`, `Megaphone`) and dynamic context-tailored prompts.
+     - Header includes Mascot badge, title reflecting attached context, New Conversation / Clear button (`Plus`), and Close button (`X`).
+  5. **Styling & Aesthetics**:
+     - Enhanced floating chat window max-height and scrolling responsiveness (`max-height: min(58vh, 520px)`).
+     - Styled floating context picker with backdrop blur, smooth entrance animations, and dark/light mode token integration.
+- **Verification**: `npm run build` compiled 100% cleanly across all 24 routes (0 TypeScript or build errors).
+
+
