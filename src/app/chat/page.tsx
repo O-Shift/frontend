@@ -135,30 +135,31 @@ function ChatContent() {
 
   /**
    * DELETE CHAT HANDLER
-   * Prints the mock deletion log to console and displays UI notification.
-   * Ready for backend API deletion call when backend endpoint is hooked up.
+   * Calls DELETE /agent/conversations/{id} with optimistic UI.
+   * The conversation is removed instantly; any API error triggers a toast.
    */
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     const { id, title } = deleteTarget;
 
-    // Print message as requested
-    const logMessage = `mock deleting the chat: "${title}" (ID: ${id})`;
-    console.log(`[DELETE_CHAT] ${logMessage}`);
+    // Dismiss the confirmation modal immediately.
+    setDeleteTarget(null);
 
-    // Show visual confirmation notification
-    setDeleteNotification(logMessage);
-    setTimeout(() => {
-      setDeleteNotification(null);
-    }, 4500);
-
-    // Optimistically update frontend conversation state
-    removeConversation(id);
+    // If this was the active conversation, clear the view instantly.
     if (currentConversationId === id) {
       createConversation();
     }
 
-    setDeleteTarget(null);
+    const result = await removeConversation(id);
+
+    if (!result.ok) {
+      setDeleteNotification(`Failed to delete "${title}": ${result.error ?? 'Unknown error'}`);
+    } else {
+      setDeleteNotification(`"${title}" deleted.`);
+    }
+    setTimeout(() => {
+      setDeleteNotification(null);
+    }, 4500);
   };
 
   const activeConversation = conversations.find((c) => c.id === currentConversationId);
@@ -488,7 +489,7 @@ function ChatContent() {
                 </button>
                 <button
                   type="button"
-                  onClick={handleDeleteConfirm}
+                  onClick={() => void handleDeleteConfirm()}
                   className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/90 hover:bg-red-500 text-white transition-colors shadow-lg shadow-red-500/20"
                 >
                   Confirm Delete

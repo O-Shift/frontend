@@ -493,12 +493,21 @@ export function useAgentChat(initialConversationId?: string | null) {
     [currentConversationId, isStreaming, stop, fetchConversations]
   );
 
-  const removeConversation = useCallback((id: string) => {
+  const removeConversation = useCallback(async (id: string): Promise<{ ok: boolean; error?: string }> => {
+    // Optimistic: remove immediately so the UI responds at zero latency.
     setConversations((prev) => prev.filter((c) => c.id !== id));
     if (conversationCacheRef.current.has(id)) {
       conversationCacheRef.current.delete(id);
     }
-  }, []);
+
+    const res = await apiFetch<void>(`/agent/conversations/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      // Rollback: re-fetch the server's authoritative list.
+      fetchConversations();
+      return { ok: false, error: res.error };
+    }
+    return { ok: true };
+  }, [fetchConversations]);
 
   // Initial load
   useEffect(() => {
