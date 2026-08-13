@@ -13,10 +13,10 @@ import {
   Loader2,
   Megaphone,
   MessageSquare,
-  MessageSquarePlus,
   Network,
   PanelRightClose,
   PanelRightOpen,
+  Plus,
   Search,
   Sparkles,
   Trash2,
@@ -363,11 +363,11 @@ function ChatContent() {
                   <button
                     type="button"
                     onClick={startNewChat}
-                    className="collapse-btn flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    className="collapse-btn"
                     title="Start new conversation"
+                    aria-label="Start new conversation"
                   >
-                    <MessageSquarePlus className="h-3.5 w-3.5" />
-                    <span>New</span>
+                    <Plus className="h-4 w-4" />
                   </button>
                 </div>
 

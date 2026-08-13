@@ -195,5 +195,7 @@ The goal for the 404 page was to transform a standard error screen into a memora
   - `npx eslint ...`: 0 lint errors across all newly created and updated chat components/hooks.
   - `node .citecheck/verify.mjs .citecheck/real.json`: 15/15 PASS (citation stream transforms, table parsing, URL sanitation).
   - `npm run build`: 24/24 static and dynamic routes compiled and optimized 100% cleanly with Turbopack.
+- **UI Polish**:
+  - Replaced text "New" button in the chat history header ([`src/app/chat/page.tsx`](file:///c:/dev/OShift/Frontend/src/app/chat/page.tsx)) with a sleek `+` (`Plus` from `lucide-react`) icon button styled seamlessly via `.collapse-btn` with theme-adaptive hover state.
 - **Git Branch & Commits**: Grouped and staged changes into atomic commits on the `Cleaning` branch and pushed to `origin/Cleaning`.
 
