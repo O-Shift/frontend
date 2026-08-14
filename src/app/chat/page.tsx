@@ -1,28 +1,148 @@
-// oshift/src/app/chat/page.tsx
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAgentChat } from '@/hooks/use-agent-chat';
-import ChatMarkdown from '@/components/ui/ChatMarkdown';
+import Image from 'next/image';
 import {
-  Plus,
-  Send,
-  Square,
-  Search,
   AlertCircle,
+  AlertTriangle,
+  Building2,
+  Check,
+  History,
+  Lightbulb,
   Loader2,
+  Megaphone,
+  MessageSquare,
+  Network,
   PanelRightClose,
   PanelRightOpen,
-  MessageSquare,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  X,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useAgentChat, deriveTitle } from '@/hooks/use-agent-chat';
+import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import AgentProgress from '@/components/chat/AgentProgress';
+import ChatComposer from '@/components/chat/ChatComposer';
+import { parseMessageSegments, type ChatContextItem, type ChatContextKind } from '@/lib/utils/chat-context';
+import { CHAT_HERO_HEADLINES, getRandomHeroHeadline } from '@/lib/constants/chat-headlines';
+
+const quickPills = [
+  { icon: Building2, label: 'Analyze Competitors', prompt: 'What changed across our competitors this week?' },
+  { icon: Lightbulb, label: 'Scan Opportunities', prompt: 'Find the highest-impact opportunities we should act on next.' },
+  { icon: Megaphone, label: 'Compare Campaigns', prompt: 'Compare the messaging themes in our latest detected campaigns.' },
+];
+
+const contextIcons: Record<ChatContextKind, typeof Building2> = {
+  competitor: Building2,
+  campaign: Megaphone,
+  opportunity: Sparkles,
+  partnership: Network,
+};
+
+function MessageContextItem({ item }: { item: ChatContextItem }) {
+  const [imgErr, setImgErr] = useState(false);
+  const Icon = contextIcons[item.kind] || Sparkles;
+
+  return (
+    <span className="chat-message-context flex items-center gap-1.5">
+      {item.logo && !imgErr ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.logo}
+          alt=""
+          className="h-3.5 w-3.5 rounded object-contain shrink-0"
+          onError={() => setImgErr(true)}
+        />
+      ) : (
+        <Icon className="h-3 w-3 text-[var(--accent)] shrink-0" />
+      )}
+      <span className="max-w-44 truncate">{item.label}</span>
+    </span>
+  );
+}
+
+function MessageContext({ items }: { items: ChatContextItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mb-3 flex flex-wrap gap-1.5">
+      {items.map((item) => (
+        <MessageContextItem key={`${item.kind}:${item.id}`} item={item} />
+      ))}
+    </div>
+  );
+}
+
+
+function InlineMentionBadge({ item, raw }: { item?: ChatContextItem; raw: string }) {
+  const [imgErr, setImgErr] = useState(false);
+  const Icon = item ? (contextIcons[item.kind] || Sparkles) : Sparkles;
+  const label = item ? item.label : raw.replace(/^@/, '');
+
+  return (
+    <span className="chat-inline-mention-badge" title={item?.subtitle || label}>
+      <span className="badge-icon">
+        {item?.logo && !imgErr ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.logo}
+            alt=""
+            onError={() => setImgErr(true)}
+            loading="lazy"
+          />
+        ) : (
+          <Icon className="h-3 w-3 text-[var(--accent)]" />
+        )}
+      </span>
+      <span className="badge-label">@{label}</span>
+    </span>
+  );
+}
+
+function UserChatMessageContent({
+  content,
+  context,
+}: {
+  content: string;
+  context: ChatContextItem[];
+}) {
+  const segments = useMemo(() => parseMessageSegments(content, context), [content, context]);
+
+  const mentionedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const seg of segments) {
+      if (seg.type === 'mention' && seg.item) {
+        ids.add(`${seg.item.kind}:${seg.item.id}`);
+      }
+    }
+    return ids;
+  }, [segments]);
+
+  const unmentionedContext = useMemo(() => {
+    return context.filter((c) => !mentionedIds.has(`${c.kind}:${c.id}`));
+  }, [context, mentionedIds]);
+
+  return (
+    <div>
+      {unmentionedContext.length > 0 && <MessageContext items={unmentionedContext} />}
+      <p className="whitespace-pre-wrap leading-relaxed">
+        {segments.map((seg, idx) => {
+          if (seg.type === 'text') {
+            return <span key={idx}>{seg.text}</span>;
+          }
+          return <InlineMentionBadge key={idx} item={seg.item} raw={seg.raw} />;
+        })}
+      </p>
+    </div>
+  );
+}
 
 function ChatContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q');
-
   const {
     conversations,
     currentConversationId,
@@ -36,352 +156,428 @@ function ChatContent() {
     error,
     createConversation,
     loadConversation,
+    removeConversation,
     sendMessage,
     stop,
   } = useAgentChat();
 
-  const [inputVal, setInputVal] = useState('');
+  const [input, setInput] = useState('');
+  const [attachedContext, setAttachedContext] = useState<ChatContextItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [autoSentQuery, setAutoSentQuery] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleteNotification, setDeleteNotification] = useState<string | null>(null);
+  const [heroHeadline, setHeroHeadline] = useState<string>(CHAT_HERO_HEADLINES[0]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setHeroHeadline(getRandomHeroHeadline(CHAT_HERO_HEADLINES));
+  }, []);
+
+  const endRef = useRef<HTMLDivElement>(null);
+  const autoSentQueryRef = useRef(false);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, isStreaming, isThinking, activeTool, toolSteps]);
 
   useEffect(() => {
-    if (initialQuery && !autoSentQuery && !isStreaming && !isLoading) {
-      setAutoSentQuery(true);
-      sendMessage(initialQuery);
+    if (initialQuery && !autoSentQueryRef.current && !isStreaming && !isLoading) {
+      autoSentQueryRef.current = true;
+      void sendMessage(initialQuery);
     }
-  }, [initialQuery, autoSentQuery, isStreaming, isLoading, sendMessage]);
+  }, [initialQuery, isStreaming, isLoading, sendMessage]);
 
   const handleSend = () => {
-    if (!inputVal.trim() || isStreaming) return;
-    const msg = inputVal;
-    setInputVal('');
-    sendMessage(msg);
+    if (!input.trim() || isStreaming) return;
+    const message = input;
+    const context = attachedContext;
+    setInput('');
+    setAttachedContext([]);
+    void sendMessage(message, context);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const startNewChat = () => {
+    createConversation();
+    setInput('');
+    setAttachedContext([]);
+    setHistoryOpen(false);
+  };
+
+  /**
+   * DELETE CHAT HANDLER
+   * Calls DELETE /agent/conversations/{id} with optimistic UI.
+   * The conversation is removed instantly; any API error triggers a toast.
+   */
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    const { id, title } = deleteTarget;
+
+    // Dismiss the confirmation modal immediately.
+    setDeleteTarget(null);
+
+    // If this was the active conversation, clear the view instantly.
+    if (currentConversationId === id) {
+      createConversation();
     }
+
+    const result = await removeConversation(id);
+
+    if (!result.ok) {
+      setDeleteNotification(`Failed to delete "${title}": ${result.error ?? 'Unknown error'}`);
+    } else {
+      setDeleteNotification(`"${title}" deleted.`);
+    }
+    setTimeout(() => {
+      setDeleteNotification(null);
+    }, 4500);
   };
 
-  const filteredConversations = conversations.filter((c) =>
-    (c.title || 'Untitled Session').toLowerCase().includes(searchTerm.toLowerCase())
+  const activeConversation = conversations.find((c) => c.id === currentConversationId);
+  const currentTitle =
+    activeConversation?.title ||
+    (messages.length > 0 ? deriveTitle(messages[0].content, messages[0].context) : 'New conversation');
+
+  const filteredConversations = conversations.filter((conversation) =>
+    (conversation.title || 'Untitled chat').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const composer = (
+    <ChatComposer
+      value={input}
+      onChange={setInput}
+      onSend={handleSend}
+      onStop={stop}
+      isStreaming={isStreaming}
+      context={attachedContext}
+      onContextChange={setAttachedContext}
+      autoFocus={messages.length === 0}
+    />
   );
 
   return (
-    <div className="flex-1 w-full h-full flex bg-[var(--bg-main-alt)] overflow-hidden relative">
-      
-      {/* Main Chat Window (Center Area) */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        
-        {/* Floating Toggle Button when Right Sidebar is Collapsed */}
-        {!sidebarOpen && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="absolute top-4 right-4 z-20 p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] shadow-sm transition-all cursor-pointer"
-            title="Expand Chat History"
-          >
-            <PanelRightOpen className="h-4 w-4" />
-          </button>
-        )}
+    <div className="chat-page">
+      <div className="chat-ambient" aria-hidden="true"><span /><span /></div>
 
-        {/* Chat Feed or Gemini Center Landing */}
-        {messages.length === 0 ? (
-          /* Gemini-style Initial State: Centered Greeting & Prompt */
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center relative">
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="w-full max-w-2xl flex flex-col items-center text-center space-y-8 my-auto"
-            >
-              {/* Unclipped Mascot Avatar Icon */}
-              <div className="w-24 h-24 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-2 shadow-sm flex items-center justify-center">
-                <img src="/mascot.png" alt="OShift Mascot" className="w-full h-full object-contain" />
-              </div>
-
-              <h2 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] font-sans">
-                Ask away!
-              </h2>
-
-              {/* Centered Input Box */}
-              <div className="w-full relative flex flex-col border border-[var(--border-color)] bg-[var(--card-bg)] rounded-2xl shadow-sm focus-within:border-[var(--text-secondary)] transition-all">
-                <textarea
-                  ref={inputRef}
-                  rows={2}
-                  value={inputVal}
-                  onChange={(e) => setInputVal(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask OShift agent anything about market signals, competitors, campaigns..."
-                  className="w-full resize-none bg-transparent px-6 py-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none"
-                />
-
-                <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--border-color)] bg-[var(--card-bg-alt)] rounded-b-2xl">
-                  <span className="text-xs text-[var(--text-secondary)] font-medium">Press Enter to send</span>
-                  <button
-                    onClick={handleSend}
-                    disabled={!inputVal.trim() || isStreaming}
-                    className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-                  >
-                    <span>Ask</span>
-                    <Send className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Starter Prompt Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full pt-2">
-                {[
-                  'Who are our active competitors?',
-                  'Analyze recent market signals',
-                  'Find partnership opportunities',
-                  'Summarize campaign strategies',
-                ].map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => sendMessage(prompt)}
-                    className="border border-[var(--border-color)] bg-[var(--card-bg)] p-4 rounded-xl text-left text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-all shadow-sm cursor-pointer"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        ) : (
-          /* Active Chat Thread View */
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-            <div className="max-w-3xl mx-auto w-full space-y-6">
-              {messages.map((msg) => {
-                const isUser = msg.role === 'user';
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}
-                  >
-                    <div className="flex items-center gap-2 text-[var(--text-secondary)] text-xs font-semibold tracking-wide">
-                      {isUser ? (
-                        <span>You</span>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] p-0.5 shrink-0 flex items-center justify-center">
-                            <img src="/mascot.png" alt="Mascot" className="w-full h-full object-contain" />
-                          </div>
-                          <span>Agent</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className={`w-full max-w-2xl p-5 text-sm leading-relaxed rounded-xl border ${
-                        isUser
-                          ? 'border-[var(--border-color)] bg-[var(--card-bg-alt)] text-[var(--text-primary)]'
-                          : msg.isQuestion
-                            ? 'border-[var(--accent,#f97316)]/50 bg-[var(--card-bg)] text-[var(--text-primary)]'
-                            : 'border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-primary)]'
-                      }`}
-                    >
-                      {isUser ? (
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                      ) : (
-                        <ChatMarkdown content={msg.content} />
-                      )}
-
-                      {/* The agent paused on a question, so say what happens next.
-                          Without this the reply just sits there and it is not
-                          obvious the turn is waiting on the user rather than
-                          still working. */}
-                      {msg.isQuestion && (
-                        <div className="mt-3 pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
-                          Reply below to continue — the agent picks up this same session.
-                        </div>
-                      )}
-
-                      {/* Backend flagged the failure resumable and told the user
-                          the exact word that resumes it. Repeat it rather than
-                          leaving the phrasing to chance. */}
-                      {msg.isRetryable && (
-                        <div className="mt-3 pt-3 border-t border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
-                          Send <span className="font-semibold text-[var(--text-primary)]">continue</span> to resume from where it stopped.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* One panel for the whole turn: what is running now, what has
-                  already finished, and how long it has been going. The finished
-                  steps are what distinguish a slow turn from a dead one. */}
-              <AgentProgress
-                isThinking={isThinking}
-                activeTool={activeTool}
-                steps={toolSteps}
-                startedAt={turnStartedAt}
-              />
-
-              {/* Error Banner */}
-              {error && (
-                <div className="border border-red-500/40 bg-[var(--card-bg)] p-4 rounded-lg text-xs flex items-center gap-3 text-[var(--text-primary)]">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-        )}
-
-        {/* Bottom Floating Input Bar when conversation is active */}
-        {messages.length > 0 && (
-          <div className="p-4 md:p-6 bg-[var(--card-bg)] border-t border-[var(--border-color)] shrink-0">
-            <div className="max-w-3xl mx-auto relative flex flex-col border border-[var(--border-color)] bg-[var(--bg-main-alt)] rounded-xl focus-within:border-[var(--text-secondary)] transition-all">
-              <textarea
-                ref={inputRef}
-                rows={2}
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask follow-up question..."
-                className="w-full resize-none bg-transparent px-5 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none"
-              />
-
-              <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--border-color)] bg-[var(--card-bg-alt)] rounded-b-xl">
-                <span className="text-[11px] font-medium text-[var(--text-secondary)]">Press Enter to submit</span>
-                {isStreaming ? (
-                  <button
-                    onClick={stop}
-                    className="flex items-center gap-2 px-3 py-1 rounded-md bg-[var(--card-bg)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
-                  >
-                    <Square className="h-3 w-3 fill-current" />
-                    <span>Halt</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSend}
-                    disabled={!inputVal.trim()}
-                    className="flex items-center gap-2 px-4 py-1 rounded-md bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-                  >
-                    <span>Send</span>
-                    <Send className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Right Sidebar (Collapsible Sessions Drawer) */}
-      <AnimatePresence initial={false}>
-        {sidebarOpen && (
+      {/* Delete Feedback Toast */}
+      <AnimatePresence>
+        {deleteNotification && (
           <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 288, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="h-full bg-[var(--card-bg)] border-l border-[var(--border-color)] flex flex-col shrink-0 overflow-hidden"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-2xl text-xs text-[var(--text-primary)]"
           >
-            {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
-              <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold text-xs uppercase tracking-wider">
-                <MessageSquare className="h-4 w-4 text-[var(--text-secondary)]" />
-                <span>Chat History</span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => createConversation()}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded border border-[var(--border-color)] bg-[var(--card-bg-alt)] text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
-                  title="New Chat"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>New</span>
-                </button>
-                <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
-                  title="Hide History"
-                >
-                  <PanelRightClose className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <div className="p-3 pb-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--text-secondary)]" />
-                <input
-                  type="text"
-                  placeholder="Search chats..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-main-alt)] pl-8 pr-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none transition focus:border-[var(--text-secondary)]"
-                />
-              </div>
-            </div>
-
-            {/* Conversation Session List */}
-            <div className="flex-1 space-y-1 overflow-y-auto p-3 pt-1">
-              {conversations.length === 0 && isLoading ? (
-                <div className="flex items-center justify-center py-6 text-xs text-[var(--text-secondary)]">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
-                  Loading sessions...
-                </div>
-              ) : filteredConversations.length === 0 ? (
-                <div className="py-6 text-center text-xs text-[var(--text-secondary)]">
-                  No chat history
-                </div>
-              ) : (
-                filteredConversations.map((conv) => {
-                  const isActive = conv.id === currentConversationId;
-                  return (
-                    <button
-                      key={conv.id}
-                      onClick={() => loadConversation(conv.id)}
-                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition-all border ${
-                        isActive
-                          ? 'border-[var(--border-color)] bg-[var(--card-bg-alt)] text-[var(--text-primary)] font-semibold'
-                          : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--item-hover)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      <span className="truncate">{conv.title || 'Untitled Session'}</span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+            <Check className="h-4 w-4 text-[#3ddc97] shrink-0" />
+            <span>{deleteNotification}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
+      <header className="chat-topbar">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <MessageSquare className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
+          <h1 className="truncate text-sm md:text-[15px] font-medium text-[var(--text-primary)]">
+            {currentTitle}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((value) => !value)}
+            className="chat-topbar-icon"
+            aria-label="Toggle chat history"
+            title="Chat history"
+          >
+            {historyOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+          </button>
+        </div>
+      </header>
+
+      <main className="relative flex min-h-0 flex-1 overflow-hidden">
+        <section className="relative flex min-w-0 flex-1 flex-col">
+          {messages.length === 0 ? (
+            <div className="chat-empty-scroll">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                className="chat-empty"
+              >
+                <div>
+                  <h2 className="chat-hero-title">{heroHeadline}</h2>
+                </div>
+
+                {/* Quick action pills directly ABOVE the chat box (no emojis, crisp outline icons) */}
+                <div className="flex flex-wrap items-center justify-center gap-2.5 max-w-3xl w-full">
+                  {quickPills.map(({ icon: Icon, label, prompt }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => void sendMessage(prompt)}
+                      className="chat-pill-btn"
+                    >
+                      <Icon className="h-3.5 w-3.5 text-[var(--accent)]" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="w-full max-w-3xl text-left">{composer}</div>
+              </motion.div>
+            </div>
+          ) : (
+            <>
+              <div className="chat-feed">
+                <div className="mx-auto w-full max-w-4xl px-5 pb-12 pt-8 md:px-10">
+                  <AnimatePresence initial={false}>
+                    {messages.map((message, index) => {
+                      const isUser = message.role === 'user';
+                      const isLastAssistant = !isUser && index === messages.length - 1;
+                      const messageSteps =
+                        message.steps && message.steps.length > 0
+                          ? message.steps
+                          : isLastAssistant
+                            ? toolSteps
+                            : [];
+                      const isLiveTurn =
+                        isLastAssistant && (isStreaming || isThinking || !!activeTool);
+
+                      return (
+                        <motion.article
+                          layout="position"
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                          key={message.id}
+                          className={`chat-message-row ${isUser ? 'user' : 'assistant'}`}
+                        >
+                          {!isUser && (
+                            <div className="chat-message-avatar">
+                              <Image src="/mascot.png" alt="" width={28} height={32} />
+                            </div>
+                          )}
+                          <div className={`min-w-0 ${isUser ? 'max-w-[80%]' : 'max-w-[780px] flex-1'}`}>
+                            <div className="mb-1.5 text-xs font-medium text-[var(--text-secondary)]">
+                              {isUser ? 'You' : 'OShift'}
+                            </div>
+                            <div
+                              className={
+                                isUser
+                                  ? 'chat-user-bubble'
+                                  : `chat-assistant-copy ${message.isQuestion ? 'question' : ''}`
+                              }
+                            >
+                              {/* Seamless agent activity BEFORE response */}
+                              {!isUser && (messageSteps.length > 0 || (isLiveTurn && (isThinking || !!activeTool))) && (
+                                <AgentProgress
+                                  isThinking={isLiveTurn ? isThinking : false}
+                                  activeTool={isLiveTurn ? activeTool : null}
+                                  steps={messageSteps}
+                                  startedAt={isLiveTurn ? turnStartedAt : null}
+                                  isLive={isLiveTurn}
+                                />
+                              )}
+
+                              {isUser ? (
+                                <UserChatMessageContent content={message.content} context={message.context ?? []} />
+                              ) : message.content ? (
+                                <>
+                                  <MessageContext items={message.context ?? []} />
+                                  <ChatMarkdown content={message.content} streaming={message.isStreaming} />
+                                </>
+                              ) : null}
+
+                              {message.isQuestion && (
+                                <p className="chat-message-note">Reply below to continue this analysis.</p>
+                              )}
+                              {message.isRetryable && (
+                                <p className="chat-message-note">Send <strong>continue</strong> to resume from where it stopped.</p>
+                              )}
+                            </div>
+                          </div>
+                        </motion.article>
+                      );
+                    })}
+                  </AnimatePresence>
+
+                  {error && (
+                    <div className="chat-error">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <div ref={endRef} />
+                </div>
+              </div>
+              <div className="chat-dock">
+                <div className="mx-auto w-full max-w-4xl px-5 md:px-10">{composer}</div>
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* Coherent Chat History Sidebar (Harmonized with Left App Sidebar) */}
+        <AnimatePresence initial={false}>
+          {historyOpen && (
+            <motion.aside
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 300, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="chat-history"
+            >
+              <div className="w-[300px] flex flex-col h-full">
+                <div className="sidebar-header" style={{ padding: '16px 16px 12px' }}>
+                  <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-[var(--text-primary)]">
+                    <History className="h-4 w-4 text-[var(--accent)]" />
+                    <span>Chat History</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={startNewChat}
+                    className="collapse-btn"
+                    title="Start new conversation"
+                    aria-label="Start new conversation"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="px-3 mb-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-secondary)]" />
+                    <input
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Search chats…"
+                      className="chat-history-search"
+                    />
+                  </div>
+                </div>
+
+                <div className="nav-label" style={{ margin: '0 0 6px 4px' }}>
+                  RECENT CONVERSATIONS
+                </div>
+
+                <div className="sidebar-scroll-area flex-1 py-1 space-y-1">
+                  {conversations.length === 0 && isLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-10 text-xs text-[var(--text-secondary)]">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />Loading…
+                    </div>
+                  ) : filteredConversations.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-[var(--text-secondary)]">
+                      No conversations found.
+                    </div>
+                  ) : (
+                    filteredConversations.map((conversation) => {
+                      const isActive = conversation.id === currentConversationId;
+                      return (
+                        <div
+                          key={conversation.id}
+                          className={`nav-item group relative flex items-center justify-between ${
+                            isActive ? 'active' : ''
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void loadConversation(conversation.id);
+                              setHistoryOpen(false);
+                            }}
+                            className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus:outline-none"
+                          >
+                            <MessageSquare className="nav-icon shrink-0" />
+                            <span className="truncate pr-2">{conversation.title || 'Untitled chat'}</span>
+                          </button>
+
+                          {/* Delete Chat Button (triggers confirm popup) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({
+                                id: conversation.id,
+                                title: conversation.title || 'Untitled chat',
+                              });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/20 text-[var(--text-secondary)] hover:text-red-400 focus:outline-none"
+                            title="Delete chat"
+                            aria-label={`Delete chat ${conversation.title}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Confirmation Modal: "Are you sure?" Popup */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-md rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-2xl"
+            >
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <div className="flex items-center gap-3.5 mb-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-400 border border-red-500/20">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--text-primary)]">Delete Chat?</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">This action cannot be undone.</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
+                Are you sure you want to delete <strong className="text-[var(--text-primary)] font-medium">&quot;{deleteTarget.title}&quot;</strong>?
+              </p>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteConfirm()}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/90 hover:bg-red-500 text-white transition-colors shadow-lg shadow-red-500/20"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 export default function ChatPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex-1 flex items-center justify-center bg-[var(--bg-main-alt)]">
-          <Loader2 className="w-7 h-7 animate-spin text-[var(--text-secondary)]" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--text-secondary)]" /></div>}>
       <ChatContent />
     </Suspense>
   );
 }
-
-
