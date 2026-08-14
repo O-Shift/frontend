@@ -22,8 +22,9 @@ import { useAgentChat } from '@/hooks/use-agent-chat';
 import AgentProgress from '@/components/chat/AgentProgress';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import type { ChatContextItem, ChatContextKind } from '@/lib/utils/chat-context';
-import { apiFetch, fetchCampaigns, fetchOpportunities, type Campaign } from '@/lib/api';
+import { apiFetch, fetchCompany, fetchCampaigns, fetchOpportunities, type Campaign } from '@/lib/api';
 import { logoUrl } from '@/lib/logos';
+import MentionPicker, { type MentionEntity } from '@/components/chat/MentionPicker';
 
 interface CompetitorRecord {
   id: string;
@@ -200,6 +201,9 @@ export default function PromptField({
   const [attachedContext, setAttachedContext] = useState<ChatContextItem[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState('');
+  const [activeEntityId, setActiveEntityId] = useState<string | null>(null);
+  const [entities, setEntities] = useState<MentionEntity[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [availableContextItems, setAvailableContextItems] = useState<ChatContextItem[]>([]);
   const [contextLoaded, setContextLoaded] = useState(false);
   const [contextLoading, setContextLoading] = useState(false);
@@ -312,72 +316,146 @@ export default function PromptField({
     setContextLoading(true);
 
     try {
-      const [competitors, campaigns, opportunities, partnerships] = await Promise.all([
+      const [companyRes, competitors, campaigns, opportunities, partnerships] = await Promise.all([
+        fetchCompany(),
         apiFetch<CompetitorRecord[]>('/competitors'),
         fetchCampaigns({ limit: 100 }),
         fetchOpportunities({ limit: 100 }),
         apiFetch<PartnershipResponse>('/graph/partnerships'),
       ]);
 
-      const competitorMap = new Map<string, string>();
-      const next: ChatContextItem[] = [];
+      // 1. Resolve user's own company
+      let selfCompany: { id: string; name: string; website?: string | null } | null = null;
+      if (companyRes.ok && companyRes.data?.name) {
+        selfCompany = companyRes.data;
+      }
+
+      // Helper to check if a competitor row in DB is actually the user's company
+      const normalizeStr = (s?: string | null) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const extractDomain = (url?: string | null) => {
+        if (!url) return '';
+        try {
+          const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+          return parsed.hostname.replace(/^www\./, '').toLowerCase();
+        } catch {
+          return url.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+        }
+      };
+
+      const selfNameNorm = normalizeStr(selfCompany?.name);
+      const selfDomain = extractDomain(selfCompany?.website || selfCompany?.name);
+
+      const isSelfCompetitor = (comp: { id: string; name: string; website?: string; domain?: string }) => {
+        if (!selfCompany) return false;
+        if (comp.id === selfCompany.id) return true;
+        const cNameNorm = normalizeStr(comp.name);
+        if (selfNameNorm && cNameNorm && (selfNameNorm === cNameNorm || cNameNorm.includes(selfNameNorm) || selfNameNorm.includes(cNameNorm))) {
+          return true;
+        }
+        const cDomain = extractDomain(comp.website || comp.domain);
+        if (selfDomain && cDomain && (selfDomain === cDomain || cDomain.includes(selfDomain) || selfDomain.includes(cDomain))) {
+          return true;
+        }
+        return false;
+      };
+
+      // 2. Identify all IDs that belong to the self company (including duplicate competitor rows)
+      const selfIds = new Set<string>();
+      if (selfCompany?.id) selfIds.add(selfCompany.id);
+
+      const competitorMap = new Map<string, { id: string; name: string; website?: string }>();
+      const validCompetitors: CompetitorRecord[] = [];
 
       if (competitors.ok && Array.isArray(competitors.data)) {
         for (const comp of competitors.data) {
-          if (comp.id && (comp.website || comp.domain)) {
-            competitorMap.set(comp.id, comp.website || comp.domain || '');
+          if (!comp.id) continue;
+          if (isSelfCompetitor(comp)) {
+            selfIds.add(comp.id);
+          } else {
+            competitorMap.set(comp.id, comp);
+            validCompetitors.push(comp);
           }
         }
-        next.push(
-          ...competitors.data.map((item) => ({
-            id: item.id,
-            kind: 'competitor' as const,
-            label: item.name,
-            subtitle: item.website || item.domain,
-            logo: logoUrl(item.website || item.domain || item.name) ?? undefined,
-          }))
-        );
       }
+
+      // 3. Group campaigns: if competitor_id belongs to selfIds or has no competitor_id -> selfCampaigns
+      const campaignsByCompetitor = new Map<string, ChatContextItem[]>();
+      const selfCampaigns: ChatContextItem[] = [];
 
       if (campaigns.ok && Array.isArray(campaigns.data)) {
-        next.push(
-          ...campaigns.data.map((item: Campaign) => {
-            const compWebsite = item.competitor_id ? competitorMap.get(item.competitor_id) : undefined;
-            return {
-              id: item.id,
-              kind: 'campaign' as const,
-              label: item.title,
-              subtitle: item.description || 'Detected campaign',
-              logo: (compWebsite ? logoUrl(compWebsite) : undefined) ?? undefined,
-            };
-          })
-        );
+        for (const item of campaigns.data) {
+          const comp = item.competitor_id ? competitorMap.get(item.competitor_id) : undefined;
+          const compWebsite = comp?.website;
+          const campaignItem: ChatContextItem = {
+            id: item.id,
+            kind: 'campaign',
+            label: item.title,
+            subtitle: item.description || 'Detected campaign',
+            logo: (compWebsite ? logoUrl(compWebsite) : undefined) ?? undefined,
+          };
+
+          if (item.competitor_id && selfIds.has(item.competitor_id)) {
+            selfCampaigns.push(campaignItem);
+          } else if (item.competitor_id && competitorMap.has(item.competitor_id)) {
+            const existing = campaignsByCompetitor.get(item.competitor_id) || [];
+            existing.push(campaignItem);
+            campaignsByCompetitor.set(item.competitor_id, existing);
+          } else {
+            selfCampaigns.push(campaignItem);
+          }
+        }
       }
 
+      // 4. Opportunities belong strictly to SELF / Your Company
+      const selfOpportunities: ChatContextItem[] = [];
       if (opportunities.ok && opportunities.data?.items) {
-        next.push(
-          ...opportunities.data.items.map((item) => ({
+        for (const item of opportunities.data.items) {
+          selfOpportunities.push({
             id: item.id,
-            kind: 'opportunity' as const,
+            kind: 'opportunity',
             label: item.title,
             subtitle: `${item.impact} impact · ${(item.status || '').replaceAll('_', ' ')}`,
-          }))
-        );
+          });
+        }
       }
 
-      if (partnerships.ok && partnerships.data?.nodes) {
-        next.push(
-          ...partnerships.data.nodes.map((item) => ({
-            id: item.id,
-            kind: 'partnership' as const,
-            label: item.name,
-            subtitle: (item.entity_type || '').replaceAll('_', ' '),
-            logo: logoUrl(item.name) ?? undefined,
-          }))
-        );
+      // 5. Self Entity (Your Company)
+      let selfEntity: MentionEntity | null = null;
+      if (selfCompany) {
+        const compWebsite = selfCompany.website || undefined;
+        selfEntity = {
+          id: selfCompany.id || 'self',
+          name: selfCompany.name,
+          kind: 'self',
+          typeLabel: 'Your Company',
+          logo: (compWebsite ? logoUrl(compWebsite) : undefined) || (selfCompany.name ? logoUrl(selfCompany.name) : undefined) || undefined,
+          campaigns: selfCampaigns,
+          opportunities: selfOpportunities,
+          partnerships: [],
+        };
       }
 
-      setAvailableContextItems(next);
+      // 6. Competitor Entities (Competitors show ONLY their campaigns)
+      const competitorEntities: MentionEntity[] = [];
+      for (const comp of validCompetitors) {
+        const compCampaigns = campaignsByCompetitor.get(comp.id) || [];
+        competitorEntities.push({
+          id: comp.id,
+          name: comp.name,
+          kind: 'competitor',
+          typeLabel: 'Competitor',
+          logo: logoUrl(comp.website || comp.name) ?? undefined,
+          campaigns: compCampaigns,
+          opportunities: [], // Competitors do NOT show opportunities
+          partnerships: [],
+        });
+      }
+
+      setEntities(selfEntity ? [selfEntity, ...competitorEntities] : competitorEntities);
+      setAvailableContextItems([
+        ...(selfEntity ? [{ id: selfEntity.id, kind: 'competitor' as const, label: selfEntity.name, subtitle: 'Your Company', logo: selfEntity.logo }] : []),
+        ...competitorEntities.map((c) => ({ id: c.id, kind: 'competitor' as const, label: c.name, subtitle: 'Competitor', logo: c.logo })),
+      ]);
       setContextLoaded(true);
     } catch {
       // ignore fetch errors for picker
@@ -433,15 +511,6 @@ export default function PromptField({
     },
     [inputVal, isStreaming, attachedContext, onSubmit, sendMessage, setCommandActive]
   );
-
-  const selectedKeys = useMemo(() => new Set(attachedContext.map(contextKey)), [attachedContext]);
-  const filteredContextList = useMemo(() => {
-    const normal = pickerQuery.trim().toLowerCase();
-    return availableContextItems
-      .filter((item) => !selectedKeys.has(contextKey(item)))
-      .filter((item) => !normal || `${item.label} ${item.subtitle ?? ''} ${item.kind}`.toLowerCase().includes(normal))
-      .slice(0, 16);
-  }, [availableContextItems, pickerQuery, selectedKeys]);
 
   // Context-aware dynamic suggestions
   const activeEntityName = attachedContext.length > 0 ? attachedContext[0].label : null;
@@ -681,60 +750,22 @@ export default function PromptField({
         {/* Context Picker Popover Modal */}
         <AnimatePresence>
           {pickerOpen && (
-            <motion.div
-              ref={pickerRef}
-              initial={{ opacity: 0, y: 10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute bottom-[calc(100%+12px)] left-0 z-50 w-full overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[color:var(--dropdown-bg)] shadow-2xl shadow-black/40 backdrop-blur-xl"
-            >
-              <div className="flex items-center gap-2 border-b border-[var(--border-color)] px-4 py-3">
-                <Search className="h-4 w-4 text-[var(--text-secondary)] shrink-0" />
-                <input
-                  autoFocus
-                  value={pickerQuery}
-                  onChange={(event) => setPickerQuery(event.target.value)}
-                  placeholder="Search workspace context to attach…"
-                  className="min-w-0 flex-1 bg-transparent text-xs md:text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
-                />
-                <span className="rounded-md border border-[var(--border-color)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)]">
-                  ESC
-                </span>
-              </div>
-              <div className="max-h-64 overflow-y-auto p-2 space-y-1">
-                {contextLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-6 text-xs text-[var(--text-secondary)]">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
-                    <span>Loading workspace context…</span>
-                  </div>
-                ) : filteredContextList.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-[var(--text-secondary)]">
-                    No matching context found.
-                  </div>
-                ) : (
-                  filteredContextList.map((item) => (
-                    <button
-                      key={contextKey(item)}
-                      type="button"
-                      onClick={() => handleSelectContextItem(item)}
-                      className="group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left hover:bg-[var(--item-hover)] transition-colors"
-                    >
-                      <ContextItemLogo item={item} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs md:text-sm font-medium text-[var(--text-primary)]">
-                          {item.label}
-                        </span>
-                        <span className="block truncate text-[10.5px] capitalize text-[var(--text-secondary)]">
-                          {kindMeta[item.kind]?.label.slice(0, -1) || item.kind}
-                          {item.subtitle ? ` · ${item.subtitle}` : ''}
-                        </span>
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-            </motion.div>
+            <MentionPicker
+              isOpen={pickerOpen}
+              onClose={() => {
+                setPickerOpen(false);
+                setActiveEntityId(null);
+              }}
+              onSelect={handleSelectContextItem}
+              query={pickerQuery}
+              onQueryChange={setPickerQuery}
+              selectedIndex={selectedIndex}
+              onSelectedIndexChange={setSelectedIndex}
+              entities={entities}
+              loading={contextLoading}
+              activeEntityId={activeEntityId}
+              onActiveEntityIdChange={setActiveEntityId}
+            />
           )}
         </AnimatePresence>
 
