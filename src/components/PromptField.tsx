@@ -218,8 +218,12 @@ export default function PromptField({
           return [...prev, item];
         });
       }
+    } else {
+      if (messages.length === 0) {
+        setAttachedContext([]);
+      }
     }
-  }, [selectedNode]);
+  }, [selectedNode, messages.length]);
 
   // Sync isThinking and isStreaming state to body class and parent callback
   useEffect(() => {
