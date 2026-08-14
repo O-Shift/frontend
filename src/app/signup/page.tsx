@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import AuthRightPanel from '@/components/AuthRightPanel';
+import { EVENTS, track } from '@/lib/analytics';
 import { signInWithGoogle } from '@/lib/api';
 import { createClient } from '@/utils/supabase/client';
 
@@ -40,10 +41,12 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
     setCheckEmail(false);
+    track(EVENTS.SIGNUP_SUBMITTED, { method: 'password', job_role: jobRole });
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
       setLoading(false);
+      track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: 'password_too_short' });
       return;
     }
 
@@ -68,8 +71,10 @@ export default function SignupPage() {
       const msg = signUpError.message.toLowerCase();
       if (msg.includes('already registered') || msg.includes('already exists')) {
         setError('An account with this email already exists. Log in instead.');
+        track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: 'email_already_registered' });
       } else {
         setError(signUpError.message);
+        track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: signUpError.message });
       }
       return;
     }
@@ -77,25 +82,38 @@ export default function SignupPage() {
     // Duplicate signup: Supabase may return 200 with no error but zero identities.
     if (data.user && (data.user.identities?.length ?? 0) === 0) {
       setError('An account with this email already exists. Log in instead.');
+      track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: 'email_already_registered' });
       return;
     }
 
     if (data.session) {
+      track(EVENTS.SIGNUP_SUCCEEDED, {
+        method: 'password',
+        job_role: jobRole,
+        email_confirmation_required: false,
+      });
       router.push('/onboarding');
       router.refresh();
       return;
     }
 
+    track(EVENTS.SIGNUP_SUCCEEDED, {
+      method: 'password',
+      job_role: jobRole,
+      email_confirmation_required: true,
+    });
     setCheckEmail(true);
   };
 
   const handleGoogleSignup = async () => {
     setOauthLoading(true);
     setError(null);
+    track(EVENTS.SIGNUP_SUBMITTED, { method: 'google' });
     const { error: oauthError } = await signInWithGoogle('/workspaces');
     setOauthLoading(false);
     if (oauthError) {
       setError(oauthError.message);
+      track(EVENTS.SIGNUP_FAILED, { method: 'google', reason: oauthError.message });
     }
   };
 

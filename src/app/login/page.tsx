@@ -7,6 +7,7 @@ import { Suspense, useState } from 'react';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import AuthRightPanel from '@/components/AuthRightPanel';
+import { EVENTS, track } from '@/lib/analytics';
 import { signInWithGoogle } from '@/lib/api';
 import { createClient } from '@/utils/supabase/client';
 
@@ -27,6 +28,7 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    track(EVENTS.LOGIN_SUBMITTED, { method: 'password' });
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
@@ -35,8 +37,10 @@ function LoginForm() {
     setLoading(false);
     if (signInError) {
       setError(signInError.message);
+      track(EVENTS.LOGIN_FAILED, { method: 'password', reason: signInError.message });
       return;
     }
+    track(EVENTS.LOGIN_SUCCEEDED, { method: 'password', destination: afterLogin });
     router.push(afterLogin);
     router.refresh();
   };
@@ -44,10 +48,12 @@ function LoginForm() {
   const handleGoogleLogin = async () => {
     setOauthLoading(true);
     setError(null);
+    track(EVENTS.LOGIN_SUBMITTED, { method: 'google' });
     const { error: oauthError } = await signInWithGoogle(afterLogin);
     setOauthLoading(false);
     if (oauthError) {
       setError(oauthError.message);
+      track(EVENTS.LOGIN_FAILED, { method: 'google', reason: oauthError.message });
     }
   };
 

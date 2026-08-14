@@ -127,7 +127,7 @@ export default function OpportunitiesPage() {
       setOpportunitiesList(mapped);
       setSlideIndex(0);
     } else {
-      setError(res.error || 'Failed to fetch opportunities from database.');
+      setError(!res.ok ? res.error : 'Failed to fetch opportunities from database.');
     }
     setLoading(false);
   };

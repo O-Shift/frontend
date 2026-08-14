@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { EVENTS, setWorkspaceContext, track } from '@/lib/analytics';
 import { apiFetch } from '@/lib/api';
 import { createClient } from '@/utils/supabase/client';
 
@@ -32,8 +33,11 @@ export default function WorkspacesPage() {
       setWorkspaces([]);
     } else {
       setWorkspaces(res.data);
+      track(EVENTS.WORKSPACES_LOADED, { count: res.data.length });
       if (res.data.length === 1) {
         sessionStorage.setItem('oshift.workspace_id', res.data[0].id);
+        setWorkspaceContext(res.data[0].id);
+        track(EVENTS.WORKSPACE_SELECTED, { workspace_id: res.data[0].id, automatic: true });
         router.replace('/');
       }
     }
@@ -46,6 +50,8 @@ export default function WorkspacesPage() {
 
   const selectWorkspace = (id: string) => {
     sessionStorage.setItem('oshift.workspace_id', id);
+    setWorkspaceContext(id);
+    track(EVENTS.WORKSPACE_SELECTED, { workspace_id: id, automatic: false });
     router.push('/');
   };
 
@@ -62,13 +68,22 @@ export default function WorkspacesPage() {
     setCreating(false);
     if (!res.ok) {
       setError(res.error);
+      track(EVENTS.WORKSPACE_CREATE_FAILED, { reason: res.error, status: res.status });
       return;
     }
     sessionStorage.setItem('oshift.workspace_id', res.data.id);
+    setWorkspaceContext(res.data.id);
+    track(EVENTS.WORKSPACE_CREATED, {
+      workspace_id: res.data.id,
+      is_first_workspace: workspaces.length === 0,
+    });
     router.push('/onboarding');
   };
 
   const signOut = async () => {
+    // Captured before signOut so the event still belongs to the identified
+    // person; the auth listener resets the PostHog identity right after.
+    track(EVENTS.LOGGED_OUT, { source: 'workspaces' });
     const supabase = createClient();
     await supabase.auth.signOut();
     sessionStorage.removeItem('oshift.workspace_id');

@@ -4,6 +4,7 @@ import "./globals.css";
 import "./light-overrides.css";
 import "./profile.css";
 import AppShell from "@/components/AppShell";
+import AnalyticsIdentity from "@/components/AnalyticsIdentity";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const poppins = Poppins({
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} font-sans`}>
+        <AnalyticsIdentity />
         <ThemeProvider>
           <AppShell>{children}</AppShell>
         </ThemeProvider>
