@@ -48,6 +48,9 @@ function readStoredWorkspaceId(): string | null {
 export function setActiveWorkspaceId(id: string): void {
   if (typeof window !== "undefined") {
     sessionStorage.setItem(WORKSPACE_STORAGE_KEY, id);
+    window.dispatchEvent(
+      new CustomEvent("oshift:workspace-changed", { detail: { workspaceId: id } }),
+    );
   }
 }
 
@@ -66,6 +69,9 @@ export function clearActiveWorkspaceId(): void {
   inFlightWorkspaceId = null;
   if (typeof window !== "undefined") {
     sessionStorage.removeItem(WORKSPACE_STORAGE_KEY);
+    window.dispatchEvent(
+      new CustomEvent("oshift:workspace-changed", { detail: { workspaceId: null } }),
+    );
   }
 }
 

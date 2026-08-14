@@ -1,5 +1,6 @@
 'use client';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import {
     addWatchlistItem,
     createWatchlist,
@@ -80,72 +81,95 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     // POST has resolved and populated `watchlistId`.
     const creating = useRef<Promise<string | null> | null>(null);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        const load = async () => {
-            // resolveWorkspaceId rather than a bare sessionStorage read: this
-            // provider is the first thing that fires on a cold tab, so on a
-            // storage miss it used to give up and show an empty sidebar even
-            // for a single-workspace user the resolver could have identified.
-            const workspaceId = await resolveWorkspaceId();
-            if (cancelled) return;
-            if (!workspaceId) {
-                // Also runs on /login and /workspaces, where no workspace is
-                // chosen yet. Nothing to load and nothing has failed.
-                setLoading(false);
-                return;
-            }
-
-            const listRes = await fetchWatchlists();
-            if (cancelled) return;
-            if (!listRes.ok) {
-                setError(listRes.error);
-                setLoading(false);
-                return;
-            }
-
-            // A workspace can own several watchlists but the sidebar shows one
-            // pinned set, so the oldest (the API orders by created_at) is treated
-            // as the default.
-            const list = listRes.data?.[0] ?? null;
-            if (!list) {
-                // [] is the normal first-run state. No watchlist is created here:
-                // a GET must not write, and doing so would give every workspace a
-                // row it never asked for. pin() creates one lazily instead.
-                setLoading(false);
-                return;
-            }
-
-            setWatchlistId(list.id);
-
-            const detailRes = await fetchWatchlist(list.id);
-            if (cancelled) return;
-            if (!detailRes.ok) {
-                setError(detailRes.error);
-                setLoading(false);
-                return;
-            }
-
-            setPinned((detailRes.data?.items ?? []).map(toPinned));
+    const loadWatchlist = useCallback(async () => {
+        const workspaceId = await resolveWorkspaceId();
+        if (!workspaceId) {
             setLoading(false);
-        };
+            return;
+        }
 
-        void load();
-        return () => {
-            cancelled = true;
-        };
+        const listRes = await fetchWatchlists();
+        if (!listRes.ok) {
+            // Unauthenticated state on cold-start is normal before login / session init;
+            // do not display a fatal banner unless an explicit action failed.
+            if (listRes.status !== 401 && listRes.error !== 'Not signed in') {
+                setError(listRes.error);
+            }
+            setLoading(false);
+            return;
+        }
+
+        setError(null);
+        const list = listRes.data?.[0] ?? null;
+        if (!list) {
+            setPinned([]);
+            setWatchlistId(null);
+            setLoading(false);
+            return;
+        }
+
+        setWatchlistId(list.id);
+
+        const detailRes = await fetchWatchlist(list.id);
+        if (!detailRes.ok) {
+            if (detailRes.status !== 401 && detailRes.error !== 'Not signed in') {
+                setError(detailRes.error);
+            }
+            setLoading(false);
+            return;
+        }
+
+        setPinned((detailRes.data?.items ?? []).map(toPinned));
+        setLoading(false);
     }, []);
 
-    /** Resolves the default watchlist id, creating the row on first use. */
+    useEffect(() => {
+        void loadWatchlist();
+
+        const supabase = createClient();
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((event: string, session: { access_token?: string } | null) => {
+            if (event === 'SIGNED_OUT') {
+                setPinned([]);
+                setWatchlistId(null);
+                setError(null);
+                setLoading(false);
+            } else if (session?.access_token) {
+                void loadWatchlist();
+            }
+        });
+
+        const handleWorkspaceChange = () => {
+            void loadWatchlist();
+        };
+
+        window.addEventListener('oshift:workspace-changed', handleWorkspaceChange);
+        window.addEventListener('storage', handleWorkspaceChange);
+
+        return () => {
+            subscription.unsubscribe();
+            window.removeEventListener('oshift:workspace-changed', handleWorkspaceChange);
+            window.removeEventListener('storage', handleWorkspaceChange);
+        };
+    }, [loadWatchlist]);
+
+    /** Resolves the default watchlist id, finding or creating the row on first use. */
     const ensureWatchlist = useCallback(async (): Promise<string | null> => {
         if (watchlistId) return watchlistId;
         if (!creating.current) {
             creating.current = (async () => {
+                // First verify if a watchlist already exists in the backend
+                const listRes = await fetchWatchlists();
+                if (listRes.ok && listRes.data && listRes.data.length > 0) {
+                    const existingId = listRes.data[0].id;
+                    setWatchlistId(existingId);
+                    return existingId;
+                }
+
                 const res = await createWatchlist(DEFAULT_WATCHLIST_NAME);
                 if (!res.ok) {
                     setError(res.error);
-                    creating.current = null;
                     return null;
                 }
                 const id = res.data?.id ?? null;
@@ -153,7 +177,11 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
                 return id;
             })();
         }
-        return creating.current;
+        try {
+            return await creating.current;
+        } finally {
+            creating.current = null;
+        }
     }, [watchlistId]);
 
     const pin = useCallback(

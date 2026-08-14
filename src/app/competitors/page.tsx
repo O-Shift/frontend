@@ -324,7 +324,7 @@ export default function CompetitorsPage() {
             watchlist that failed to load would otherwise leave every pin control
             silently inert with no explanation. This is the only surface a read
             failure has; write failures additionally alert from handleTogglePin. */}
-        {pinnedError && (
+        {pinnedError && pinnedError !== 'Not signed in' && (
           <div className="card" style={{ padding: '16px 20px', background: 'transparent', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: 14, width: '100%', maxWidth: 1000, marginBottom: 32 }}>
             Pinned competitors: {pinnedError}
           </div>
