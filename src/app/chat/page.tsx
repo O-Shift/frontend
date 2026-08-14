@@ -28,6 +28,7 @@ import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import AgentProgress from '@/components/chat/AgentProgress';
 import ChatComposer from '@/components/chat/ChatComposer';
 import { parseMessageSegments, type ChatContextItem, type ChatContextKind } from '@/lib/utils/chat-context';
+import { CHAT_HERO_HEADLINES, getRandomHeroHeadline } from '@/lib/constants/chat-headlines';
 
 const quickPills = [
   { icon: Building2, label: 'Analyze Competitors', prompt: 'What changed across our competitors this week?' },
@@ -166,6 +167,11 @@ function ChatContent() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleteNotification, setDeleteNotification] = useState<string | null>(null);
+  const [heroHeadline, setHeroHeadline] = useState<string>(CHAT_HERO_HEADLINES[0]);
+
+  useEffect(() => {
+    setHeroHeadline(getRandomHeroHeadline(CHAT_HERO_HEADLINES));
+  }, []);
 
   const endRef = useRef<HTMLDivElement>(null);
   const autoSentQueryRef = useRef(false);
@@ -298,7 +304,7 @@ function ChatContent() {
                 className="chat-empty"
               >
                 <div>
-                  <h2 className="chat-hero-title">Ready to explore your market?</h2>
+                  <h2 className="chat-hero-title">{heroHeadline}</h2>
                 </div>
 
                 {/* Quick action pills directly ABOVE the chat box (no emojis, crisp outline icons) */}
