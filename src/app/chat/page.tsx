@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -27,7 +27,7 @@ import { useAgentChat, deriveTitle } from '@/hooks/use-agent-chat';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import AgentProgress from '@/components/chat/AgentProgress';
 import ChatComposer from '@/components/chat/ChatComposer';
-import type { ChatContextItem, ChatContextKind } from '@/lib/utils/chat-context';
+import { parseMessageSegments, type ChatContextItem, type ChatContextKind } from '@/lib/utils/chat-context';
 
 const quickPills = [
   { icon: Building2, label: 'Analyze Competitors', prompt: 'What changed across our competitors this week?' },
@@ -71,6 +71,70 @@ function MessageContext({ items }: { items: ChatContextItem[] }) {
       {items.map((item) => (
         <MessageContextItem key={`${item.kind}:${item.id}`} item={item} />
       ))}
+    </div>
+  );
+}
+
+
+function InlineMentionBadge({ item, raw }: { item?: ChatContextItem; raw: string }) {
+  const [imgErr, setImgErr] = useState(false);
+  const Icon = item ? (contextIcons[item.kind] || Sparkles) : Sparkles;
+  const label = item ? item.label : raw.replace(/^@/, '');
+
+  return (
+    <span className="chat-inline-mention-badge" title={item?.subtitle || label}>
+      <span className="badge-icon">
+        {item?.logo && !imgErr ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.logo}
+            alt=""
+            onError={() => setImgErr(true)}
+            loading="lazy"
+          />
+        ) : (
+          <Icon className="h-3 w-3 text-[var(--accent)]" />
+        )}
+      </span>
+      <span className="badge-label">@{label}</span>
+    </span>
+  );
+}
+
+function UserChatMessageContent({
+  content,
+  context,
+}: {
+  content: string;
+  context: ChatContextItem[];
+}) {
+  const segments = useMemo(() => parseMessageSegments(content, context), [content, context]);
+
+  const mentionedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const seg of segments) {
+      if (seg.type === 'mention' && seg.item) {
+        ids.add(`${seg.item.kind}:${seg.item.id}`);
+      }
+    }
+    return ids;
+  }, [segments]);
+
+  const unmentionedContext = useMemo(() => {
+    return context.filter((c) => !mentionedIds.has(`${c.kind}:${c.id}`));
+  }, [context, mentionedIds]);
+
+  return (
+    <div>
+      {unmentionedContext.length > 0 && <MessageContext items={unmentionedContext} />}
+      <p className="whitespace-pre-wrap leading-relaxed">
+        {segments.map((seg, idx) => {
+          if (seg.type === 'text') {
+            return <span key={idx}>{seg.text}</span>;
+          }
+          return <InlineMentionBadge key={idx} item={seg.item} raw={seg.raw} />;
+        })}
+      </p>
     </div>
   );
 }
@@ -252,7 +316,7 @@ function ChatContent() {
                   ))}
                 </div>
 
-                <div className="w-full max-w-3xl">{composer}</div>
+                <div className="w-full max-w-3xl text-left">{composer}</div>
               </motion.div>
             </div>
           ) : (
@@ -297,8 +361,6 @@ function ChatContent() {
                                   : `chat-assistant-copy ${message.isQuestion ? 'question' : ''}`
                               }
                             >
-                              <MessageContext items={message.context ?? []} />
-
                               {/* Seamless agent activity BEFORE response */}
                               {!isUser && (messageSteps.length > 0 || (isLiveTurn && (isThinking || !!activeTool))) && (
                                 <AgentProgress
@@ -311,9 +373,12 @@ function ChatContent() {
                               )}
 
                               {isUser ? (
-                                <p className="whitespace-pre-wrap">{message.content}</p>
+                                <UserChatMessageContent content={message.content} context={message.context ?? []} />
                               ) : message.content ? (
-                                <ChatMarkdown content={message.content} streaming={message.isStreaming} />
+                                <>
+                                  <MessageContext items={message.context ?? []} />
+                                  <ChatMarkdown content={message.content} streaming={message.isStreaming} />
+                                </>
                               ) : null}
 
                               {message.isQuestion && (
