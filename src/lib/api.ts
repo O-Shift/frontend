@@ -1,5 +1,13 @@
 import { createClient } from "@/utils/supabase/client";
 import { getApiBaseUrl } from "@/lib/auth/constants";
+import type {
+  VideoAsset,
+  VideoCollectRequest,
+  VideoCollectResult,
+  VideoDownloadRequest,
+  VideoDownloadResponse,
+  VideoLookupResponse,
+} from "@/types/entities";
 
 export async function getAccessToken(): Promise<string | null> {
   const supabase = createClient();
@@ -836,4 +844,46 @@ export async function getSenseReviews(id: string) {
 
 export async function getCompetitorCampaigns(id: string) {
   return apiFetch(`/campaigns?owner_type=competitor&competitor_id=${id}`);
+}
+
+// ─── Video Intelligence & Viral Analysis ───────────────────────────────────
+
+export async function getVideoAssets(competitorId?: string): Promise<ApiResult<VideoAsset[]>> {
+  const query = competitorId ? `?competitor_id=${encodeURIComponent(competitorId)}` : "";
+  return apiFetch<VideoAsset[]>(`/video/assets${query}`);
+}
+
+export async function getVideoAsset(id: string): Promise<ApiResult<VideoAsset>> {
+  return apiFetch<VideoAsset>(`/video/assets/${id}`);
+}
+
+export async function lookupVideo(videoUrl: string): Promise<ApiResult<VideoLookupResponse>> {
+  const query = `?video_url=${encodeURIComponent(videoUrl)}`;
+  return apiFetch<VideoLookupResponse>(`/video/lookup${query}`);
+}
+
+export async function collectVideo(body: VideoCollectRequest): Promise<ApiResult<VideoCollectResult>> {
+  return apiFetch<VideoCollectResult>("/video/collect", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function downloadVideo(body: VideoDownloadRequest): Promise<ApiResult<VideoDownloadResponse>> {
+  return apiFetch<VideoDownloadResponse>("/video/download", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function analyzeVideoPath(body: {
+  competitor_id?: string | null;
+  file_path?: string;
+  video_url?: string;
+  api_key?: string;
+}): Promise<ApiResult<VideoCollectResult>> {
+  return apiFetch<VideoCollectResult>("/video/analyze-path", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }

@@ -215,3 +215,122 @@ export interface CollectOneResponse {
   posts_new: number;
   posts_skipped: number;
 }
+
+// ---------------------------------------------------------------------------
+// Video & Viral Analysis Types
+// ---------------------------------------------------------------------------
+
+export interface KeyMoment {
+  timestamp_sec: number;
+  description: string;
+}
+
+export interface VideoMetadata {
+  brand_or_company_name?: string;
+  country_or_region: string;
+  language_and_dialect: string;
+  genre: string;
+  visible_creator_type: string;
+}
+
+export interface HookAnalysis {
+  hook_strength_explanation: string;
+  hook_types: string[];
+  understandable_without_sound: boolean;
+  hook_dependencies: string[];
+}
+
+export interface AttentionPattern {
+  scene_changes_and_pacing: string;
+  visual_novelty: string;
+  text_overlays: string;
+  audio_changes: string;
+  emotional_peaks: string[];
+  retention_risks: string[];
+}
+
+export interface EmotionalReactionPrediction {
+  primary_emotions: string[];
+}
+
+export interface CulturalRegionalSignals {
+  local_references: string[];
+  humor_style: string;
+  social_norms_observed: string;
+  egyptian_arab_meme_references: string[];
+  travels_outside_local_audience: boolean;
+}
+
+export interface FinalScores {
+  hook_score: number;
+  retention_score: number;
+  emotional_intensity_score: number;
+  shareability_score: number;
+  cultural_specificity_score: number;
+  cross_market_potential_score: number;
+  overall_viral_pattern_similarity_score: number;
+}
+
+export interface VideoAnalysis {
+  format: 'mp4' | 'mov' | 'webm' | 'unknown' | string;
+  duration_seconds: number;
+  hook: string;
+  cta: string;
+  key_moments: KeyMoment[];
+  summary: string;
+  video_metadata?: VideoMetadata | null;
+  hook_analysis?: HookAnalysis | null;
+  attention_pattern?: AttentionPattern | null;
+  emotional_reaction_prediction?: EmotionalReactionPrediction | null;
+  cultural_regional_signals?: CulturalRegionalSignals | null;
+  viral_formula_tags?: string[];
+  final_scores_out_of_100?: FinalScores | null;
+}
+
+export interface VideoAsset {
+  id: string;
+  workspace_id: string;
+  competitor_id?: string | null;
+  url: string;
+  title?: string | null;
+  duration_s?: number | null;
+  platform?: string | null;
+  captured_at: string;
+  analysis?: VideoAnalysis | null;
+  cost_usd?: number | null;
+  analyzed_at?: string | null;
+  competitor_name?: string | null;
+}
+
+export interface VideoCollectRequest {
+  competitor_id?: string | null;
+  video_url: string;
+  api_key?: string | null;
+  force_refresh?: boolean;
+}
+
+export interface VideoLookupResponse {
+  exists: boolean;
+  asset: VideoAsset | null;
+  message?: string | null;
+}
+
+export interface VideoCollectResult {
+  asset_id: string;
+  status: 'ok' | 'cached' | 'failed' | string;
+  analysis?: VideoAnalysis | null;
+  cost_usd?: number | null;
+  error?: string | null;
+}
+
+export interface VideoDownloadRequest {
+  video_url: string;
+}
+
+export interface VideoDownloadResponse {
+  video_url: string;
+  local_path: string;
+  title: string;
+  duration_s: number;
+  platform: string;
+}

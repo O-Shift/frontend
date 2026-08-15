@@ -114,6 +114,13 @@ export default function Sidebar() {
                         </svg>
                         Campaigns
                     </Link>
+                    <Link href="/videos" className={`nav-item ${pathname === '/videos' ? 'active' : ''}`}>
+                        <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m22 8-6 4 6 4V8Z" />
+                            <rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
+                        </svg>
+                        Videos
+                    </Link>
 
                     <div className="flex flex-col">
                         <div

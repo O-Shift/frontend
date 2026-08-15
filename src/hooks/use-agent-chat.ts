@@ -249,12 +249,12 @@ export function useAgentChat(initialConversationId?: string | null) {
       abortControllerRef.current = controller;
 
       try {
-        // Direct zero-latency SSE connection to Dahl stream
+        const isRealUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetConvId || '');
         const stream = sseStream(
           '/agent/chat',
           {
             content: serializeChatMessage(trimmed, context),
-            ...(isNewChat ? {} : { conversation_id: targetConvId }),
+            ...(isRealUuid ? { conversation_id: targetConvId } : {}),
           },
           controller.signal
         );
