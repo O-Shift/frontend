@@ -9,7 +9,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Three exclusions, each for its own reason:
+    // Four exclusions, each for its own reason:
     //
     // `_next` as a whole, not just `_next/static|image`: the dev HMR socket
     // lives at `_next/webpack-hmr`, and running it through updateSession
@@ -21,7 +21,11 @@ export const config = {
     // discarded, since `/api/*` is a public path as far as this file is
     // concerned. That latency landed in front of every data fetch in the app.
     //
+    // `ingest`: the PostHog reverse proxy (see next.config.ts). It has to be
+    // excluded or the auth check redirects anonymous capture requests to
+    // /login, which silently loses events while PostHog still looks connected.
+    //
     // Static image extensions: nothing here needs a session.
-    "/((?!_next/|api/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/|api/|ingest|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

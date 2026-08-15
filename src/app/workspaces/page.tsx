@@ -10,6 +10,7 @@ import {
   setActiveWorkspaceId,
   clearActiveWorkspaceId,
 } from '@/lib/api';
+import { EVENTS, setWorkspaceContext, track } from '@/lib/analytics';
 import { createClient } from '@/utils/supabase/client';
 
 type Workspace = {
@@ -129,11 +130,14 @@ export default function WorkspacesPage() {
       }
 
       setWorkspaces(res.data);
+      track(EVENTS.WORKSPACES_LOADED, { count: res.data.length });
       // One workspace means there is nothing to choose. Skip the page rather
       // than asking a question with a single answer — this also matches the
       // backend, which auto-resolves a lone membership in require_role.
       if (res.data.length === 1) {
         setActiveWorkspaceId(res.data[0].id);
+        setWorkspaceContext(res.data[0].id);
+        track(EVENTS.WORKSPACE_SELECTED, { workspace_id: res.data[0].id, automatic: true });
         router.replace('/');
         return;
       }
@@ -155,6 +159,8 @@ export default function WorkspacesPage() {
     if (entering) return;
     setEntering(id);
     setActiveWorkspaceId(id);
+    setWorkspaceContext(id);
+    track(EVENTS.WORKSPACE_SELECTED, { workspace_id: id, automatic: false });
     router.push('/');
   };
 
@@ -172,13 +178,22 @@ export default function WorkspacesPage() {
     setCreating(false);
     if (!res.ok) {
       setError(res.error);
+      track(EVENTS.WORKSPACE_CREATE_FAILED, { reason: res.error, status: res.status });
       return;
     }
     setActiveWorkspaceId(res.data.id);
+    setWorkspaceContext(res.data.id);
+    track(EVENTS.WORKSPACE_CREATED, {
+      workspace_id: res.data.id,
+      is_first_workspace: workspaces.length === 0,
+    });
     router.push('/onboarding');
   };
 
   const signOut = async () => {
+    // Captured before signOut so the event still belongs to the identified
+    // person; the auth listener resets the PostHog identity right after.
+    track(EVENTS.LOGGED_OUT, { source: 'workspaces' });
     const supabase = createClient();
     await supabase.auth.signOut();
     clearActiveWorkspaceId();

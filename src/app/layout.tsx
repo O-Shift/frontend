@@ -4,6 +4,7 @@ import "./globals.css";
 import "./light-overrides.css";
 import "./profile.css";
 import AppShell from "@/components/AppShell";
+import AnalyticsIdentity from "@/components/AnalyticsIdentity";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PinnedProvider } from "@/context/PinnedContext";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
+        <AnalyticsIdentity />
         <ThemeProvider>
           <PinnedProvider>
             <AppShell>{children}</AppShell>

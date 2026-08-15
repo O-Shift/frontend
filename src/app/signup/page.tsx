@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiBriefcase, FiChevronDown, FiAlertCircle } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import AuthRightPanel from '@/components/AuthRightPanel';
+import { EVENTS, track } from '@/lib/analytics';
 import { signInWithGoogle } from '@/lib/api';
 import { createClient } from '@/utils/supabase/client';
 
@@ -44,6 +45,7 @@ export default function SignupPage() {
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
         
+        const finalRole = selectedRole === 'Other' ? customRole.trim() : selectedRole;
         const newErrors: { [key: string]: string } = {};
         
         if (!name.trim()) newErrors.name = 'Full name is required';
@@ -60,17 +62,17 @@ export default function SignupPage() {
         
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
+            track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: password.length < 8 && password.length > 0 ? 'password_too_short' : 'validation_error' });
             return;
         }
 
         setLoading(true);
         setErrors({});
         setCheckEmail(false);
+        track(EVENTS.SIGNUP_SUBMITTED, { method: 'password', job_role: finalRole });
 
         const supabase = createClient();
         const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/onboarding')}`;
-
-        const finalRole = selectedRole === 'Other' ? customRole.trim() : selectedRole;
 
         const { data, error: signUpError } = await supabase.auth.signUp({
             email: email.trim(),
@@ -90,8 +92,10 @@ export default function SignupPage() {
             const msg = signUpError.message.toLowerCase();
             if (msg.includes('already registered') || msg.includes('already exists')) {
                 setErrors({ general: 'An account with this email already exists. Log in instead.' });
+                track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: 'email_already_registered' });
             } else {
                 setErrors({ general: signUpError.message });
+                track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: signUpError.message });
             }
             return;
         }
@@ -99,25 +103,38 @@ export default function SignupPage() {
         // Duplicate signup: Supabase may return 200 with no error but zero identities.
         if (data.user && (data.user.identities?.length ?? 0) === 0) {
             setErrors({ general: 'An account with this email already exists. Log in instead.' });
+            track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: 'email_already_registered' });
             return;
         }
 
         if (data.session) {
+            track(EVENTS.SIGNUP_SUCCEEDED, {
+                method: 'password',
+                job_role: finalRole,
+                email_confirmation_required: false,
+            });
             router.push('/onboarding');
             router.refresh();
             return;
         }
 
+        track(EVENTS.SIGNUP_SUCCEEDED, {
+            method: 'password',
+            job_role: finalRole,
+            email_confirmation_required: true,
+        });
         setCheckEmail(true);
     };
 
     const handleGoogleSignup = async () => {
         setOauthLoading(true);
         setErrors({});
+        track(EVENTS.SIGNUP_SUBMITTED, { method: 'google' });
         const { error: oauthError } = await signInWithGoogle('/workspaces');
         setOauthLoading(false);
         if (oauthError) {
             setErrors({ general: oauthError.message });
+            track(EVENTS.SIGNUP_FAILED, { method: 'google', reason: oauthError.message });
         }
     };
     

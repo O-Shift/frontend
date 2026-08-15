@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { useTheme } from '@/components/ThemeProvider';
+import { EVENTS, track } from '@/lib/analytics';
 import { createClient } from '@/utils/supabase/client';
 import { useSettings } from '@/hooks/use-settings';
 
@@ -52,6 +53,9 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     setLoggingOut(true);
+    // Captured before signOut so the event still belongs to the identified
+    // person; the auth listener resets the PostHog identity right after.
+    track(EVENTS.LOGGED_OUT, { source: 'settings' });
     const supabase = createClient();
     await supabase.auth.signOut();
     sessionStorage.removeItem('oshift.workspace_id');

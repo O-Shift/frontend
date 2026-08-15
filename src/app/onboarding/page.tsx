@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiChevronLeft, FiChevronRight, FiSearch, FiX, FiCheck, FiUploadCloud, FiMessageSquare } from 'react-icons/fi';
+import { EVENTS, track } from '@/lib/analytics';
 import { upsertCompany, createCompetitorsBatch } from '@/lib/api';
 import './onboarding.css';
 
@@ -14,6 +15,24 @@ type BusinessProfile = {
     segments: string, valueProps: string, channels: string, relationships: string,
     revenue: string, resources: string, activities: string, partners: string, costs: string
 };
+
+// Readable funnel labels: a bare step number tells you nothing in a PostHog
+// breakdown, and the name keeps its meaning if the steps are ever reordered.
+const STEP_NAMES: Record<number, string> = {
+    1: 'mission',
+    2: 'company',
+    3: 'competitors',
+    4: 'signals',
+    5: 'business_profile',
+    6: 'sources',
+    7: 'review'
+};
+
+const stepProps = (step: number, extra?: Record<string, unknown>) => ({
+    step,
+    step_name: STEP_NAMES[step],
+    ...extra
+});
 
 /** Strip a bare domain down to its host. Returns '' when there is nothing usable. */
 const toHost = (input: string): string => {
@@ -70,14 +89,38 @@ export default function IntelligenceBriefing() {
     const [method, setMethod] = useState<'choice' | 'pdf' | 'interview' | 'review'>('choice');
     const [qIndex, setQIndex] = useState(0);
 
-    // Step 7 is the end of the road: leaving it goes through `activate`, so
-    // there is no path out of the wizard that skips the save.
-    const nextStep = () => {
+    // Which path produced the business profile. Held in a ref because `method`
+    // is overwritten with 'review' once either path finishes, losing the answer.
+    const profileMethod = useRef<'document' | 'interview' | null>(null);
+
+    const hasTrackedStart = useRef(false);
+    useEffect(() => {
+        // Guarded because StrictMode re-runs effects in development, which would
+        // otherwise double-count every entry into the funnel.
+        if (hasTrackedStart.current) return;
+        hasTrackedStart.current = true;
+        track(EVENTS.ONBOARDING_STARTED);
+    }, []);
+
+    const viewedStep = useRef<number | null>(null);
+    useEffect(() => {
+        if (viewedStep.current === step) return;
+        viewedStep.current = step;
+        track(EVENTS.ONBOARDING_STEP_VIEWED, stepProps(step));
+    }, [step]);
+
+    // Each call site passes its own step's context. Never wire this straight to
+    // onClick — React would hand it the click event as the payload.
+    const nextStep = (completed?: Record<string, unknown>) => {
+        track(EVENTS.ONBOARDING_STEP_COMPLETED, stepProps(step, completed));
         if (step < 7) setStep(step + 1);
     };
 
     const prevStep = () => {
-        if (step > 1) setStep(step - 1);
+        // Returns early so the event only fires on a move that actually happens.
+        if (step <= 1) return;
+        track(EVENTS.ONBOARDING_STEP_BACK, stepProps(step));
+        setStep(step - 1);
     };
 
     const simulateProcessing = async (labels: string[], callback: () => void, keepProcessingState = false) => {
@@ -106,6 +149,19 @@ export default function IntelligenceBriefing() {
         setSaveError(null);
         setSkipped([]);
         setIsProcessing(true);
+
+        // Captured on submit so a user who completes onboarding counts even if
+        // backend requests are running.
+        track(EVENTS.ONBOARDING_COMPLETED, {
+            mission,
+            industry: company.industry,
+            stage: company.stage,
+            competitor_count: competitors.length,
+            signal_count: signals.keywords.length + signals.categories.length + signals.trends.length,
+            platform_count: sources.platforms.length,
+            frequency: sources.frequency,
+            profile_method: profileMethod.current,
+        });
 
         setProcessLabel('Saving your company profile...');
         const companyRes = await upsertCompany({
@@ -183,7 +239,7 @@ export default function IntelligenceBriefing() {
 
             <div className="ob-footer">
                 <div />
-                <button className="ob-btn-primary" onClick={nextStep} disabled={!mission} style={{ opacity: mission ? 1 : 0.5 }}>
+                <button className="ob-btn-primary" onClick={() => nextStep({ mission })} disabled={!mission} style={{ opacity: mission ? 1 : 0.5 }}>
                     Build my intelligence workspace <FiChevronRight />
                 </button>
             </div>
@@ -255,7 +311,12 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
-                    <button className="ob-btn-primary" onClick={nextStep} disabled={!company.name || !host} style={{ opacity: company.name && host ? 1 : 0.5 }}>
+                    <button className="ob-btn-primary" onClick={() => nextStep({
+                        has_website: Boolean(company.website),
+                        industry: company.industry,
+                        market: company.market,
+                        stage: company.stage
+                    })} disabled={!company.name || !host} style={{ opacity: company.name && host ? 1 : 0.5 }}>
                         Continue to competitors <FiChevronRight />
                     </button>
                 </div>
@@ -351,7 +412,7 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
-                    <button className="ob-btn-primary" onClick={nextStep}>
+                    <button className="ob-btn-primary" onClick={() => nextStep({ competitor_count: competitors.length })}>
                         Define what matters <FiChevronRight />
                     </button>
                 </div>
@@ -418,7 +479,11 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
-                    <button className="ob-btn-primary" onClick={nextStep}>
+                    <button className="ob-btn-primary" onClick={() => nextStep({
+                        keyword_count: signals.keywords.length,
+                        category_count: signals.categories.length,
+                        trend_count: signals.trends.length
+                    })}>
                         Add business context <FiChevronRight />
                     </button>
                 </div>
@@ -459,7 +524,7 @@ export default function IntelligenceBriefing() {
 
                     <div className="ob-footer" style={{ marginTop: 24 }}>
                         <button className="ob-btn-text" onClick={() => setMethod('choice')}>Edit later</button>
-                        <button className="ob-btn-primary" onClick={nextStep}>Continue <FiChevronRight /></button>
+                        <button className="ob-btn-primary" onClick={() => nextStep({ profile_method: profileMethod.current, skipped: false })}>Continue <FiChevronRight /></button>
                     </div>
                 </div>
             );
@@ -501,6 +566,8 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-cards-grid">
                     <div className="ob-card" onClick={() => {
+                        profileMethod.current = 'document';
+                        track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
                         simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
                     }}>
                         <FiUploadCloud size={32} color="#ff7043" style={{ marginBottom: 12 }} />
@@ -508,7 +575,11 @@ export default function IntelligenceBriefing() {
                         <div className="ob-card-desc">Upload an existing Business Model Canvas, company profile, strategy document, pitch deck, or business plan.</div>
                         <div style={{ marginTop: 16, fontSize: 13, color: '#ff9800', fontWeight: 600 }}>Click to simulate upload</div>
                     </div>
-                    <div className="ob-card" onClick={() => setMethod('interview')}>
+                    <div className="ob-card" onClick={() => {
+                        profileMethod.current = 'interview';
+                        track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'interview' }));
+                        setMethod('interview');
+                    }}>
                         <div style={{ position: 'absolute', top: -12, right: 20, background: '#4CAF50', color: '#fff', fontSize: 11, padding: '4px 12px', borderRadius: 12, fontWeight: 700 }}>RECOMMENDED</div>
                         <FiMessageSquare size={32} color="#ff7043" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Let Oshift interview you</div>
@@ -518,7 +589,7 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
-                    <button className="ob-btn-text" onClick={nextStep}>Skip for now</button>
+                    <button className="ob-btn-text" onClick={() => nextStep({ profile_method: null, skipped: true })}>Skip for now</button>
                 </div>
             </div>
         );
@@ -569,7 +640,11 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-footer">
                     <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
-                    <button className="ob-btn-primary" onClick={nextStep}>
+                    <button className="ob-btn-primary" onClick={() => nextStep({
+                        platform_count: sources.platforms.length,
+                        platforms: sources.platforms,
+                        frequency: sources.frequency
+                    })}>
                         Review my setup <FiChevronRight />
                     </button>
                 </div>
