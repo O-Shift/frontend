@@ -8,7 +8,7 @@ import { FcGoogle } from 'react-icons/fc';
 import { FaMicrosoft, FaApple } from 'react-icons/fa';
 import AuthRightPanel from '@/components/AuthRightPanel';
 import { EVENTS, track } from '@/lib/analytics';
-import { signInWithGoogle } from '@/lib/api';
+import { clearActiveWorkspaceId, signInWithGoogle } from '@/lib/api';
 import { createClient } from '@/utils/supabase/client';
 
 function LoginForm() {
@@ -22,7 +22,10 @@ function LoginForm() {
     const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
 
     const from = searchParams.get('from');
-    const afterLogin = from && from.startsWith('/') ? from : '/workspaces';
+    const requestedPath = from && from.startsWith('/') && !from.startsWith('//')
+        ? from
+        : '/';
+    const afterLogin = `/workspaces?next=${encodeURIComponent(requestedPath)}`;
 
     const handleLogin = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -60,14 +63,16 @@ function LoginForm() {
             track(EVENTS.LOGIN_FAILED, { method: 'password', reason: signInError.message });
             return;
         }
+        clearActiveWorkspaceId();
         track(EVENTS.LOGIN_SUCCEEDED, { method: 'password', destination: afterLogin });
-        router.push(afterLogin);
+        router.replace(afterLogin);
         router.refresh();
     };
 
     const handleGoogleLogin = async () => {
         setOauthLoading(true);
         setErrors({});
+        clearActiveWorkspaceId();
         track(EVENTS.LOGIN_SUBMITTED, { method: 'google' });
         const { error: oauthError } = await signInWithGoogle(afterLogin);
         setOauthLoading(false);

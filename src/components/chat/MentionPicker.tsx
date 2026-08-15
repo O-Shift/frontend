@@ -25,6 +25,7 @@ export interface MentionEntity {
   logo?: string;
   typeLabel: string;
   campaigns: ChatContextItem[];
+  insightCount: number;
   opportunities: ChatContextItem[];
   partnerships: ChatContextItem[];
 }
@@ -42,6 +43,14 @@ export interface PartnershipResponse {
 
 export function contextKey(item: ChatContextItem): string {
   return `${item.kind}:${item.id}`;
+}
+
+function hasDrillDownContext(entity: MentionEntity): boolean {
+  return (
+    entity.campaigns.length > 0 ||
+    entity.opportunities.length > 0 ||
+    entity.partnerships.length > 0
+  );
 }
 
 export function EntityLogo({
@@ -250,6 +259,7 @@ export default function MentionPicker({
   const handleDrillDown = useCallback(
     (entity: MentionEntity, e?: React.MouseEvent) => {
       if (e) e.stopPropagation();
+      if (!hasDrillDownContext(entity)) return;
       onActiveEntityIdChange(entity.id);
       onQueryChange('');
       onSelectedIndexChange(0);
@@ -313,7 +323,7 @@ export default function MentionPicker({
       if (e.key === 'ArrowRight') {
         e.preventDefault();
         const target = filteredEntities[selectedIndex];
-        if (target) {
+        if (target && hasDrillDownContext(target)) {
           handleDrillDown(target);
         }
         return;
@@ -490,22 +500,21 @@ export default function MentionPicker({
             <div className="space-y-1">
               {filteredEntities.map((entity, idx) => {
                 const isSelected = idx === selectedIndex;
+                const hasContext = hasDrillDownContext(entity);
 
-                const metaSubtitle =
-                  entity.kind === 'self'
-                    ? [
-                        entity.campaigns.length > 0
-                          ? `${entity.campaigns.length} ${entity.campaigns.length === 1 ? 'campaign' : 'campaigns'}`
-                          : null,
-                        entity.opportunities.length > 0
-                          ? `${entity.opportunities.length} ${entity.opportunities.length === 1 ? 'opportunity' : 'opportunities'}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')
-                    : entity.campaigns.length > 0
-                      ? `${entity.campaigns.length} ${entity.campaigns.length === 1 ? 'campaign' : 'campaigns'}`
-                      : null;
+                const metaSubtitle = [
+                  entity.campaigns.length > 0
+                    ? `${entity.campaigns.length} ${entity.campaigns.length === 1 ? 'campaign' : 'campaigns'}`
+                    : null,
+                  entity.insightCount > 0
+                    ? `${entity.insightCount} ${entity.insightCount === 1 ? 'insight' : 'insights'}`
+                    : null,
+                  entity.kind === 'self' && entity.opportunities.length > 0
+                    ? `${entity.opportunities.length} ${entity.opportunities.length === 1 ? 'opportunity' : 'opportunities'}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
 
                 return (
                   <div
@@ -546,15 +555,17 @@ export default function MentionPicker({
 
                     {/* Drill-down Chevron Button */}
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      <button
-                        type="button"
-                        title={`Explore ${entity.name} campaigns (or press →)`}
-                        aria-label={`Explore ${entity.name}`}
-                        onClick={(e) => handleDrillDown(entity, e)}
-                        className="mention-picker-drill-btn"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
+                      {hasContext && (
+                        <button
+                          type="button"
+                          title={`Explore ${entity.name} context (or press →)`}
+                          aria-label={`Explore ${entity.name} context`}
+                          onClick={(e) => handleDrillDown(entity, e)}
+                          className="mention-picker-drill-btn"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -579,8 +590,7 @@ export default function MentionPicker({
         ) : (
           <>
             <span>
-              Press <kbd className="font-semibold text-white/70">→</kbd> to explore
-              campaigns
+              <kbd className="font-semibold text-white/70">→</kbd> Explore available context
             </span>
             <span>
               <kbd className="font-semibold text-white/70">↵</kbd> Mention
