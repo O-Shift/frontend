@@ -164,10 +164,32 @@ export async function apiFetch<T>(
       }
     }
     if (!res.ok) {
-      const errMsg =
-        data && typeof data === "object" && "detail" in data
-          ? String((data as { detail: unknown }).detail)
-          : res.statusText;
+      let errMsg = res.statusText;
+      if (data && typeof data === "object") {
+        if ("detail" in data) {
+          const detail = (data as { detail: unknown }).detail;
+          if (typeof detail === "string") {
+            errMsg = detail;
+          } else if (Array.isArray(detail)) {
+            errMsg = detail
+              .map((d: any) => {
+                if (typeof d === "string") return d;
+                if (d && typeof d === "object" && d.msg) {
+                  const loc = Array.isArray(d.loc)
+                    ? d.loc.filter((l: any) => l !== "body").join(".")
+                    : "";
+                  return loc ? `${loc}: ${d.msg}` : d.msg;
+                }
+                return JSON.stringify(d);
+              })
+              .join("; ");
+          } else {
+            errMsg = JSON.stringify(detail);
+          }
+        } else if ("error" in data && typeof (data as { error: unknown }).error === "string") {
+          errMsg = (data as { error: string }).error;
+        }
+      }
       return { ok: false, error: errMsg, status: res.status };
     }
     return { ok: true, data: data as T, status: res.status };

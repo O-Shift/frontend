@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
+import Skeleton from '@/components/Skeleton';
 import { apiFetch } from '@/lib/api';
 import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
@@ -338,21 +339,31 @@ export default function CompetitorsPage() {
             width: '100%',
             maxWidth: 1000
           }}>
-            {[1, 2, 3, 4].map((n) => (
+            {[1, 2, 3, 4, 5, 6].map((n) => (
               <div
                 key={n}
-                className="card"
                 style={{
-                  height: '320px',
-                  borderRadius: '24px',
-                  animation: 'pulse 1.5s infinite ease-in-out',
+                  height: 320,
+                  borderRadius: 24,
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border-color)',
+                  padding: 24,
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  boxShadow: '0 20px 40px var(--shadow-color)',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(255,255,255,0.1)' }} />
-                <div style={{ height: 24, width: '70%', background: 'rgba(255,255,255,0.1)', borderRadius: 8 }} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Skeleton variant="circle" size={28} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Skeleton variant="card" width={56} height={56} style={{ borderRadius: 16 }} />
+                  <Skeleton variant="line" width="75%" height={20} />
+                  <Skeleton variant="line-sm" width="50%" />
+                </div>
               </div>
             ))}
           </div>

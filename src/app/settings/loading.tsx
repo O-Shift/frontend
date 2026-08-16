@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import SettingsSkeleton from '@/components/skeletons/SettingsSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="rows" />;
+    return <SettingsSkeleton />;
 }

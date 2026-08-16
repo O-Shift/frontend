@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import SocialAccountsSkeleton from '@/components/skeletons/SocialAccountsSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="rows" />;
+    return <SocialAccountsSkeleton />;
 }

@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import ExportsSkeleton from '@/components/skeletons/ExportsSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="rows" />;
+    return <ExportsSkeleton />;
 }

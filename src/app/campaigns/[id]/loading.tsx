@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import CampaignDeckSkeleton from '@/components/skeletons/CampaignDeckSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="detail" showHeader={false} />;
+    return <CampaignDeckSkeleton />;
 }

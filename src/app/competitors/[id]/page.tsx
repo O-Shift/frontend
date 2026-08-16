@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import CompetitorDetailSkeleton from '@/components/skeletons/CompetitorDetailSkeleton';
 import { ZINC_PALETTE } from '@/components/charts/palette';
 import PromptField from '@/components/PromptField';
 import {
@@ -253,14 +253,7 @@ function CompetitorDetailPageContent() {
   const [logoUrl, setLogoUrl] = useState(`https://logo.clearbit.com/${domain}`);
 
   if (loading) {
-    // Continues the shell competitors/[id]/loading.tsx already drew, so the
-    // route transition and the fetch read as one wait instead of a skeleton
-    // that blinks out into centered text.
-    return (
-      <div className="main-content">
-        <PageSkeleton variant="detail" showHeader={false} />
-      </div>
-    );
+    return <CompetitorDetailSkeleton />;
   }
 
   if (error || !competitor) {

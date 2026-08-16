@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import CampaignsSkeleton from '@/components/skeletons/CampaignsSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="grid" />;
+    return <CampaignsSkeleton />;
 }
