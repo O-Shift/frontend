@@ -8,7 +8,7 @@ import {
   Square,
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import { apiFetch, fetchCompany, fetchCampaigns, fetchOpportunities, type Campaign } from '@/lib/api';
+import { apiFetch, fetchCompany, fetchCampaigns, fetchGaps, fetchOpportunities, type Campaign } from '@/lib/api';
 import { logoUrl } from '@/lib/logos';
 import {
   parseMessageSegments,
@@ -113,10 +113,11 @@ export default function ChatComposer({
     if (loaded || loading) return;
     setLoading(true);
     try {
-      const [companyRes, competitors, campaigns, opportunities, partnerships] = await Promise.all([
+      const [companyRes, competitors, campaigns, gaps, opportunities, partnerships] = await Promise.all([
         fetchCompany(),
         apiFetch<CompetitorRecord[]>('/competitors'),
         fetchCampaigns({ limit: 100 }),
+        fetchGaps({ limit: 200 }),
         fetchOpportunities({ limit: 100 }),
         apiFetch<PartnershipResponse>('/graph/partnerships'),
       ]);
@@ -177,7 +178,18 @@ export default function ChatComposer({
 
       // 3. Group campaigns: if competitor_id belongs to selfIds or has no competitor_id -> selfCampaigns
       const campaignsByCompetitor = new Map<string, ChatContextItem[]>();
+      const insightCountByCompetitor = new Map<string, number>();
       const selfCampaigns: ChatContextItem[] = [];
+
+      if (gaps.ok && Array.isArray(gaps.data)) {
+        for (const gap of gaps.data) {
+          if (!gap.competitor_id) continue;
+          insightCountByCompetitor.set(
+            gap.competitor_id,
+            (insightCountByCompetitor.get(gap.competitor_id) || 0) + 1
+          );
+        }
+      }
 
       if (campaigns.ok && Array.isArray(campaigns.data)) {
         for (const item of campaigns.data) {
@@ -227,6 +239,10 @@ export default function ChatComposer({
           typeLabel: 'Your Company',
           logo: (compWebsite ? logoUrl(compWebsite) : undefined) || (selfCompany.name ? logoUrl(selfCompany.name) : undefined) || undefined,
           campaigns: selfCampaigns,
+          insightCount: [...selfIds].reduce(
+            (count, id) => count + (insightCountByCompetitor.get(id) || 0),
+            0
+          ),
           opportunities: selfOpportunities,
           partnerships: [],
         };
@@ -243,6 +259,7 @@ export default function ChatComposer({
           typeLabel: 'Competitor',
           logo: logoUrl(comp.website || comp.name) ?? undefined,
           campaigns: compCampaigns,
+          insightCount: insightCountByCompetitor.get(comp.id) || 0,
           opportunities: [], // Competitors do NOT show opportunities
           partnerships: [],
         });

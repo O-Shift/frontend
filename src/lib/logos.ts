@@ -28,3 +28,34 @@ export function logoUrl(domain: string | null | undefined, size = 128): string |
     if (!host) return null;
     return `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${host}&size=${size}`;
 }
+
+/**
+ * A stable hue for a workspace, derived from its id.
+ * Pushed away from the 20–45° band so no sigil competes with the product's orange accent.
+ */
+export function sigilHue(id: string): number {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    }
+    const hue = hash % 300;
+    return hue >= 20 ? hue + 45 : hue;
+}
+
+export function sigilStyle(id: string): React.CSSProperties {
+    const h = sigilHue(id);
+    return {
+        background: `linear-gradient(145deg, hsl(${h} 62% 52%), hsl(${(h + 34) % 360} 58% 40%))`,
+    };
+}
+
+/** Up to two letters, skipping common noise words that pad workspace/company names. */
+export function sigilInitials(name: string): string {
+    const words = name
+        .trim()
+        .split(/[\s\-_]+/)
+        .filter((w) => w.length > 0 && !/^(the|a|an|of|and)$/i.test(w));
+    if (words.length === 0) return name.trim().slice(0, 2).toUpperCase() || '?';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+}

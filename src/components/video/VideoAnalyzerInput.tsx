@@ -50,15 +50,6 @@ export default function VideoAnalyzerInput({
   const [isCheckingExisting, setIsCheckingExisting] = useState(false);
 
   React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem('oshift_google_api_key');
-      if (saved) {
-        setCustomApiKey(saved);
-      }
-    } catch (_) {}
-  }, []);
-
-  React.useEffect(() => {
     if (
       error &&
       (error.toLowerCase().includes('google ai') ||
@@ -107,12 +98,6 @@ export default function VideoAnalyzerInput({
 
   const executeAnalysis = async (urlToAnalyze: string, forceRefresh: boolean) => {
     const keyToUse = customApiKey.trim() || undefined;
-    if (keyToUse) {
-      try {
-        localStorage.setItem('oshift_google_api_key', keyToUse);
-      } catch (_) {}
-    }
-
     const res = await onAnalyze(
       urlToAnalyze,
       undefined,

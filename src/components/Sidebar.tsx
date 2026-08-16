@@ -1,24 +1,119 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Check, ChevronsUpDown, LayoutGrid } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { usePinned } from '@/context/PinnedContext';
 import { useCurrentUser } from '@/hooks/use-current-user';
+import { apiFetch, fetchCompany, getActiveWorkspaceId, setActiveWorkspaceId, type Workspace } from '@/lib/api';
+import { EVENTS, setWorkspaceContext, track } from '@/lib/analytics';
+import { logoUrl, sigilStyle, sigilInitials } from '@/lib/logos';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const [competitorsExpanded, setCompetitorsExpanded] = useState(true);
     const pathname = usePathname();
+    const router = useRouter();
     const { theme, toggle } = useTheme();
     const { pinned } = usePinned();
     const { user, loading: userLoading } = useCurrentUser();
+    const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+    const [workspaceName, setWorkspaceName] = useState('Workspace');
+    const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+    const [companyName, setCompanyName] = useState<string | null>(null);
+    const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
+    const [logoLoadFailed, setLogoLoadFailed] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        let active = true;
+
+        const loadWorkspaceData = (wsId: string | null) => {
+            setWorkspaceId(wsId);
+            setLogoLoadFailed(false);
+            if (!wsId) return;
+
+            void Promise.all([
+                apiFetch<Workspace[]>('/core/workspaces', { skipWorkspace: true }),
+                fetchCompany(),
+            ]).then(([wsRes, compRes]) => {
+                if (!active) return;
+                if (wsRes.ok) {
+                    setWorkspaces(wsRes.data);
+                    const workspace = wsRes.data.find((item) => item.id === wsId);
+                    if (workspace) setWorkspaceName(workspace.name);
+                }
+                if (compRes.ok && compRes.data) {
+                    setCompanyName(compRes.data.name);
+                    const logo = compRes.data.website ? logoUrl(compRes.data.website) : null;
+                    setCompanyLogoUrl(logo);
+                } else {
+                    setCompanyName(null);
+                    setCompanyLogoUrl(null);
+                }
+            });
+        };
+
+        const initialWsId = getActiveWorkspaceId();
+        loadWorkspaceData(initialWsId);
+
+        const handleWorkspaceChange = () => {
+            const nextWsId = getActiveWorkspaceId();
+            loadWorkspaceData(nextWsId);
+        };
+
+        window.addEventListener('oshift:workspace-changed', handleWorkspaceChange);
+        return () => {
+            active = false;
+            window.removeEventListener('oshift:workspace-changed', handleWorkspaceChange);
+        };
+    }, []);
+
+    // Close dropdown on click outside or Escape key
+    useEffect(() => {
+        if (!dropdownOpen) return;
+
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setDropdownOpen(false);
+            }
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [dropdownOpen]);
+
+    const handleSelectWorkspace = (selected: Workspace) => {
+        setDropdownOpen(false);
+        if (selected.id === workspaceId) return;
+
+        setActiveWorkspaceId(selected.id);
+        setWorkspaceContext(selected.id);
+        track(EVENTS.WORKSPACE_SELECTED, { workspace_id: selected.id, automatic: false });
+        router.refresh();
+    };
 
     // The disclosure control is only meaningful when there is something to
     // disclose. With nothing pinned it used to render anyway and toggle an
     // empty list, so the chevron read as a broken menu.
     const hasPinned = pinned.length > 0;
     const showPinnedList = hasPinned && competitorsExpanded;
+
+    const displayName = workspaceName || 'Workspace';
+    const displayInitials = sigilInitials(companyName || displayName);
+    const hasValidLogo = Boolean(companyLogoUrl && !logoLoadFailed);
 
     return (
         <div className={`sidebar ${collapsed ? 'collapsed' : ''}`} id="appSidebar">
@@ -59,7 +154,12 @@ export default function Sidebar() {
                         )}
                     </button>
                     {/* Collapse toggle */}
-                    <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)}>
+                    <button
+                        className="collapse-btn"
+                        onClick={() => setCollapsed(!collapsed)}
+                        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                             <line x1="9" y1="3" x2="9" y2="21" />
@@ -69,6 +169,107 @@ export default function Sidebar() {
             </div>
 
             <div className="sidebar-scroll-area">
+                {/* Top Workspace Context Switcher Widget with Dropdown */}
+                <div className="workspace-switcher-wrapper" ref={dropdownRef}>
+                    <button
+                        type="button"
+                        className={`workspace-switcher ${dropdownOpen ? 'open' : ''}`}
+                        onClick={() => setDropdownOpen((prev) => !prev)}
+                        aria-expanded={dropdownOpen}
+                        aria-haspopup="menu"
+                        title={collapsed ? `Workspace: ${displayName}` : undefined}
+                    >
+                        <div className="workspace-switcher-visual" aria-hidden="true">
+                            {hasValidLogo ? (
+                                <img
+                                    src={companyLogoUrl!}
+                                    alt=""
+                                    className="workspace-switcher-logo"
+                                    onError={() => setLogoLoadFailed(true)}
+                                />
+                            ) : (
+                                <span
+                                    className="workspace-switcher-sigil"
+                                    style={workspaceId ? sigilStyle(workspaceId) : undefined}
+                                >
+                                    {displayInitials}
+                                </span>
+                            )}
+                        </div>
+                        <div className="workspace-switcher-copy">
+                            <span className="workspace-switcher-label">Workspace</span>
+                            <span className="workspace-switcher-name">{displayName}</span>
+                        </div>
+                        <ChevronsUpDown
+                            className={`workspace-switcher-chevron ${dropdownOpen ? 'rotate-180' : ''}`}
+                            size={15}
+                            aria-hidden="true"
+                        />
+                    </button>
+
+                    {dropdownOpen && (
+                        <div className="workspace-dropdown-menu" role="menu" aria-label="Select Workspace">
+                            <div className="workspace-dropdown-header">
+                                <span>Workspaces</span>
+                                <span className="workspace-dropdown-count">{workspaces.length}</span>
+                            </div>
+
+                            <div className="workspace-dropdown-list">
+                                {workspaces.length === 0 ? (
+                                    <div className="workspace-dropdown-empty">No workspaces found</div>
+                                ) : (
+                                    workspaces.map((ws) => {
+                                        const isCurrent = ws.id === workspaceId;
+                                        return (
+                                            <button
+                                                key={ws.id}
+                                                type="button"
+                                                className={`workspace-dropdown-item ${isCurrent ? 'active' : ''}`}
+                                                onClick={() => handleSelectWorkspace(ws)}
+                                                role="menuitem"
+                                            >
+                                                <div
+                                                    className="workspace-dropdown-item-sigil"
+                                                    style={sigilStyle(ws.id)}
+                                                    aria-hidden="true"
+                                                >
+                                                    {sigilInitials(ws.name)}
+                                                </div>
+                                                <div className="workspace-dropdown-item-info">
+                                                    <div className="workspace-dropdown-item-name">{ws.name}</div>
+                                                    {ws.plan && (
+                                                        <div className="workspace-dropdown-item-meta">
+                                                            <span className={`ws-plan-badge ${ws.plan.toLowerCase()}`}>
+                                                                {ws.plan}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {isCurrent && (
+                                                    <Check size={14} className="workspace-dropdown-check" aria-hidden="true" />
+                                                )}
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+
+                            <div className="workspace-dropdown-divider" />
+
+                            <div className="workspace-dropdown-actions">
+                                <Link
+                                    href={`/workspaces?next=${encodeURIComponent(pathname)}`}
+                                    className="workspace-dropdown-action-link"
+                                    onClick={() => setDropdownOpen(false)}
+                                >
+                                    <LayoutGrid size={13} aria-hidden="true" />
+                                    <span>Manage all workspaces</span>
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
 
                 <div className="nav-section">
                     <Link href="/" className={`nav-item ${pathname === '/' ? 'active' : ''}`}>

@@ -74,15 +74,24 @@ export function useVideos() {
 
       if (assetsRes.ok && Array.isArray(assetsRes.data)) {
         setAssets(assetsRes.data);
+      } else if (!assetsRes.ok) {
+        setAssets([]);
+        setError(assetsRes.error);
       } else {
         setAssets([]);
+        setError('Video library returned an invalid response');
       }
 
       if (compsRes.ok && Array.isArray(compsRes.data)) {
         setCompetitors(compsRes.data);
+      } else if (!compsRes.ok && !assetsRes.ok) {
+        setError(`${assetsRes.error}; ${compsRes.error}`);
+      } else if (!compsRes.ok) {
+        setError(compsRes.error);
       }
     } catch (err: unknown) {
       setAssets([]);
+      setError(err instanceof Error ? err.message : 'Failed to load video library');
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +159,7 @@ export function useVideos() {
           force_refresh: forceRefresh,
         });
 
-        if (res.ok && res.data) {
+        if (res.ok && res.data && res.data.status !== 'failed') {
           setAnalysisStage('complete');
           setAnalysisProgress('Analysis successfully completed and saved!');
 
@@ -166,7 +175,9 @@ export function useVideos() {
           return res.data;
         } else {
           setAnalysisStage('error');
-          const errMsg = res.ok ? 'Analysis failed' : res.error;
+          const errMsg = res.ok
+            ? res.data?.error || 'Analysis failed'
+            : res.error;
           setError(errMsg);
           setAnalysisProgress(`Failed: ${errMsg}`);
           return null;

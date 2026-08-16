@@ -10,6 +10,7 @@ import {
   setActiveWorkspaceId,
   clearActiveWorkspaceId,
 } from '@/lib/api';
+import { sigilStyle, sigilInitials } from '@/lib/logos';
 import { EVENTS, setWorkspaceContext, track } from '@/lib/analytics';
 import { createClient } from '@/utils/supabase/client';
 
@@ -22,42 +23,12 @@ type Workspace = {
   created_at: string;
 };
 
-/**
- * A stable hue for a workspace, derived from its id.
- *
- * Names repeat and are often placeholders, so the name is a poor identifier to
- * recognise a workspace by. The id never changes, so hashing it gives each
- * workspace a colour that is the same on every device and every session — which
- * is what makes the tile a recognition cue rather than decoration.
- *
- * The hue is pushed away from the 20–45° band so no sigil competes with the
- * product's orange accent, which on this page means "the thing you can act on".
- */
-function sigilHue(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  }
-  const hue = hash % 300;
-  return hue >= 20 ? hue + 45 : hue;
-}
-
-function sigilStyle(id: string): React.CSSProperties {
-  const h = sigilHue(id);
-  return {
-    background: `linear-gradient(145deg, hsl(${h} 62% 52%), hsl(${(h + 34) % 360} 58% 40%))`,
-  };
-}
-
-/** Up to two letters, skipping the noise words that pad workspace names. */
-function sigilInitials(name: string): string {
-  const words = name
-    .trim()
-    .split(/[\s\-_]+/)
-    .filter((w) => w.length > 0 && !/^(the|a|an|of|and)$/i.test(w));
-  if (words.length === 0) return name.trim().slice(0, 2).toUpperCase() || '?';
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+function destinationAfterSelection(): string {
+  if (typeof window === 'undefined') return '/';
+  const requested = new URLSearchParams(window.location.search).get('next');
+  if (!requested || !requested.startsWith('/') || requested.startsWith('//')) return '/';
+  if (requested === '/workspaces' || requested.startsWith('/workspaces?')) return '/';
+  return requested;
 }
 
 /** "today" / "yesterday" / "3 days ago" / "12 Mar 2026" — created_at is the
@@ -138,7 +109,7 @@ export default function WorkspacesPage() {
         setActiveWorkspaceId(res.data[0].id);
         setWorkspaceContext(res.data[0].id);
         track(EVENTS.WORKSPACE_SELECTED, { workspace_id: res.data[0].id, automatic: true });
-        router.replace('/');
+        router.replace(destinationAfterSelection());
         return;
       }
       setLoading(false);
@@ -161,7 +132,7 @@ export default function WorkspacesPage() {
     setActiveWorkspaceId(id);
     setWorkspaceContext(id);
     track(EVENTS.WORKSPACE_SELECTED, { workspace_id: id, automatic: false });
-    router.push('/');
+    router.replace(destinationAfterSelection());
   };
 
   const createWorkspace = async (e: React.FormEvent) => {
