@@ -467,6 +467,8 @@ export interface CampaignPost {
   platform: string;
   source: string;
   url: string;
+  thumbnail_url?: string | null;
+  media_urls?: string[];
   captured_at: string | null;
 }
 
@@ -485,7 +487,7 @@ export interface CampaignMetadata {
  * Despite the name, this is not a row of `campaigns.campaigns`: the clustering
  * engine writes campaigns into `insights.insights_gaps` with `layer='campaign'`,
  * and both campaign routes read from there (app/campaigns/router.py). These
- * eight fields are the whole contract â€” an earlier version of this interface
+ * eight fields are the whole contract — an earlier version of this interface
  * declared budget_usd, roi, status, cluster, platforms, themes and start/end
  * dates, none of which exist on the wire, so everything derived from them
  * rendered blank.
@@ -519,6 +521,24 @@ export function campaignPlatforms(campaign: Campaign): string[] {
     if (p) seen.add(p);
   }
   return [...seen];
+}
+
+/** Collects all non-empty thumbnail and media image URLs across the campaign's posts. */
+export function campaignThumbnails(campaign: Campaign): string[] {
+  const urls: string[] = [];
+  for (const post of campaign.posts ?? []) {
+    if (post.thumbnail_url?.trim()) {
+      urls.push(post.thumbnail_url.trim());
+    }
+    if (Array.isArray(post.media_urls)) {
+      for (const m of post.media_urls) {
+        if (m && typeof m === "string" && m.trim() && !urls.includes(m.trim())) {
+          urls.push(m.trim());
+        }
+      }
+    }
+  }
+  return urls;
 }
 
 /** `{start, end}` from metadata.date_range, tolerating the string form. */

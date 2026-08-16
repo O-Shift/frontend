@@ -38,6 +38,16 @@ function tileFill(seed: string): string {
   return `linear-gradient(150deg, ${tileTone(seed)} 0%, #0a0a0a 100%)`;
 }
 
+function postTileBg(post: CampaignPost, darkOverlay = true): string {
+  const imgUrl = post.thumbnail_url || (Array.isArray(post.media_urls) ? post.media_urls[0] : null);
+  const fallback = tileFill(post.id);
+  if (!imgUrl) return fallback;
+  if (darkOverlay) {
+    return `linear-gradient(to top, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.5) 50%, rgba(10,10,10,0.2) 100%), url('${imgUrl}'), ${fallback}`;
+  }
+  return `linear-gradient(to top, rgba(10,10,10,0.4) 0%, transparent 100%), url('${imgUrl}'), ${fallback}`;
+}
+
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
   const parsed = new Date(iso);
@@ -307,7 +317,9 @@ function Slide2({ campaign }: SlideProps) {
             boxShadow: '0 20px 45px rgba(0,0,0,0.4)',
             borderRadius: 8,
             overflow: 'hidden',
-            background: tileFill(item.post.id),
+            background: postTileBg(item.post),
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-end',
@@ -712,7 +724,9 @@ function Slide6({ campaign }: SlideProps) {
               overflow: 'hidden',
               borderRadius: 6,
               boxShadow: '0 15px 35px rgba(0,0,0,0.12)',
-              background: tileFill(post.id),
+              background: postTileBg(post),
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
               padding: 18,
               display: 'flex',
               flexDirection: 'column',

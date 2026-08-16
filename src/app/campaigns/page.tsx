@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import InfiniteCanvas, { InfiniteCanvasHandle } from '@/components/InfiniteCanvas';
 import PromptField from '@/components/PromptField';
-import { fetchCampaigns, campaignThemes, type Campaign, type CampaignPost } from '@/lib/api';
+import { fetchCampaigns, campaignThemes, campaignThumbnails, type Campaign, type CampaignPost } from '@/lib/api';
 
 // ─── Canvas regions ───────────────────────────────────────────────
 // Position and colour only. The names shown on the canvas come from the
@@ -55,12 +55,23 @@ function hashString(s: string): number {
 }
 
 /**
- * Campaigns carry no artwork, so each deck card is tinted from its own id.
+ * Derives a consistent HSL gradient for card layers when no image is available.
  * Same id, same colours on the server and in the browser.
  */
 function deckGradient(seed: string, layer: number): string {
   const h = (hashString(seed) + layer * 43) % 360;
   return `linear-gradient(145deg, hsl(${h} 42% 24%), hsl(${(h + 45) % 360} 48% 13%))`;
+}
+
+function deckCardBg(thumbnailUrl: string | undefined | null, seed: string, layer: number, darkOverlay = false): string {
+  const fallback = deckGradient(seed, layer);
+  if (!thumbnailUrl) {
+    return darkOverlay ? `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), ${fallback}` : fallback;
+  }
+  if (darkOverlay) {
+    return `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
+  }
+  return `linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
 }
 
 interface CampaignNode {
@@ -449,31 +460,39 @@ export default function CampaignsPage() {
                 onMouseLeave={() => setHoveredFolderId(null)}
               >
                 <div className="deck-wrapper skeleton-target" title={`${camp.title} — ${camp.clusterName}`} style={{ ['--cord-color' as any]: activeColor }}>
-                  <div className={`cards ${isSelected ? 'cards-hidden' : ''}`}>
-                    <div className="card card-left" style={{ backgroundImage: deckGradient(camp.id, 0) }}>
-                      <div
-                        className="floating-bubble"
-                        style={{ bottom: 45, left: -20 }}
-                        title={`${camp.confidence}% confidence this is one campaign`}
-                      >
-                        <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> {camp.confidence}%
-                      </div>
-                    </div>
+                  {(() => {
+                    const thumbs = campaignThumbnails(camp.campaign);
+                    const leftImg = thumbs[0];
+                    const rightImg = thumbs[1] || thumbs[0];
+                    const frontImg = thumbs[2] || thumbs[0];
+                    return (
+                      <div className={`cards ${isSelected ? 'cards-hidden' : ''}`}>
+                        <div className="card card-left" style={{ backgroundImage: deckCardBg(leftImg, camp.id, 0), backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                          <div
+                            className="floating-bubble"
+                            style={{ bottom: 45, left: -20 }}
+                            title={`${camp.confidence}% confidence this is one campaign`}
+                          >
+                            <span style={{ color: '#0095ff', fontSize: 16 }}>✨</span> {camp.confidence}%
+                          </div>
+                        </div>
 
-                    <div className="card card-right" style={{ backgroundImage: deckGradient(camp.id, 1) }}>
-                      <div
-                        className="floating-bubble"
-                        style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}
-                        title={`${postCount} captured post${postCount === 1 ? '' : 's'}`}
-                      >
-                        {postCount}
-                      </div>
-                    </div>
+                        <div className="card card-right" style={{ backgroundImage: deckCardBg(rightImg, camp.id, 1), backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                          <div
+                            className="floating-bubble"
+                            style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}
+                            title={`${postCount} captured post${postCount === 1 ? '' : 's'}`}
+                          >
+                            {postCount}
+                          </div>
+                        </div>
 
-                    <div className="card deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), ${deckGradient(camp.id, 2)}` }}>
-                      <div className="logo">{camp.title}</div>
-                    </div>
-                  </div>
+                        <div className="card deck-front" style={{ backgroundImage: deckCardBg(frontImg, camp.id, 2, true), backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                          <div className="logo">{camp.title}</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="cord-ring" />
                 </div>
               </div>
@@ -515,6 +534,7 @@ export default function CampaignsPage() {
                 const startY = -300;
                 const jx = (i % 3 === 0) ? -60 : (i % 3 === 1) ? 60 : 0;
                 const rot = (i % 5 - 2) * 15;
+                const postImg = post.thumbnail_url || (Array.isArray(post.media_urls) ? post.media_urls[0] : undefined);
 
                 return (
                   <div key={post.id} style={{
@@ -537,7 +557,9 @@ export default function CampaignsPage() {
                       style={{
                         width: 180, height: 180, borderRadius: 16,
                         border: '2px solid var(--border-color)',
-                        backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.75), transparent), ${deckGradient(post.id, 3)}`,
+                        backgroundImage: deckCardBg(postImg, post.id, 3, true),
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
                         transition: 'transform 0.3s',
                         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
                         padding: 14, boxSizing: 'border-box', overflow: 'hidden',

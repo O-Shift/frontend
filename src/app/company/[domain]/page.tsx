@@ -11,6 +11,7 @@ import { useCompany } from '@/hooks/use-company';
 import { logoUrl as companyLogoUrl } from '@/lib/logos';
 import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
+import { campaignThumbnails } from '@/lib/api';
 
 // recharts is 340 KB and the trend card is below the fold on this page. Loading
 // it on its own chunk keeps it off the route's initial download.
@@ -44,6 +45,28 @@ function getBrandColors(domain: string) {
     }
     const hue = Math.abs(hash % 360);
     return [`hsl(${hue}, 80%, 50%)`, `hsl(${(hue + 40) % 360}, 80%, 40%)`];
+}
+
+function hashString(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+}
+
+function deckGradient(seed: string, layer: number): string {
+    const h = (hashString(seed) + layer * 43) % 360;
+    return `linear-gradient(145deg, hsl(${h} 42% 24%), hsl(${(h + 45) % 360} 48% 13%))`;
+}
+
+function deckCardBg(thumbnailUrl: string | undefined | null, seed: string, layer: number, darkOverlay = false): string {
+    const fallback = deckGradient(seed, layer);
+    if (!thumbnailUrl) {
+        return darkOverlay ? `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), ${fallback}` : fallback;
+    }
+    if (darkOverlay) {
+        return `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
+    }
+    return `linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
 }
 
 const SampleBadge = ({ title }: { title: string }) => (
@@ -226,14 +249,14 @@ function CompanyPageContent() {
         stars: r.rating === null ? null : Math.round(r.rating),
     }));
 
-    const displayCampaigns = backendCampaigns.map((c, i) => ({
+    const displayCampaigns = backendCampaigns.map((c) => ({
         id: c.id,
         name: c.title,
         date: c.detected_at ? new Date(c.detected_at).toLocaleDateString() : "Active",
         metric: String(c.metadata?.metric ?? "N/A"),
         status: String(c.metadata?.status ?? "Active"),
         color: "#00A4EF",
-        imgs: c.posts.map(p => p.url).filter(Boolean).slice(0, 3)
+        imgs: campaignThumbnails(c),
     }));
 
 
@@ -514,15 +537,20 @@ function CompanyPageContent() {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         {displayCampaigns.length === 0 && <div className="text-sm text-[var(--text-secondary)] col-span-full">No campaigns found.</div>}
-                        {displayCampaigns.map((camp, i) => (
+                        {displayCampaigns.map((camp, i) => {
+                            const leftImg = camp.imgs[0];
+                            const rightImg = camp.imgs[1] || camp.imgs[0];
+                            const frontImg = camp.imgs[2] || camp.imgs[0];
+                            const cardSeed = camp.id || String(i);
+                            return (
                             <div key={camp.id || i} onDoubleClick={() => { if (camp.id) router.push(`/campaigns/${camp.id}`); }} title={camp.id ? undefined : 'Campaign id missing — cannot open this campaign'} className={`flex flex-col items-center p-3 bg-[var(--card-bg-alt)] border border-[var(--border-color)] rounded-lg hover:bg-[var(--item-hover)] transition-colors ${camp.id ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                                 <div className="scene mb-3 scale-90 origin-top">
                                     <div className="deck-wrapper" title={camp.name}>
                                         <div className="cards">
                                             {/* Simplified cards - NO floating bubbles */}
-                                            <div className="card card-left" style={{ backgroundImage: `url('${camp.imgs[0]}')` }}></div>
-                                            <div className="card card-right" style={{ backgroundImage: `url('${camp.imgs[1]}')` }}></div>
-                                            <div className="card deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), url('${camp.imgs[2]}')` }}>
+                                            <div className="card card-left" style={{ backgroundImage: deckCardBg(leftImg, cardSeed, 0), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                                            <div className="card card-right" style={{ backgroundImage: deckCardBg(rightImg, cardSeed, 1), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                                            <div className="card deck-front" style={{ backgroundImage: deckCardBg(frontImg, cardSeed, 2, true), backgroundSize: 'cover', backgroundPosition: 'center' }}>
                                                 <div className="logo text-[10px] font-bold uppercase tracking-wider text-zinc-200">{camp.name}</div>
                                             </div>
                                         </div>
@@ -538,7 +566,8 @@ function CompanyPageContent() {
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </motion.div>
 

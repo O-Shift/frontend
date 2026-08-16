@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
 import { TOKEN_PALETTE } from '@/components/charts/palette';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
-import { apiFetch, updateOpportunityStatus, campaignThemes, type Campaign, type SenseReview } from '@/lib/api';
+import { apiFetch, updateOpportunityStatus, campaignThemes, campaignThumbnails, type Campaign, type SenseReview } from '@/lib/api';
 import { extractDomain } from '@/lib/utils/domain';
 
 // recharts is 340 KB and the analytics panel it draws is the last thing on the
@@ -112,6 +112,16 @@ function hashString(s: string): number {
 function deckGradient(seed: string, layer: number): string {
     const h = (hashString(seed) + layer * 43) % 360;
     return `linear-gradient(145deg, hsl(${h} 42% 24%), hsl(${(h + 45) % 360} 48% 13%))`;
+}
+function deckCardBg(thumbnailUrl: string | undefined, seed: string, layer: number, darkOverlay = false): string {
+    const fallback = deckGradient(seed, layer);
+    if (!thumbnailUrl) {
+        return darkOverlay ? `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), ${fallback}` : fallback;
+    }
+    if (darkOverlay) {
+        return `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
+    }
+    return `linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
 }
 function campaignDate(c: Campaign): string {
     const dr = c.metadata?.date_range;
@@ -314,24 +324,32 @@ export default function DashboardPage() {
                                     <div className="w-full md:w-48 h-48 md:h-full flex items-center justify-center flex-shrink-0 relative overflow-visible mt-2">
                                         <div className="scene">
                                             <div className="deck-wrapper" style={{ transform: 'scale(0.65)' }}>
-                                                <div className="cards">
-                                                    <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
-                                                        <div className="card card-left" style={{ backgroundImage: deckGradient(activeCamp.id, 0) }}></div>
-                                                    </motion.div>
-                                                    <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
-                                                        <div className="card card-right" style={{ backgroundImage: deckGradient(activeCamp.id, 1) }}></div>
-                                                    </motion.div>
-                                                    <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-30">
-                                                        <div className="card card-center deck-front" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8), transparent), ${deckGradient(activeCamp.id, 2)}` }}>
-                                                            <div className="logo flex items-center gap-2 mt-auto text-[#e4e4e7]">
-                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={brandColor1} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-                                                                </svg>
-                                                                <span className="text-xs truncate">{activeCamp.title}</span>
-                                                            </div>
+                                                {(() => {
+                                                    const thumbs = campaignThumbnails(activeCamp);
+                                                    const leftImg = thumbs[0];
+                                                    const rightImg = thumbs[1] || thumbs[0];
+                                                    const frontImg = thumbs[2] || thumbs[0];
+                                                    return (
+                                                        <div className="cards">
+                                                            <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
+                                                                <div className="card card-left" style={{ backgroundImage: deckCardBg(leftImg, activeCamp.id, 0), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                                                            </motion.div>
+                                                            <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
+                                                                <div className="card card-right" style={{ backgroundImage: deckCardBg(rightImg, activeCamp.id, 1), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                                                            </motion.div>
+                                                            <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-30">
+                                                                <div className="card card-center deck-front" style={{ backgroundImage: deckCardBg(frontImg, activeCamp.id, 2, true), backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                                                                    <div className="logo flex items-center gap-2 mt-auto text-[#e4e4e7]">
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={brandColor1} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                            <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                                                                        </svg>
+                                                                        <span className="text-xs truncate">{activeCamp.title}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
                                                         </div>
-                                                    </motion.div>
-                                                </div>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
