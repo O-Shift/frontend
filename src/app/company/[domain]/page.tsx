@@ -12,6 +12,7 @@ import { logoUrl as companyLogoUrl } from '@/lib/logos';
 import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
 import { campaignThumbnails } from '@/lib/api';
+import { getDeckArtwork, getDeckCardStyle } from '@/lib/campaign-artwork';
 
 // recharts is 340 KB and the trend card is below the fold on this page. Loading
 // it on its own chunk keeps it off the route's initial download.
@@ -256,7 +257,7 @@ function CompanyPageContent() {
         metric: String(c.metadata?.metric ?? "N/A"),
         status: String(c.metadata?.status ?? "Active"),
         color: "#00A4EF",
-        imgs: campaignThumbnails(c),
+        imgs: getDeckArtwork(c),
     }));
 
 
@@ -548,9 +549,9 @@ function CompanyPageContent() {
                                     <div className="deck-wrapper" title={camp.name}>
                                         <div className="cards">
                                             {/* Simplified cards - NO floating bubbles */}
-                                            <div className="card card-left" style={{ backgroundImage: deckCardBg(leftImg, cardSeed, 0), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-                                            <div className="card card-right" style={{ backgroundImage: deckCardBg(rightImg, cardSeed, 1), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-                                            <div className="card deck-front" style={{ backgroundImage: deckCardBg(frontImg, cardSeed, 2, true), backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                                            <div className="card card-left" style={getDeckCardStyle(leftImg, false)}></div>
+                                            <div className="card card-right" style={getDeckCardStyle(rightImg, false)}></div>
+                                            <div className="card deck-front" style={getDeckCardStyle(frontImg, true)}>
                                                 <div className="logo text-[10px] font-bold uppercase tracking-wider text-zinc-200">{camp.name}</div>
                                             </div>
                                         </div>

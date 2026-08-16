@@ -118,6 +118,12 @@ export interface GraphNode extends SimulationNodeDatum {
   timelineY: number;
   orbitOffset: number;
   metadata?: any;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
 export interface GraphLink extends SimulationLinkDatum<GraphNode> {
@@ -670,15 +676,15 @@ export default function PartnershipsPage() {
       .force(
         'link',
         forceLink<GraphNode, GraphLink>(links)
-          .id(d => d.id)
-          .distance(link => {
+          .id((d: any) => d.id)
+          .distance((link: any) => {
             const src = link.source as GraphNode;
             const tgt = link.target as GraphNode;
             if (src.isHub && tgt.isHub) return 290;
             if (src.isHub || tgt.isHub) return 140;
             return 95;
           })
-          .strength(link => {
+          .strength((link: any) => {
             const srcDegree = (link.source as GraphNode).degree || 1;
             const tgtDegree = (link.target as GraphNode).degree || 1;
             return Math.min(1.2 / Math.min(srcDegree, tgtDegree), 0.7);
@@ -687,7 +693,7 @@ export default function PartnershipsPage() {
       .force(
         'charge',
         forceManyBody<GraphNode>()
-          .strength(d => (d.isHub ? -1000 : -280))
+          .strength((d: any) => (d.isHub ? -1000 : -280))
           .distanceMin(25)
           .distanceMax(1100)
           .theta(0.85)
@@ -695,7 +701,7 @@ export default function PartnershipsPage() {
       .force(
         'collide',
         forceCollide<GraphNode>()
-          .radius(d => d.radius + (d.isHub ? 38 : 26))
+          .radius((d: any) => d.radius + (d.isHub ? 38 : 26))
           .iterations(3)
           .strength(0.9)
       )

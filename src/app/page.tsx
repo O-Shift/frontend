@@ -8,6 +8,7 @@ import { TOKEN_PALETTE } from '@/components/charts/palette';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
 import { apiFetch, updateOpportunityStatus, campaignThemes, campaignThumbnails, type Campaign, type SenseReview } from '@/lib/api';
 import { extractDomain } from '@/lib/utils/domain';
+import { getDeckArtwork, getDeckCardStyle } from '@/lib/campaign-artwork';
 
 // recharts is 340 KB and the analytics panel it draws is the last thing on the
 // dashboard, below three cards of content. Loading it on its own chunk lets the
@@ -325,25 +326,22 @@ export default function DashboardPage() {
                                         <div className="scene">
                                             <div className="deck-wrapper" style={{ transform: 'scale(0.65)' }}>
                                                 {(() => {
-                                                    const thumbs = campaignThumbnails(activeCamp);
-                                                    const leftImg = thumbs[0];
-                                                    const rightImg = thumbs[1] || thumbs[0];
-                                                    const frontImg = thumbs[2] || thumbs[0];
+                                                    const [leftImg, rightImg, frontImg] = getDeckArtwork(activeCamp);
                                                     return (
                                                         <div className="cards">
                                                             <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
-                                                                <div className="card card-left" style={{ backgroundImage: deckCardBg(leftImg, activeCamp.id, 0), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                                                                <div className="card card-left" style={getDeckCardStyle(leftImg, false)}></div>
                                                             </motion.div>
                                                             <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
-                                                                <div className="card card-right" style={{ backgroundImage: deckCardBg(rightImg, activeCamp.id, 1), backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                                                                <div className="card card-right" style={getDeckCardStyle(rightImg, false)}></div>
                                                             </motion.div>
                                                             <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-30">
-                                                                <div className="card card-center deck-front" style={{ backgroundImage: deckCardBg(frontImg, activeCamp.id, 2, true), backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                                                                    <div className="logo flex items-center gap-2 mt-auto text-[#e4e4e7]">
+                                                                <div className="card card-center deck-front" style={getDeckCardStyle(frontImg, true)}>
+                                                                    <div className="logo flex items-center gap-2 mt-auto text-[#e4e4e7] z-10">
                                                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={brandColor1} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                             <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
                                                                         </svg>
-                                                                        <span className="text-xs truncate">{activeCamp.title}</span>
+                                                                        <span className="text-xs truncate font-semibold drop-shadow-md">{activeCamp.title}</span>
                                                                     </div>
                                                                 </div>
                                                             </motion.div>

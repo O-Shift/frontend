@@ -5,6 +5,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import InfiniteCanvas, { InfiniteCanvasHandle } from '@/components/InfiniteCanvas';
 import PromptField from '@/components/PromptField';
 import { fetchCampaigns, campaignThemes, campaignThumbnails, type Campaign, type CampaignPost } from '@/lib/api';
+import { getDeckArtwork, getDeckCardStyle, getPostArtwork } from '@/lib/campaign-artwork';
 
 // ─── Canvas regions ───────────────────────────────────────────────
 // Position and colour only. The names shown on the canvas come from the
@@ -461,13 +462,10 @@ export default function CampaignsPage() {
               >
                 <div className="deck-wrapper skeleton-target" title={`${camp.title} — ${camp.clusterName}`} style={{ ['--cord-color' as any]: activeColor }}>
                   {(() => {
-                    const thumbs = campaignThumbnails(camp.campaign);
-                    const leftImg = thumbs[0];
-                    const rightImg = thumbs[1] || thumbs[0];
-                    const frontImg = thumbs[2] || thumbs[0];
+                    const [leftImg, rightImg, frontImg] = getDeckArtwork(camp.campaign);
                     return (
                       <div className={`cards ${isSelected ? 'cards-hidden' : ''}`}>
-                        <div className="card card-left" style={{ backgroundImage: deckCardBg(leftImg, camp.id, 0), backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                        <div className="card card-left" style={getDeckCardStyle(leftImg, false)}>
                           <div
                             className="floating-bubble"
                             style={{ bottom: 45, left: -20 }}
@@ -477,7 +475,7 @@ export default function CampaignsPage() {
                           </div>
                         </div>
 
-                        <div className="card card-right" style={{ backgroundImage: deckCardBg(rightImg, camp.id, 1), backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                        <div className="card card-right" style={getDeckCardStyle(rightImg, false)}>
                           <div
                             className="floating-bubble"
                             style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}
@@ -487,8 +485,8 @@ export default function CampaignsPage() {
                           </div>
                         </div>
 
-                        <div className="card deck-front" style={{ backgroundImage: deckCardBg(frontImg, camp.id, 2, true), backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                          <div className="logo">{camp.title}</div>
+                        <div className="card deck-front" style={getDeckCardStyle(frontImg, true)}>
+                          <div className="logo font-semibold drop-shadow-md">{camp.title}</div>
                         </div>
                       </div>
                     );
@@ -534,7 +532,7 @@ export default function CampaignsPage() {
                 const startY = -300;
                 const jx = (i % 3 === 0) ? -60 : (i % 3 === 1) ? 60 : 0;
                 const rot = (i % 5 - 2) * 15;
-                const postImg = post.thumbnail_url || (Array.isArray(post.media_urls) ? post.media_urls[0] : undefined);
+                const postImg = getPostArtwork(post, selectedNode.campaign);
 
                 return (
                   <div key={post.id} style={{
@@ -557,9 +555,7 @@ export default function CampaignsPage() {
                       style={{
                         width: 180, height: 180, borderRadius: 16,
                         border: '2px solid var(--border-color)',
-                        backgroundImage: deckCardBg(postImg, post.id, 3, true),
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
+                        ...getDeckCardStyle(postImg, true),
                         transition: 'transform 0.3s',
                         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
                         padding: 14, boxSizing: 'border-box', overflow: 'hidden',

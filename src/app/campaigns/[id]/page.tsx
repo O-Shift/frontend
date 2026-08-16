@@ -12,6 +12,7 @@ import {
   type Campaign,
   type CampaignPost,
 } from '@/lib/api';
+import { getPostArtwork, getDeckArtwork } from '@/lib/campaign-artwork';
 
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700', '800'], style: ['normal', 'italic'] });
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'] });
@@ -38,10 +39,9 @@ function tileFill(seed: string): string {
   return `linear-gradient(150deg, ${tileTone(seed)} 0%, #0a0a0a 100%)`;
 }
 
-function postTileBg(post: CampaignPost, darkOverlay = true): string {
-  const imgUrl = post.thumbnail_url || (Array.isArray(post.media_urls) ? post.media_urls[0] : null);
+function postTileBg(post: CampaignPost, campaignFallback?: Campaign, darkOverlay = true): string {
+  const imgUrl = getPostArtwork(post, campaignFallback);
   const fallback = tileFill(post.id);
-  if (!imgUrl) return fallback;
   if (darkOverlay) {
     return `linear-gradient(to top, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.5) 50%, rgba(10,10,10,0.2) 100%), url('${imgUrl}'), ${fallback}`;
   }
@@ -317,7 +317,7 @@ function Slide2({ campaign }: SlideProps) {
             boxShadow: '0 20px 45px rgba(0,0,0,0.4)',
             borderRadius: 8,
             overflow: 'hidden',
-            background: postTileBg(item.post),
+            background: postTileBg(item.post, campaign),
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: 'flex',
@@ -724,7 +724,7 @@ function Slide6({ campaign }: SlideProps) {
               overflow: 'hidden',
               borderRadius: 6,
               boxShadow: '0 15px 35px rgba(0,0,0,0.12)',
-              background: postTileBg(post),
+              background: postTileBg(post, campaign),
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               padding: 18,
