@@ -7,6 +7,7 @@ import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { FaMicrosoft, FaApple } from 'react-icons/fa';
 import AuthRightPanel from '@/components/AuthRightPanel';
+import AuthLoading from '@/components/AuthLoading';
 import { EVENTS, track } from '@/lib/analytics';
 import { signInWithGoogle } from '@/lib/api';
 import { createClient } from '@/utils/supabase/client';
@@ -202,13 +203,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="auth-left" style={{ minHeight: '100vh', color: '#1a1a1a' }}>
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<AuthLoading />}>
       <LoginForm />
     </Suspense>
   );

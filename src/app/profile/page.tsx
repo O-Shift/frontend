@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useProfile } from '@/hooks/use-profile';
 import { deriveInitials } from '@/hooks/use-current-user';
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import ProfileSkeleton from '@/components/skeletons/ProfileSkeleton';
 
 /**
  * three.js plus the world-atlas topology is 654 KB — 38% of this route's
@@ -137,7 +137,7 @@ export default function ProfilePage() {
     // then the workspace, then four calls, so this window outlasts the route
     // transition by seconds — handing over to a line of text made the page look
     // stalled rather than loading.
-    if (loading) return <PageSkeleton variant="detail" showHeader={false} />;
+    if (loading) return <ProfileSkeleton />;
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!PROFILE_DATA) return null;
 

@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import OpportunitiesSkeleton from '@/components/skeletons/OpportunitiesSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="grid" />;
+    return <OpportunitiesSkeleton />;
 }

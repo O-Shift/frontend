@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import PartnershipsSkeleton from '@/components/skeletons/PartnershipsSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="canvas" />;
+    return <PartnershipsSkeleton />;
 }

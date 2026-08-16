@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { fetchOpportunities, generateOpportunities, triggerPipeline, Opportunity } from '@/lib/api';
 import Link from 'next/link';
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import OpportunitiesSkeleton from '@/components/skeletons/OpportunitiesSkeleton';
 
 function CompanyPile({ companies }: { companies: string[] }) {
   const [hovered, setHovered] = useState(false);
@@ -321,6 +321,10 @@ export default function OpportunitiesPage() {
       ? slide?.gapBullets[hoveredNode.id]?.citations || []
       : [];
 
+  if (loading) {
+    return <OpportunitiesSkeleton />;
+  }
+
   const invertFolds = hoveredPanel === 1 || hoveredPanel === 3 || hoveredPanel === 5;
 
   return (
@@ -381,10 +385,6 @@ export default function OpportunitiesPage() {
           </div>
         </div>
 
-        {/* Loading State. A skeleton rather than a centered spinner: this page's
-            header is already drawn above, so the shape of what is coming is
-            known, and a spinner discards that. */}
-        {loading && <PageSkeleton variant="grid" showHeader={false} />}
 
         {/* Auth Error State */}
         {!loading && error && (

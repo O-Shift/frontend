@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import CompetitorDetailSkeleton from '@/components/skeletons/CompetitorDetailSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="detail" showHeader={false} />;
+    return <CompetitorDetailSkeleton />;
 }

@@ -1,5 +1,5 @@
-import PageSkeleton from '@/components/skeletons/PageSkeleton';
+import CompetitorsSkeleton from '@/components/skeletons/CompetitorsSkeleton';
 
 export default function Loading() {
-    return <PageSkeleton variant="grid" />;
+    return <CompetitorsSkeleton />;
 }

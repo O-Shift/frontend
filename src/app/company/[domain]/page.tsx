@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import PromptField from '@/components/PromptField';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
+import CompanyDetailSkeleton from '@/components/skeletons/CompanyDetailSkeleton';
 import { TOKEN_PALETTE } from '@/components/charts/palette';
 import { useCompany } from '@/hooks/use-company';
 import { logoUrl as companyLogoUrl } from '@/lib/logos';
@@ -251,6 +252,10 @@ function CompanyPageContent() {
         { label: 'Peak Engagement', value: '550K', sub: 'Jul 2026' },
         { label: 'Avg Response Time', value: '51s', sub: 'across 10 mo.' },
     ];
+
+    if (loading) {
+        return <CompanyDetailSkeleton />;
+    }
 
     if (error === 'Not Found') {
         return (
