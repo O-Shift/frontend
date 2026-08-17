@@ -65,26 +65,6 @@ function CompanyPile({ companies }: { companies: string[] }) {
   );
 }
 
-function SampleBadge({ title }: { title: string }) {
-  return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      background: 'transparent',
-      color: 'var(--text-secondary)',
-      border: '1px solid var(--border-color)',
-      borderRadius: '4px',
-      padding: '2px 6px',
-      fontSize: '10px',
-      fontWeight: 'bold',
-      marginLeft: '8px',
-      textTransform: 'uppercase'
-    }}>
-      {title}
-    </span>
-  );
-}
-
 function SeamlessBackground({ slideIndex, totalSlides }: { slideIndex: number, totalSlides: number }) {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
@@ -117,6 +97,11 @@ export default function OpportunitiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  // Outcome of the last Generate / Run Pipeline press. Replaces alert(), which
+  // could not carry the backend's four-way status at all.
+  const [generateNotice, setGenerateNotice] = useState<
+    { kind: 'ok' | 'warn' | 'error'; text: string } | null
+  >(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<{ type: 'desc' | 'gap', id: number } | null>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -139,22 +124,42 @@ export default function OpportunitiesPage() {
       const items = res.data?.items || [];
       const mapped = items.map((op: Opportunity) => {
         const af = op.analysis_fields || {};
-        // No invented provenance. An opportunity the backend produced without
-        // evidence gets an empty citation list and the UI says so, rather than
-        // being given a constant that renders as a "Source Citation".
-        const highlights = Array.isArray(af.highlights) && af.highlights.length > 0
-          ? af.highlights
-          : [{ text: op.title.slice(0, 35), citations: [] }];
+        // Nothing here is invented. Every field this page renders is guarded at
+        // its render site, so a field the backend did not produce is omitted
+        // rather than filled in.
+        //
+        // It used to be filled in: `topComplaint` fell back to "'Customer
+        // support response latency' — verified in signal logs.", `rootCause` to
+        // "No live support channel; email verified response lag.",
+        // `earlyWarning` to "Complaint volume for this category grew MoM." and
+        // `quickWin` to "Deploy automated support line within 2 weeks.". Those
+        // four strings were the TOP COMPLAINT / ROOT CAUSE / TREND ALERT /
+        // QUICK WIN rows a user actually saw on the board -- constants in this
+        // file, presented as findings about their competitors, and two of them
+        // ("verified in signal logs", "email verified response lag") explicitly
+        // claimed a verification that never happened.
+        //
+        // The snake_case alternates below are kept: those are real alternate
+        // keys older rows were written with, not substitutes for missing data.
+        const highlights = Array.isArray(af.highlights) ? af.highlights : [];
 
         const gapBullets = Array.isArray(af.gapBullets) && af.gapBullets.length > 0
           ? af.gapBullets
           : Array.isArray((af as any).gap_bullets) && (af as any).gap_bullets.length > 0
             ? (af as any).gap_bullets
-            : [{
-              text: af.gapIdentified || (af as any).gap_identified || 'Market gap identified from DB competitor signals.',
-              citations: [],
-              companies: [],
-            }];
+            : [];
+
+        // priority_score is an integer 0-100. Stringifying it and comparing
+        // against 'HIGH' meant the score never coloured anything, and the `?:`
+        // guard turned a legitimate 0 into 'HIGH' -- the lowest priority the
+        // model can express rendered as the highest.
+        const rawScore = op.priority_score;
+        const priorityScore =
+          rawScore === null || rawScore === undefined || rawScore === ''
+            ? null
+            : Number.isFinite(Number(rawScore))
+              ? Number(rawScore)
+              : null;
 
         return {
           id: op.id,
@@ -162,16 +167,16 @@ export default function OpportunitiesPage() {
           description: op.description,
           highlights,
           gapBullets,
-          effort: op.effort ? op.effort.charAt(0).toUpperCase() + op.effort.slice(1) : 'High',
-          impact: op.impact ? op.impact.charAt(0).toUpperCase() + op.impact.slice(1) : 'High',
-          topComplaint: af.topComplaint || (af as any).top_complaint || "'Customer support response latency' — verified in signal logs.",
-          rootCause: af.rootCause || (af as any).root_cause || 'No live support channel; email verified response lag.',
-          gapIdentified: af.gapIdentified || (af as any).gap_identified || 'No competitor in this market offers instant automated resolution.',
-          opportunityText: af.opportunityText || (af as any).opportunity_text || `'${op.title}' — positions our brand as the leading choice.`,
-          priorityScore: op.priority_score ? String(op.priority_score).toUpperCase() : 'HIGH',
-          priorityReasoning: op.priority_reasoning || 'High complaint volume, low complexity, strong differentiation.',
-          earlyWarning: af.earlyWarning || (af as any).early_warning || 'Complaint volume for this category grew MoM. Trend alert triggered.',
-          quickWin: af.quickWin || (af as any).quick_win || 'Deploy automated support line within 2 weeks.',
+          effort: op.effort ? op.effort.charAt(0).toUpperCase() + op.effort.slice(1) : null,
+          impact: op.impact ? op.impact.charAt(0).toUpperCase() + op.impact.slice(1) : null,
+          topComplaint: af.topComplaint || (af as any).top_complaint || null,
+          rootCause: af.rootCause || (af as any).root_cause || null,
+          gapIdentified: af.gapIdentified || (af as any).gap_identified || null,
+          opportunityText: af.opportunityText || (af as any).opportunity_text || null,
+          priorityScore,
+          priorityReasoning: op.priority_reasoning || null,
+          earlyWarning: af.earlyWarning || (af as any).early_warning || null,
+          quickWin: af.quickWin || (af as any).quick_win || null,
         };
       });
       setOpportunitiesList(mapped);
@@ -188,25 +193,47 @@ export default function OpportunitiesPage() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setGenerateNotice(null);
     const res = await generateOpportunities();
     if (res.ok) {
+      // The backend distinguishes four outcomes and explains each one in
+      // `reason`. Reloading and saying nothing made "the model abstained because
+      // your evidence is thin" look identical to "nothing happened", next to a
+      // button inviting the user to press it again -- which is the wrong advice
+      // for three of the four.
+      const { status, reason, created } = res.data;
       await loadData();
+      if (status === 'generated') {
+        setGenerateNotice({
+          kind: 'ok',
+          text: `${created} opportunit${created === 1 ? 'y' : 'ies'} synthesized. ${reason ?? ''}`.trim(),
+        });
+      } else {
+        setGenerateNotice({
+          // `synthesis_failed` means the call errored or its output was unusable
+          // -- that is a failure, not an abstention, and pressing Generate again
+          // is the right response to it and the wrong one to the other two.
+          kind: status === 'synthesis_failed' ? 'error' : 'warn',
+          text: reason ?? 'Synthesis returned no opportunities and gave no reason.',
+        });
+      }
     } else {
-      alert(`Generation failed: ${res.error}`);
+      setGenerateNotice({ kind: 'error', text: res.error || 'Generation failed.' });
     }
     setIsGenerating(false);
   };
 
   const handleRunPipeline = async () => {
     setIsRunningPipeline(true);
+    setGenerateNotice(null);
     const res = await triggerPipeline();
     if (res.ok) {
-      alert('Full Ingest Pipeline triggered successfully! Background execution started.');
-      setTimeout(() => {
-        loadData();
-      }, 3000);
+      setGenerateNotice({
+        kind: 'ok',
+        text: 'Pipeline started: crawl, then analyze, then report. Opportunities appear once the analyze stage finishes — reload in a few minutes.',
+      });
     } else {
-      alert(`Pipeline trigger failed: ${res.error}`);
+      setGenerateNotice({ kind: 'error', text: res.error || 'Pipeline trigger failed.' });
     }
     setIsRunningPipeline(false);
   };
@@ -385,6 +412,40 @@ export default function OpportunitiesPage() {
           </div>
         </div>
 
+        {/* Outcome of the last Generate / Run Pipeline press. The backend answers
+            `generated`, `no_opportunities`, `insufficient_evidence` or
+            `synthesis_failed` and explains each in `reason`; all four used to be
+            swallowed. */}
+        {generateNotice && (
+          <div
+            role="status"
+            style={{
+              maxWidth: 720,
+              margin: '0 auto 24px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              background: 'var(--card-bg)',
+              borderRadius: 8,
+              border: '1px solid var(--border-color)',
+              borderLeft: `3px solid ${generateNotice.kind === 'error' ? '#e5484d' : generateNotice.kind === 'warn' ? '#f5a524' : 'var(--accent)'}`,
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: 'var(--text-secondary)'
+            }}
+          >
+            <span style={{ flex: 1 }}>{generateNotice.text}</span>
+            <button
+              onClick={() => setGenerateNotice(null)}
+              aria-label="Dismiss"
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
 
         {/* Auth Error State */}
         {!loading && error && (
@@ -414,9 +475,11 @@ export default function OpportunitiesPage() {
         {/* Empty State */}
         {!loading && !error && opportunitiesList.length === 0 && (
           <div style={{ maxWidth: 600, margin: '60px auto', padding: 32, background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, textAlign: 'center' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>No Opportunities Found in Database</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>No Opportunities Yet</h2>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
-              There are no opportunities in the database for your workspace. Click below to trigger the AI opportunity synthesis engine or run the complete pipeline.
+              Opportunities are synthesized from the gaps and signals already collected for this
+              workspace — they are not generated from nothing. If no crawl has run yet, start with
+              the ingest pipeline; synthesis alone will report that the evidence is too thin.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
               <button
@@ -485,8 +548,13 @@ export default function OpportunitiesPage() {
                       {/* Gaps Section */}
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                          <h2 className="skeleton-target" style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-secondary)', margin: 0 }}>Gap(s) <SampleBadge title="Mock data" /></h2>
+                          <h2 className="skeleton-target" style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-secondary)', margin: 0 }}>Gap(s)</h2>
                         </div>
+                        {slide.gapBullets.length === 0 ? (
+                          <p className="skeleton-target" style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic', opacity: 0.75 }}>
+                            No gap evidence recorded for this opportunity.
+                          </p>
+                        ) : (
                         <ul className="skeleton-target" style={{ margin: 0, paddingLeft: 16, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
                           {slide.gapBullets.map((bullet: any, i: number) => {
                             const isHovered = hoveredNode?.type === 'gap' && hoveredNode?.id === i;
@@ -516,18 +584,29 @@ export default function OpportunitiesPage() {
                             );
                           })}
                         </ul>
+                        )}
                       </div>
 
                       <div className="skeleton-target" style={{ display: 'flex', gap: 40 }}>
                         <div>
                           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Effort</div>
-                          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{slide.effort}</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: slide.effort ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{slide.effort ?? '—'}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Impact</div>
-                          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{slide.impact}</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: slide.impact ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{slide.impact ?? '—'}</div>
                         </div>
                       </div>
+
+                      {/* The score is only defensible if the reason for it travels with
+                          it. `priority_reasoning` was mapped but never rendered, so the
+                          board showed a number nobody could argue with. */}
+                      {slide.priorityReasoning && (
+                        <div className="skeleton-target">
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Why This Priority</div>
+                          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 420 }}>{slide.priorityReasoning}</div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Right Side: Citations Modal overlaid */}
@@ -695,8 +774,8 @@ export default function OpportunitiesPage() {
                         Opportunity Analysis
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
                       </span>
-                      {slide.priorityScore && (
-                        <div style={{ fontSize: 10, fontFamily: 'monospace', letterSpacing: 0.5, color: slide.priorityScore === 'HIGH' ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                      {slide.priorityScore !== null && (
+                        <div style={{ fontSize: 10, fontFamily: 'monospace', letterSpacing: 0.5, color: slide.priorityScore >= 70 ? 'var(--accent)' : 'var(--text-secondary)' }}>
                           [{slide.priorityScore} PRIORITY]
                         </div>
                       )}

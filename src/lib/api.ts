@@ -342,6 +342,29 @@ export interface OpportunityListResponse {
   total: number;
 }
 
+/**
+ * Why a synthesis run produced what it produced.
+ *
+ * `POST /opportunities/generate` used to answer a bare list, so an empty array
+ * meant "nothing collected yet", "the model failed" and "the model looked and
+ * found nothing" all at once. The backend now distinguishes them; the UI has to
+ * read `status` to give the right advice.
+ */
+export type OpportunityGenerationStatus =
+  | "generated"
+  | "no_opportunities"
+  | "insufficient_evidence"
+  | "synthesis_failed";
+
+export interface OpportunityGenerateResponse {
+  status: OpportunityGenerationStatus;
+  reason: string;
+  items: Opportunity[];
+  created: number;
+  gaps_considered: number;
+  signals_considered: number;
+}
+
 export async function fetchOpportunities(params?: {
   competitor_id?: string;
   status?: string;
@@ -360,8 +383,8 @@ export async function fetchOpportunities(params?: {
   return apiFetch<OpportunityListResponse>(`/opportunities${queryString}`);
 }
 
-export async function generateOpportunities(): Promise<ApiResult<Opportunity[]>> {
-  return apiFetch<Opportunity[]>("/opportunities/generate", {
+export async function generateOpportunities(): Promise<ApiResult<OpportunityGenerateResponse>> {
+  return apiFetch<OpportunityGenerateResponse>("/opportunities/generate", {
     method: "POST",
   });
 }
@@ -382,10 +405,22 @@ export async function deleteOpportunity(id: string): Promise<ApiResult<void>> {
   });
 }
 
+/**
+ * Run the full ingest pipeline.
+ *
+ * The three pipelines chain: each one pops `chain[0]` on completion and sends it
+ * as the next event. Triggering `crawlers` alone collected and scored signals
+ * and then stopped, so the opportunity synthesis step -- which lives in
+ * `analyzers` -- never ran, and the button labelled "Run Ingest Pipeline" left
+ * the board exactly as it found it.
+ */
 export async function triggerPipeline(): Promise<ApiResult<{ run_id: string; status: string }>> {
   return apiFetch<{ run_id: string; status: string }>("/automation/trigger", {
     method: "POST",
-    body: JSON.stringify({ workflow_type: "oshift/crawlers.run" }),
+    body: JSON.stringify({
+      workflow_type: "oshift/crawlers.run",
+      chain: ["oshift/analyzers.run", "oshift/reporters.run"],
+    }),
   });
 }
 
