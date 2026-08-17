@@ -2,30 +2,24 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useExports } from '@/hooks/use-exports';
+import { useMounted } from '@/hooks/use-mounted';
 import {
   Share2,
   Plus,
   Send,
   Loader2,
-  Calendar,
   Database,
   Globe,
-  Hash,
   CheckCircle2,
   AlertCircle,
-  Zap,
-  ExternalLink,
   ShieldCheck,
   Trash2,
   X,
   Activity,
   Server,
-  FileText,
-  Check,
   Search,
-  Filter,
-  RefreshCw,
 } from 'lucide-react';
 import { FaSlack } from 'react-icons/fa6';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,12 +28,8 @@ export default function ExportsPage() {
   const {
     destinations,
     jobs,
-    logs,
-    selectedMonth,
-    setSelectedMonth,
     isLoadingDestinations,
     isLoadingJobs,
-    isLoadingLogs,
     isExportingSlack,
     isTestingDest,
     error,
@@ -54,6 +44,7 @@ export default function ExportsPage() {
 
   const [isDestModalOpen, setIsDestModalOpen] = useState(false);
   const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
+  const mounted = useMounted();
 
   // Destination Creator Form State
   const [destType, setDestType] = useState<'slack' | 'notion' | 'webhook'>('slack');
@@ -81,7 +72,7 @@ export default function ExportsPage() {
     setDestError(null);
     setTestResultMsg(null);
 
-    let configObj: Record<string, any> = {};
+    let configObj: Record<string, unknown> = {};
     if (destType === 'slack') {
       configObj = {
         channel: slackChannel.trim(),
@@ -116,7 +107,7 @@ export default function ExportsPage() {
       return;
     }
 
-    let configObj: Record<string, any> = {};
+    let configObj: Record<string, unknown> = {};
 
     if (destType === 'slack') {
       if (!slackChannel.trim()) {
@@ -333,9 +324,10 @@ export default function ExportsPage() {
               {filteredDestinations.map((dest) => {
                 const isSlack = dest.destination_type === 'slack';
                 const isWebhook = dest.destination_type === 'webhook';
-                const channel = (dest.config as any)?.channel;
-                const endpoint = (dest.config as any)?.url;
-                const notionDb = (dest.config as any)?.database_id;
+                const destConf = (dest.config ?? {}) as Record<string, unknown>;
+                const channel = typeof destConf.channel === 'string' ? destConf.channel : undefined;
+                const endpoint = typeof destConf.url === 'string' ? destConf.url : undefined;
+                const notionDb = typeof destConf.database_id === 'string' ? destConf.database_id : undefined;
 
                 return (
                   <div
@@ -415,7 +407,7 @@ export default function ExportsPage() {
             </div>
           ) : jobs.length === 0 ? (
             <div className="text-center py-10 text-xs text-[var(--text-secondary)]">
-              No export dispatches logged yet. Use "Dispatch Brief" to send executive summaries.
+              No export dispatches logged yet. Use &quot;Dispatch Brief&quot; to send executive summaries.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -463,231 +455,239 @@ export default function ExportsPage() {
 
       </div>
 
-      {/* ── CREATE DESTINATION MODAL ── */}
-      <AnimatePresence>
-        {isDestModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
-            >
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">Connect Destination</h3>
-                <button
-                  onClick={() => setIsDestModalOpen(false)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+      {/* ── CREATE DESTINATION MODAL (PORTALED TO BODY) ── */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {isDestModalOpen && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
                 >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <form onSubmit={onDestSubmit} className="space-y-4 text-xs">
-                {/* Platform Selector Tabs */}
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Platform Type</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['slack', 'webhook', 'notion'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setDestType(t)}
-                        className={`py-2 rounded-lg border text-center capitalize transition-all cursor-pointer ${
-                          destType === t
-                            ? 'border-[var(--text-primary)] bg-[var(--card-bg-alt)] text-[var(--text-primary)] font-semibold'
-                            : 'border-[var(--border-color)] text-[var(--text-secondary)]'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Destination Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Primary Slack Channel"
-                    value={destName}
-                    onChange={(e) => setDestName(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
-                  />
-                </div>
-
-                {destType === 'slack' && (
-                  <>
-                    <div>
-                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Slack Channel</label>
-                      <input
-                        type="text"
-                        placeholder="#competitive-intel"
-                        value={slackChannel}
-                        onChange={(e) => setSlackChannel(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Slack Webhook URL</label>
-                      <input
-                        type="text"
-                        placeholder="https://hooks.slack.com/services/..."
-                        value={slackWebhookUrl}
-                        onChange={(e) => setSlackWebhookUrl(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {destType === 'webhook' && (
-                  <div>
-                    <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Webhook Target Endpoint URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://api.company.com/webhooks"
-                      value={webhookUrl}
-                      onChange={(e) => setWebhookUrl(e.target.value)}
-                      className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
-                    />
-                  </div>
-                )}
-
-                {destType === 'notion' && (
-                  <>
-                    <div>
-                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Notion Database ID</label>
-                      <input
-                        type="text"
-                        placeholder="Database UUID"
-                        value={notionDbId}
-                        onChange={(e) => setNotionDbId(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Notion API Integration Token</label>
-                      <input
-                        type="password"
-                        placeholder="secret_..."
-                        value={notionToken}
-                        onChange={(e) => setNotionToken(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {destError && (
-                  <p className="text-xs text-red-400">{destError}</p>
-                )}
-
-                {testResultMsg && (
-                  <p className={`text-xs ${testResultMsg.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {testResultMsg.msg}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
-                  <button
-                    type="button"
-                    onClick={handleTestConnection}
-                    disabled={isTestingDest}
-                    className="px-3.5 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                  >
-                    {isTestingDest ? 'Testing...' : 'Test Connection'}
-                  </button>
-
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Connect Destination</h3>
                     <button
-                      type="button"
                       onClick={() => setIsDestModalOpen(false)}
-                      className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                      className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
-                    >
-                      Save Destination
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
-      {/* ── EXPORT BRIEF MODAL ── */}
-      <AnimatePresence>
-        {isSlackModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
-            >
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">Dispatch Brief</h3>
-                <button
-                  onClick={() => setIsSlackModalOpen(false)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                  <form onSubmit={onDestSubmit} className="space-y-4 text-xs">
+                    {/* Platform Selector Tabs */}
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Platform Type</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['slack', 'webhook', 'notion'] as const).map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setDestType(t)}
+                            className={`py-2 rounded-lg border text-center capitalize transition-all cursor-pointer ${
+                              destType === t
+                                ? 'border-[var(--text-primary)] bg-[var(--card-bg-alt)] text-[var(--text-primary)] font-semibold'
+                                : 'border-[var(--border-color)] text-[var(--text-secondary)]'
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Destination Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Primary Slack Channel"
+                        value={destName}
+                        onChange={(e) => setDestName(e.target.value)}
+                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                      />
+                    </div>
+
+                    {destType === 'slack' && (
+                      <>
+                        <div>
+                          <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Slack Channel</label>
+                          <input
+                            type="text"
+                            placeholder="#competitive-intel"
+                            value={slackChannel}
+                            onChange={(e) => setSlackChannel(e.target.value)}
+                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Slack Webhook URL</label>
+                          <input
+                            type="text"
+                            placeholder="https://hooks.slack.com/services/..."
+                            value={slackWebhookUrl}
+                            onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {destType === 'webhook' && (
+                      <div>
+                        <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Webhook Target Endpoint URL</label>
+                        <input
+                          type="url"
+                          placeholder="https://api.company.com/webhooks"
+                          value={webhookUrl}
+                          onChange={(e) => setWebhookUrl(e.target.value)}
+                          className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {destType === 'notion' && (
+                      <>
+                        <div>
+                          <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Notion Database ID</label>
+                          <input
+                            type="text"
+                            placeholder="Database UUID"
+                            value={notionDbId}
+                            onChange={(e) => setNotionDbId(e.target.value)}
+                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Notion API Integration Token</label>
+                          <input
+                            type="password"
+                            placeholder="secret_..."
+                            value={notionToken}
+                            onChange={(e) => setNotionToken(e.target.value)}
+                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {destError && (
+                      <p className="text-xs text-red-400">{destError}</p>
+                    )}
+
+                    {testResultMsg && (
+                      <p className={`text-xs ${testResultMsg.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {testResultMsg.msg}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                      <button
+                        type="button"
+                        onClick={handleTestConnection}
+                        disabled={isTestingDest}
+                        className="px-3.5 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                      >
+                        {isTestingDest ? 'Testing...' : 'Test Connection'}
+                      </button>
+
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsDestModalOpen(false)}
+                          className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
+                        >
+                          Save Destination
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </motion.div>
               </div>
-
-              <form onSubmit={handleQuickDispatch} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Executive Brief ID</label>
-                  <input
-                    type="text"
-                    placeholder="Enter brief ID"
-                    value={quickBriefId}
-                    onChange={(e) => setQuickBriefId(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Select Destination</label>
-                  <select
-                    value={quickDestId}
-                    onChange={(e) => setQuickDestId(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none"
-                  >
-                    <option value="">Select a connected destination...</option>
-                    {destinations.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name} ({d.destination_type})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-                  <button
-                    type="button"
-                    onClick={() => setIsSlackModalOpen(false)}
-                    className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isExportingSlack || !quickBriefId.trim() || !quickDestId.trim()}
-                    className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer"
-                  >
-                    Dispatch Now
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
+
+      {/* ── EXPORT BRIEF MODAL (PORTALED TO BODY) ── */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {isSlackModalOpen && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
+                >
+                  <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Dispatch Brief</h3>
+                    <button
+                      onClick={() => setIsSlackModalOpen(false)}
+                      className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleQuickDispatch} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Executive Brief ID</label>
+                      <input
+                        type="text"
+                        placeholder="Enter brief ID"
+                        value={quickBriefId}
+                        onChange={(e) => setQuickBriefId(e.target.value)}
+                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Select Destination</label>
+                      <select
+                        value={quickDestId}
+                        onChange={(e) => setQuickDestId(e.target.value)}
+                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                      >
+                        <option value="">Select a connected destination...</option>
+                        {destinations.map((d) => (
+                          <option key={d.id} value={d.id}>{d.name} ({d.destination_type})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
+                      <button
+                        type="button"
+                        onClick={() => setIsSlackModalOpen(false)}
+                        className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isExportingSlack || !quickBriefId.trim() || !quickDestId.trim()}
+                        className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer"
+                      >
+                        Dispatch Now
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
     </div>
   );

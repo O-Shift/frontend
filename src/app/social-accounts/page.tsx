@@ -2,7 +2,9 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSocialAccounts } from '@/hooks/use-social-accounts';
+import { useMounted } from '@/hooks/use-mounted';
 import { socialAccountCreateSchema } from '@/types/schemas';
 import {
   Share2,
@@ -16,9 +18,7 @@ import {
   Users,
   Search,
   Zap,
-  Check,
   Radio,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { FaInstagram, FaLinkedin, FaYoutube, FaFacebook, FaXTwitter, FaTiktok } from 'react-icons/fa6';
 import { SocialPlatform } from '@/types/entities';
@@ -35,13 +35,13 @@ export default function SocialAccountsPage() {
     updateAccount,
     deleteAccount,
     collectAll,
-    refreshAccounts,
   } = useSocialAccounts();
 
   const [platformFilter, setPlatformFilter] = useState<'all' | SocialPlatform>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const mounted = useMounted();
   const [formData, setFormData] = useState({
     platform: 'x' as SocialPlatform,
     handle: '',
@@ -168,7 +168,7 @@ export default function SocialAccountsPage() {
             ).map((filter) => (
               <button
                 key={filter.id}
-                onClick={() => setPlatformFilter(filter.id as any)}
+                onClick={() => setPlatformFilter(filter.id as 'all' | SocialPlatform)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   platformFilter === filter.id
                     ? 'bg-[var(--text-primary)] text-[var(--card-bg)] shadow-xs'
@@ -322,104 +322,108 @@ export default function SocialAccountsPage() {
 
       </div>
 
-      {/* ── ADD ACCOUNT MODAL ── */}
-      <AnimatePresence>
-        {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
-            >
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">Track Social Profile</h3>
-                <button
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+      {/* ── ADD ACCOUNT MODAL (PORTALED TO BODY) ── */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {isAddModalOpen && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
                 >
-                  <X className="h-4 w-4" />
-                </button>
+                  <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Track Social Profile</h3>
+                    <button
+                      onClick={() => setIsAddModalOpen(false)}
+                      className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {formError && (
+                    <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-transparent p-3 text-xs text-red-400">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>{formError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Social Platform</label>
+                      <select
+                        value={formData.platform}
+                        onChange={(e) => setFormData({ ...formData, platform: e.target.value as SocialPlatform })}
+                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                      >
+                        <option value="x">X / Twitter</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="tiktok">TikTok</option>
+                        <option value="facebook">Facebook</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Handle (e.g. teslamotors)</label>
+                      <input
+                        type="text"
+                        value={formData.handle}
+                        onChange={(e) => setFormData({ ...formData, handle: e.target.value })}
+                        placeholder="teslamotors"
+                        className="w-full font-mono rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Display Name (Optional)</label>
+                      <input
+                        type="text"
+                        value={formData.display_name}
+                        onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                        placeholder="Tesla Motors"
+                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Follower Count (Optional)</label>
+                      <input
+                        type="number"
+                        value={formData.follower_count}
+                        onChange={(e) => setFormData({ ...formData, follower_count: Number(e.target.value) })}
+                        placeholder="0"
+                        className="w-full font-mono rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddModalOpen(false)}
+                        className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer"
+                      >
+                        {isSubmitting ? 'Saving...' : 'Add Channel'}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
               </div>
-
-              {formError && (
-                <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-transparent p-3 text-xs text-red-400">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Social Platform</label>
-                  <select
-                    value={formData.platform}
-                    onChange={(e) => setFormData({ ...formData, platform: e.target.value as SocialPlatform })}
-                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none"
-                  >
-                    <option value="x">X / Twitter</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="youtube">YouTube</option>
-                    <option value="tiktok">TikTok</option>
-                    <option value="facebook">Facebook</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Handle (e.g. teslamotors)</label>
-                  <input
-                    type="text"
-                    value={formData.handle}
-                    onChange={(e) => setFormData({ ...formData, handle: e.target.value })}
-                    placeholder="teslamotors"
-                    className="w-full font-mono rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Display Name (Optional)</label>
-                  <input
-                    type="text"
-                    value={formData.display_name}
-                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                    placeholder="Tesla Motors"
-                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Follower Count (Optional)</label>
-                  <input
-                    type="number"
-                    value={formData.follower_count}
-                    onChange={(e) => setFormData({ ...formData, follower_count: Number(e.target.value) })}
-                    placeholder="0"
-                    className="w-full font-mono rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddModalOpen(false)}
-                    className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer"
-                  >
-                    {isSubmitting ? 'Saving...' : 'Add Channel'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 }

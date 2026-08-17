@@ -1,0 +1,14 @@
+// frontend/src/hooks/use-mounted.ts
+'use client';
+
+import { useSyncExternalStore } from 'react';
+
+const emptySubscribe = () => () => {};
+
+export function useMounted(): boolean {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}

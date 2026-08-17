@@ -2,9 +2,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 import { useAutomations } from '@/hooks/use-automations';
 import { useExports } from '@/hooks/use-exports';
+import { useMounted } from '@/hooks/use-mounted';
 import {
   ScheduleFrequency,
   formatCronToHuman,
@@ -133,6 +135,7 @@ export default function NotificationSettings() {
   } = useAutomations();
 
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const mounted = useMounted();
 
   const {
     destinations,
@@ -822,20 +825,25 @@ export default function NotificationSettings() {
       </div>
 
       {/* ── SECTION 4: ADVANCED SETTINGS (COLLAPSIBLE) ── */}
-      <div className="pt-2">
+      <div className="pt-6 pb-24 border-t border-[var(--border-color)]/40 mt-4">
         <button
           type="button"
           onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-          className="w-full flex items-center justify-between py-2 text-left cursor-pointer transition-colors"
+          className="group w-full flex items-center justify-between py-2 text-left cursor-pointer transition-all select-none"
         >
-          <span className="text-sm font-semibold text-[var(--text-primary)]">
+          <span className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] group-hover:underline underline-offset-4 transition-all">
             Advanced settings
           </span>
-          <ChevronDown
-            className={`h-4 w-4 text-[var(--text-secondary)] transition-transform duration-200 ${
-              isAdvancedOpen ? 'rotate-180' : ''
-            }`}
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity">
+              {isAdvancedOpen ? 'Hide' : 'Show'}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-transform duration-200 ${
+                isAdvancedOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </div>
         </button>
 
         <AnimatePresence>
@@ -844,7 +852,7 @@ export default function NotificationSettings() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="pt-3 space-y-4 overflow-hidden"
+              className="pt-4 pb-6 space-y-4 overflow-hidden"
             >
               {/* Recent Execution Health & Active Destinations summary */}
               {latestRun && (
@@ -994,266 +1002,270 @@ export default function NotificationSettings() {
         </AnimatePresence>
       </div>
 
-      {/* ── MULTI-INSTANCE INTEGRATION MANAGEMENT MODAL ── */}
-      <AnimatePresence>
-        {activePlatformModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-5 max-h-[88vh] overflow-y-auto"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center border shrink-0"
-                    style={{
-                      backgroundColor: activePlatformModal.bgDark,
-                      borderColor: activePlatformModal.borderLight,
-                    }}
-                  >
-                    <activePlatformModal.icon className="h-5 w-5" style={{ color: activePlatformModal.color }} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-[var(--text-primary)]">
-                      {activePlatformModal.name} Destinations
-                    </h3>
-                    <p className="text-[11px] text-[var(--text-secondary)]">
-                      Manage connected instances or add new destinations
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setActivePlatformModal(null)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+      {/* ── MULTI-INSTANCE INTEGRATION MANAGEMENT MODAL (PORTALED TO BODY) ── */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {activePlatformModal && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-5 max-h-[88vh] overflow-y-auto"
                 >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* 1. List of Connected Instances */}
-              {(() => {
-                const activeDests = getPlatformDestinations(activePlatformModal.id);
-                return activeDests.length > 0 ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-[var(--text-primary)]">
-                        Connected Destinations ({activeDests.length})
-                      </span>
-                      <span className="text-[10px] text-[var(--text-secondary)]">
-                        Active &amp; receiving alerts
-                      </span>
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center border shrink-0"
+                        style={{
+                          backgroundColor: activePlatformModal.bgDark,
+                          borderColor: activePlatformModal.borderLight,
+                        }}
+                      >
+                        <activePlatformModal.icon className="h-5 w-5" style={{ color: activePlatformModal.color }} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                          {activePlatformModal.name} Destinations
+                        </h3>
+                        <p className="text-[11px] text-[var(--text-secondary)]">
+                          Manage connected instances or add new destinations
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {activeDests.map((dest) => {
-                        const cfg = (dest.config || {}) as Record<string, unknown>;
-                        const targetDisplay = (cfg.emails as string) || (cfg.channel as string) || (cfg.url as string) || 'Configured';
-                        const isTestingThis = testingDestId === dest.id;
-
-                        return (
-                          <div
-                            key={dest.id}
-                            className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main-alt)] text-xs gap-3"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-[var(--text-primary)] truncate">
-                                {dest.name}
-                              </div>
-                              <div className="text-[11px] text-[var(--text-secondary)] font-mono truncate">
-                                {targetDisplay}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleTestExistingDestination(dest.id, dest.destination_type, cfg)}
-                                disabled={isTestingThis}
-                                className="px-2.5 py-1 rounded-md border border-[var(--border-color)] hover:border-[var(--text-secondary)] text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                              >
-                                {isTestingThis ? 'Testing...' : 'Test'}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => deleteDestination(dest.id)}
-                                className="p-1.5 rounded-md text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                                title="Remove destination"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {/* 2. Add New Instance Form */}
-              <div className="pt-2 border-t border-[var(--border-color)]">
-                <h4 className="text-xs font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-1.5">
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Add Another {activePlatformModal.name} Destination</span>
-                </h4>
-
-                <form onSubmit={onDestinationSubmit} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Destination Label</label>
-                    <input
-                      type="text"
-                      placeholder={`e.g. ${activePlatformModal.name} Alerts`}
-                      value={destName}
-                      onChange={(e) => setDestName(e.target.value)}
-                      className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setActivePlatformModal(null)}
+                      className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
 
-                  {activePlatformModal.id === 'email' ? (
-                    <div>
-                      {/* Quick Workspace Member Pills */}
-                      {workspaceMembers.length > 0 && (
-                        <div className="mb-2">
-                          <span className="text-[10px] text-[var(--text-secondary)] block mb-1">
-                            Quick add workspace member:
+                  {/* 1. List of Connected Instances */}
+                  {(() => {
+                    const activeDests = getPlatformDestinations(activePlatformModal.id);
+                    return activeDests.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[var(--text-primary)]">
+                            Connected Destinations ({activeDests.length})
                           </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {workspaceMembers.map((m) => (
-                              <button
-                                key={m.user_id}
-                                type="button"
-                                onClick={() => {
-                                  setTargetEmail((prev) => (prev ? `${prev}, ${m.email}` : m.email));
-                                }}
-                                className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-color)] bg-[var(--card-bg-alt)] hover:bg-[var(--item-hover)] text-[var(--text-primary)] transition-colors cursor-pointer"
+                          <span className="text-[10px] text-[var(--text-secondary)]">
+                            Active &amp; receiving alerts
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {activeDests.map((dest) => {
+                            const cfg = (dest.config || {}) as Record<string, unknown>;
+                            const targetDisplay = (cfg.emails as string) || (cfg.channel as string) || (cfg.url as string) || 'Configured';
+                            const isTestingThis = testingDestId === dest.id;
+
+                            return (
+                              <div
+                                key={dest.id}
+                                className="flex items-center justify-between p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main-alt)] text-xs gap-3"
                               >
-                                + {m.email} <span className="opacity-60">({m.role})</span>
-                              </button>
-                            ))}
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-[var(--text-primary)] truncate">
+                                    {dest.name}
+                                  </div>
+                                  <div className="text-[11px] text-[var(--text-secondary)] font-mono truncate">
+                                    {targetDisplay}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTestExistingDestination(dest.id, dest.destination_type, cfg)}
+                                    disabled={isTestingThis}
+                                    className="px-2.5 py-1 rounded-md border border-[var(--border-color)] hover:border-[var(--text-secondary)] text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                                  >
+                                    {isTestingThis ? 'Testing...' : 'Test'}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteDestination(dest.id)}
+                                    className="p-1.5 rounded-md text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                    title="Remove destination"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {/* 2. Add New Instance Form */}
+                  <div className="pt-2 border-t border-[var(--border-color)]">
+                    <h4 className="text-xs font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-1.5">
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Add Another {activePlatformModal.name} Destination</span>
+                    </h4>
+
+                    <form onSubmit={onDestinationSubmit} className="space-y-4 text-xs">
+                      <div>
+                        <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Destination Label</label>
+                        <input
+                          type="text"
+                          placeholder={`e.g. ${activePlatformModal.name} Alerts`}
+                          value={destName}
+                          onChange={(e) => setDestName(e.target.value)}
+                          className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                        />
+                      </div>
+
+                      {activePlatformModal.id === 'email' ? (
+                        <div>
+                          {/* Quick Workspace Member Pills */}
+                          {workspaceMembers.length > 0 && (
+                            <div className="mb-2">
+                              <span className="text-[10px] text-[var(--text-secondary)] block mb-1">
+                                Quick add workspace member:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {workspaceMembers.map((m) => (
+                                  <button
+                                    key={m.user_id}
+                                    type="button"
+                                    onClick={() => {
+                                      setTargetEmail((prev) => (prev ? `${prev}, ${m.email}` : m.email));
+                                    }}
+                                    className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--border-color)] bg-[var(--card-bg-alt)] hover:bg-[var(--item-hover)] text-[var(--text-primary)] transition-colors cursor-pointer"
+                                  >
+                                    + {m.email} <span className="opacity-60">({m.role})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
+                            Recipient Email Address(es)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. founder@company.com, team@company.com"
+                            value={targetEmail}
+                            onChange={(e) => setTargetEmail(e.target.value)}
+                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                          />
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-1.5">
+                            Emails are delivered directly from <strong className="text-[var(--text-primary)]">agent@oshift.sheref.dev</strong>.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
+                              {activePlatformModal.id === 'slack' || activePlatformModal.id === 'discord'
+                                ? 'Channel Name'
+                                : activePlatformModal.id === 'telegram'
+                                ? 'Chat ID / Channel Handle'
+                                : 'Channel / Destination Target'}
+                            </label>
+                            <input
+                              type="text"
+                              placeholder={
+                                activePlatformModal.id === 'slack'
+                                  ? '#competitive-intel'
+                                  : activePlatformModal.id === 'discord'
+                                  ? '#market-intel'
+                                  : '@my_team_channel'
+                              }
+                              value={targetChannel}
+                              onChange={(e) => setTargetChannel(e.target.value)}
+                              className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                            />
                           </div>
+
+                          <div>
+                            <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
+                              {activePlatformModal.name} Webhook URL
+                            </label>
+                            <input
+                              type="url"
+                              placeholder={
+                                activePlatformModal.id === 'slack'
+                                  ? 'https://hooks.slack.com/services/...'
+                                  : activePlatformModal.id === 'discord'
+                                  ? 'https://discord.com/api/webhooks/...'
+                                  : 'https://api.telegram.org/bot.../sendMessage'
+                              }
+                              value={targetWebhookUrl}
+                              onChange={(e) => setTargetWebhookUrl(e.target.value)}
+                              className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {activePlatformModal.id === 'webhook' && (
+                        <div>
+                          <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
+                            Secret Header (Optional)
+                          </label>
+                          <input
+                            type="password"
+                            placeholder="Optional signing secret"
+                            value={targetSecret}
+                            onChange={(e) => setTargetSecret(e.target.value)}
+                            className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                          />
                         </div>
                       )}
 
-                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
-                        Recipient Email Address(es)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. founder@company.com, team@company.com"
-                        value={targetEmail}
-                        onChange={(e) => setTargetEmail(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
-                      />
-                      <p className="text-[10px] text-[var(--text-secondary)] mt-1.5">
-                        Emails are delivered directly from <strong className="text-[var(--text-primary)]">agent@oshift.sheref.dev</strong>.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div>
-                        <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
-                          {activePlatformModal.id === 'slack' || activePlatformModal.id === 'discord'
-                            ? 'Channel Name'
-                            : activePlatformModal.id === 'telegram'
-                            ? 'Chat ID / Channel Handle'
-                            : 'Channel / Destination Target'}
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={
-                            activePlatformModal.id === 'slack'
-                              ? '#competitive-intel'
-                              : activePlatformModal.id === 'discord'
-                              ? '#market-intel'
-                              : '@my_team_channel'
-                          }
-                          value={targetChannel}
-                          onChange={(e) => setTargetChannel(e.target.value)}
-                          className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
-                        />
+                      {destModalError && <p className="text-xs text-red-400">{destModalError}</p>}
+                      {testResultMsg && (
+                        <p className={`text-xs ${testResultMsg.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {testResultMsg.msg}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                        <button
+                          type="button"
+                          onClick={handleModalTestConnection}
+                          disabled={isTestingDest}
+                          className="px-3.5 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                        >
+                          {isTestingDest ? 'Testing...' : 'Test Connection'}
+                        </button>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setActivePlatformModal(null)}
+                            className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                          >
+                            Close
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
+                          >
+                            Add Destination
+                          </button>
+                        </div>
                       </div>
-
-                      <div>
-                        <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
-                          {activePlatformModal.name} Webhook URL
-                        </label>
-                        <input
-                          type="url"
-                          placeholder={
-                            activePlatformModal.id === 'slack'
-                              ? 'https://hooks.slack.com/services/...'
-                              : activePlatformModal.id === 'discord'
-                              ? 'https://discord.com/api/webhooks/...'
-                              : 'https://api.telegram.org/bot.../sendMessage'
-                          }
-                          value={targetWebhookUrl}
-                          onChange={(e) => setTargetWebhookUrl(e.target.value)}
-                          className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {activePlatformModal.id === 'webhook' && (
-                    <div>
-                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
-                        Secret Header (Optional)
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="Optional signing secret"
-                        value={targetSecret}
-                        onChange={(e) => setTargetSecret(e.target.value)}
-                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
-                      />
-                    </div>
-                  )}
-
-                  {destModalError && <p className="text-xs text-red-400">{destModalError}</p>}
-                  {testResultMsg && (
-                    <p className={`text-xs ${testResultMsg.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {testResultMsg.msg}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
-                    <button
-                      type="button"
-                      onClick={handleModalTestConnection}
-                      disabled={isTestingDest}
-                      className="px-3.5 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                    >
-                      {isTestingDest ? 'Testing...' : 'Test Connection'}
-                    </button>
-
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setActivePlatformModal(null)}
-                        className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        Close
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
-                      >
-                        Add Destination
-                      </button>
-                    </div>
+                    </form>
                   </div>
-                </form>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -2,7 +2,9 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAutomations } from '@/hooks/use-automations';
+import { useMounted } from '@/hooks/use-mounted';
 import {
   ScheduleFrequency,
   formatCronToHuman,
@@ -105,6 +107,7 @@ export default function AutomationsPage() {
   });
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const mounted = useMounted();
   const [scheduleName, setScheduleName] = useState('');
   const [scheduleWorkflow, setScheduleWorkflow] = useState('oshift-chained-master');
   const [scheduleFrequency, setScheduleFrequency] = useState<ScheduleFrequency>('weekly');
@@ -364,108 +367,112 @@ export default function AutomationsPage() {
 
       </div>
 
-      {/* ── CREATE SCHEDULE MODAL ── */}
-      <AnimatePresence>
-        {showScheduleModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
-            >
-              <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">Create Automated Schedule</h3>
-                <button
-                  onClick={() => setShowScheduleModal(false)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+      {/* ── CREATE SCHEDULE MODAL (PORTALED TO BODY) ── */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {showScheduleModal && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6 shadow-xl space-y-6"
                 >
-                  <X className="h-4 w-4" />
-                </button>
+                  <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-4">
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Create Automated Schedule</h3>
+                    <button
+                      onClick={() => setShowScheduleModal(false)}
+                      className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Schedule Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Weekly Intelligence Pipeline"
+                        value={scheduleName}
+                        onChange={(e) => setScheduleName(e.target.value)}
+                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                      />
+                    </div>
+
+                    <CustomDropdown
+                      label="Workflow Target"
+                      options={WORKFLOW_DROPDOWN_OPTIONS}
+                      value={scheduleWorkflow}
+                      onChange={(val) => setScheduleWorkflow(val)}
+                    />
+
+                    <CustomDropdown<ScheduleFrequency>
+                      label="Frequency"
+                      options={FREQUENCY_OPTIONS}
+                      value={scheduleFrequency}
+                      onChange={(val) => setScheduleFrequency(val)}
+                    />
+
+                    {scheduleFrequency === 'weekly' ? (
+                      <CalendarGridDropdown
+                        mode="weekly"
+                        label="Day of the Week"
+                        value={selectedWeeklyDay}
+                        onChange={(val) => setSelectedWeeklyDay(val)}
+                      />
+                    ) : (
+                      <CalendarGridDropdown
+                        mode="monthly"
+                        label="Date of the Month (Days 1–28)"
+                        value={selectedMonthlyDay}
+                        onChange={(val) => setSelectedMonthlyDay(val)}
+                      />
+                    )}
+
+                    <div>
+                      <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Execution Time ({userTimezone || 'Local'})</label>
+                      <input
+                        type="time"
+                        value={scheduleTime}
+                        onChange={(e) => setScheduleTime(e.target.value)}
+                        className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
+                      />
+                    </div>
+
+                    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] p-3 flex items-center gap-2 text-xs">
+                      <Info className="h-4 w-4 text-[var(--text-primary)] shrink-0" />
+                      <span className="text-[var(--text-secondary)]">
+                        Will run:{' '}
+                        <strong className="text-[var(--text-primary)]">
+                          {formatCronToHuman(getCronFromSelection())}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
+                    <button
+                      onClick={() => setShowScheduleModal(false)}
+                      className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateSchedule}
+                      disabled={!scheduleName.trim()}
+                      className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer"
+                    >
+                      Save Schedule
+                    </button>
+                  </div>
+                </motion.div>
               </div>
-
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Schedule Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Weekly Intelligence Pipeline"
-                    value={scheduleName}
-                    onChange={(e) => setScheduleName(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
-                  />
-                </div>
-
-                <CustomDropdown
-                  label="Workflow Target"
-                  options={WORKFLOW_DROPDOWN_OPTIONS}
-                  value={scheduleWorkflow}
-                  onChange={(val) => setScheduleWorkflow(val)}
-                />
-
-                <CustomDropdown<ScheduleFrequency>
-                  label="Frequency"
-                  options={FREQUENCY_OPTIONS}
-                  value={scheduleFrequency}
-                  onChange={(val) => setScheduleFrequency(val)}
-                />
-
-                {scheduleFrequency === 'weekly' ? (
-                  <CalendarGridDropdown
-                    mode="weekly"
-                    label="Day of the Week"
-                    value={selectedWeeklyDay}
-                    onChange={(val) => setSelectedWeeklyDay(val)}
-                  />
-                ) : (
-                  <CalendarGridDropdown
-                    mode="monthly"
-                    label="Date of the Month (Days 1–28)"
-                    value={selectedMonthlyDay}
-                    onChange={(val) => setSelectedMonthlyDay(val)}
-                  />
-                )}
-
-                <div>
-                  <label className="block text-[var(--text-secondary)] font-medium mb-1.5">Execution Time ({userTimezone || 'Local'})</label>
-                  <input
-                    type="time"
-                    value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none"
-                  />
-                </div>
-
-                <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] p-3 flex items-center gap-2 text-xs">
-                  <Info className="h-4 w-4 text-[var(--text-primary)] shrink-0" />
-                  <span className="text-[var(--text-secondary)]">
-                    Will run:{' '}
-                    <strong className="text-[var(--text-primary)]">
-                      {formatCronToHuman(getCronFromSelection())}
-                    </strong>
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-                <button
-                  onClick={() => setShowScheduleModal(false)}
-                  className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateSchedule}
-                  disabled={!scheduleName.trim()}
-                  className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-all cursor-pointer"
-                >
-                  Save Schedule
-                </button>
-              </div>
-            </motion.div>
-          </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 }
