@@ -1,31 +1,27 @@
 // oshift/src/app/videos/page.tsx
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Film,
   Sparkles,
   Zap,
-  Clock,
   TrendingUp,
   RefreshCw,
   Layers,
-  AlertCircle,
-  Play,
-  Tag,
   Flame,
-  Globe,
   Share2,
-  Video as VideoIcon,
-  Bot,
 } from 'lucide-react';
 import VideoCard from '@/components/video/VideoCard';
 import VideoAnalyzerInput from '@/components/video/VideoAnalyzerInput';
 import VideoFilters from '@/components/video/VideoFilters';
 import VideoAnalysisModal from '@/components/video/VideoAnalysisModal';
+import SocialAccountsTab from '@/components/video/SocialAccountsTab';
 import { useVideos } from '@/hooks/use-videos';
 
 export default function VideosPage() {
+  const [activeView, setActiveView] = useState<'creatives' | 'channels'>('creatives');
+
   const {
     filteredAssets,
     competitors,
@@ -79,29 +75,73 @@ export default function VideosPage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent)]"></span>
               </span>
-              <span>Multimodal Vision Intelligence</span>
+              <span>Multimodal Vision & Creative Intelligence</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">
-              Video & Creative Viral Analysis
+              Video & Creative Intelligence
             </h1>
             <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1 max-w-2xl leading-relaxed">
-              Automated video tracking across TikTok, Instagram Reels, and YouTube.
-              Inspect 3-second hooks, attention pacing, retention drop-off risks, and cultural meme signals powered by Gemini 3.7 Flash Vision.
+              Track competitor video creatives across TikTok, Instagram Reels, and YouTube, alongside automated social profile scraping powered by Gemini 3.7 Flash Vision.
             </p>
           </div>
 
           <div className="flex items-center gap-3 self-start md:self-auto">
-            <button
-              type="button"
-              onClick={() => refetch()}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] hover:bg-[var(--item-hover)] text-xs font-bold text-[var(--text-primary)] transition-all hover:border-[var(--accent)] cursor-pointer disabled:opacity-50 shadow-sm"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>Refresh Library</span>
-            </button>
+            {activeView === 'creatives' && (
+              <button
+                type="button"
+                onClick={() => refetch()}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] hover:bg-[var(--item-hover)] text-xs font-bold text-[var(--text-primary)] transition-all hover:border-[var(--accent)] cursor-pointer disabled:opacity-50 shadow-sm"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh Library</span>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* View Switcher Tabs */}
+        <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-3">
+          <button
+            type="button"
+            onClick={() => setActiveView('creatives')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeView === 'creatives'
+                ? 'bg-[var(--text-primary)] text-[var(--card-bg)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-bg-alt)]'
+            }`}
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span>Viral Video Creatives</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                activeView === 'creatives'
+                  ? 'bg-black/20 text-white dark:bg-white/20'
+                  : 'bg-[var(--pill-bg)] text-[var(--text-secondary)]'
+              }`}
+            >
+              {filteredAssets.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveView('channels')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeView === 'channels'
+                ? 'bg-[var(--text-primary)] text-[var(--card-bg)] shadow-xs'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-bg-alt)]'
+            }`}
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Monitored Social Profiles</span>
+          </button>
+        </div>
+
+        {activeView === 'channels' ? (
+          <SocialAccountsTab onAddSuccess={() => refetch()} />
+        ) : (
+          <>
 
         {/* Strategic Intelligence & Viral Pattern KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -361,6 +401,8 @@ export default function VideosPage() {
               />
             ))}
           </div>
+        )}
+        </>
         )}
 
         {/* Modal Inspector */}

@@ -373,30 +373,6 @@ export default function Sidebar() {
                 </div>
 
                 <div className="nav-section">
-                    <div className="nav-label">WORKFLOWS & INTEGRATIONS</div>
-                    <Link href="/automations" className={`nav-item ${pathname === '/automations' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="5 3 19 12 5 21 5 3" />
-                        </svg>
-                        Automations
-                    </Link>
-                    <Link href="/exports" className={`nav-item ${pathname === '/exports' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                            <polyline points="16 6 12 2 8 6" />
-                            <line x1="12" y1="2" x2="12" y2="15" />
-                        </svg>
-                        Exports
-                    </Link>
-                    <Link href="/social-accounts" className={`nav-item ${pathname === '/social-accounts' ? 'active' : ''}`}>
-                        <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-                        </svg>
-                        Social Accounts
-                    </Link>
-                </div>
-
-                <div className="nav-section">
                     <div className="nav-label">OTHER</div>
                     <Link href="/settings" className={`nav-item ${pathname === '/settings' ? 'active' : ''}`}>
                         <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
