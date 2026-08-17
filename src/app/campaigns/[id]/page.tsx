@@ -42,6 +42,11 @@ function tileFill(seed: string): string {
 function postTileBg(post: CampaignPost, campaignFallback?: Campaign, darkOverlay = true): string {
   const imgUrl = getPostArtwork(post, campaignFallback);
   const fallback = tileFill(post.id);
+  if (!imgUrl) {
+    return darkOverlay
+      ? `linear-gradient(to top, rgba(10,10,10,0.75) 0%, rgba(10,10,10,0.2) 60%, transparent 100%), ${fallback}`
+      : fallback;
+  }
   if (darkOverlay) {
     return `linear-gradient(to top, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.5) 50%, rgba(10,10,10,0.2) 100%), url('${imgUrl}'), ${fallback}`;
   }
@@ -155,6 +160,8 @@ function DeckMessage({
 
 // ─── Slide 1: Editorial Intro with "e" cutout mask ────────────────────────────
 function Slide1({ campaign }: SlideProps) {
+  const [heroImg] = getDeckArtwork(campaign);
+
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '120px 8% 8% 8%' }}>
       {/* Stylized lowercase cursive 'e' mask */}
@@ -188,22 +195,39 @@ function Slide1({ campaign }: SlideProps) {
               />
             </clipPath>
           </defs>
-          {/* The letterform is filled with the campaign's own ink tone. It used
-              to hold a stock photograph, which was the same on every campaign. */}
-          <motion.rect
-            x="-10%"
-            y="-10%"
-            width="120%"
-            height="120%"
-            fill={tileTone(campaign.id)}
-            clipPath="url(#letter-e-clip)"
-            animate={{
-              scale: [1.12, 1.02, 1.12],
-              x: [-15, 5, -15],
-              y: [-15, 5, -15]
-            }}
-            transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
-          />
+          {/* The letterform is filled with the campaign's hero artwork or ink tone. */}
+          {heroImg ? (
+            <motion.image
+              href={heroImg}
+              x="-10%"
+              y="-10%"
+              width="120%"
+              height="120%"
+              preserveAspectRatio="xMidYMid slice"
+              clipPath="url(#letter-e-clip)"
+              animate={{
+                scale: [1.12, 1.02, 1.12],
+                x: [-15, 5, -15],
+                y: [-15, 5, -15]
+              }}
+              transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
+            />
+          ) : (
+            <motion.rect
+              x="-10%"
+              y="-10%"
+              width="120%"
+              height="120%"
+              fill={tileTone(campaign.id)}
+              clipPath="url(#letter-e-clip)"
+              animate={{
+                scale: [1.12, 1.02, 1.12],
+                x: [-15, 5, -15],
+                y: [-15, 5, -15]
+              }}
+              transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
+            />
+          )}
         </svg>
       </motion.div>
 
@@ -483,6 +507,7 @@ function Slide4({ campaign }: SlideProps) {
     (themes.length > 0
       ? `Recurring themes across this campaign: ${themes.join(', ')}.`
       : 'No description has been recorded for this campaign.');
+  const [heroImg] = getDeckArtwork(campaign);
 
   return (
     <div 
@@ -503,7 +528,10 @@ function Slide4({ campaign }: SlideProps) {
         style={{
           position: 'absolute',
           inset: 0,
-          background: tileFill(campaign.id),
+          backgroundImage: heroImg ? `url('${heroImg}')` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          background: heroImg ? undefined : tileFill(campaign.id),
         }}
       />
       {/* Spotify-style deep solid blue-to-transparent overlay */}

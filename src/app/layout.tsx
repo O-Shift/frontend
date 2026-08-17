@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: "OShift",
   description: "Campaigns and Partnerships Dashboard",
   icons: { icon: "/logo.png" },
+  referrer: "no-referrer",
 };
 
 /**

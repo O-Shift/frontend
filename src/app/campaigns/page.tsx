@@ -465,7 +465,7 @@ export default function CampaignsPage() {
                     const [leftImg, rightImg, frontImg] = getDeckArtwork(camp.campaign);
                     return (
                       <div className={`cards ${isSelected ? 'cards-hidden' : ''}`}>
-                        <div className="card card-left" style={getDeckCardStyle(leftImg, false)}>
+                        <div className="card card-left" style={getDeckCardStyle(leftImg, camp.id, 1, false)}>
                           <div
                             className="floating-bubble"
                             style={{ bottom: 45, left: -20 }}
@@ -475,7 +475,7 @@ export default function CampaignsPage() {
                           </div>
                         </div>
 
-                        <div className="card card-right" style={getDeckCardStyle(rightImg, false)}>
+                        <div className="card card-right" style={getDeckCardStyle(rightImg, camp.id, 2, false)}>
                           <div
                             className="floating-bubble"
                             style={{ top: 45, right: -25, width: 45, height: 45, borderRadius: '50%', justifyContent: 'center' }}
@@ -485,7 +485,7 @@ export default function CampaignsPage() {
                           </div>
                         </div>
 
-                        <div className="card deck-front" style={getDeckCardStyle(frontImg, true)}>
+                        <div className="card deck-front" style={getDeckCardStyle(frontImg, camp.id, 0, true)}>
                           <div className="logo font-semibold drop-shadow-md">{camp.title}</div>
                         </div>
                       </div>
@@ -555,7 +555,7 @@ export default function CampaignsPage() {
                       style={{
                         width: 180, height: 180, borderRadius: 16,
                         border: '2px solid var(--border-color)',
-                        ...getDeckCardStyle(postImg, true),
+                        ...getDeckCardStyle(postImg, post.id, 0, true),
                         transition: 'transform 0.3s',
                         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
                         padding: 14, boxSizing: 'border-box', overflow: 'hidden',

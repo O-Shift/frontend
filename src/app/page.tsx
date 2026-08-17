@@ -330,13 +330,13 @@ export default function DashboardPage() {
                                                     return (
                                                         <div className="cards">
                                                             <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
-                                                                <div className="card card-left" style={getDeckCardStyle(leftImg, false)}></div>
+                                                                <div className="card card-left" style={getDeckCardStyle(leftImg, activeCamp.id, 1, false)}></div>
                                                             </motion.div>
                                                             <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-10">
-                                                                <div className="card card-right" style={getDeckCardStyle(rightImg, false)}></div>
+                                                                <div className="card card-right" style={getDeckCardStyle(rightImg, activeCamp.id, 2, false)}></div>
                                                             </motion.div>
                                                             <motion.div variants={childVariants} custom={direction} className="absolute inset-0 z-30">
-                                                                <div className="card card-center deck-front" style={getDeckCardStyle(frontImg, true)}>
+                                                                <div className="card card-center deck-front" style={getDeckCardStyle(frontImg, activeCamp.id, 0, true)}>
                                                                     <div className="logo flex items-center gap-2 mt-auto text-[#e4e4e7] z-10">
                                                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={brandColor1} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                             <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />

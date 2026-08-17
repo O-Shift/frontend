@@ -549,9 +549,9 @@ function CompanyPageContent() {
                                     <div className="deck-wrapper" title={camp.name}>
                                         <div className="cards">
                                             {/* Simplified cards - NO floating bubbles */}
-                                            <div className="card card-left" style={getDeckCardStyle(leftImg, false)}></div>
-                                            <div className="card card-right" style={getDeckCardStyle(rightImg, false)}></div>
-                                            <div className="card deck-front" style={getDeckCardStyle(frontImg, true)}>
+                                            <div className="card card-left" style={getDeckCardStyle(leftImg, cardSeed, 1, false)}></div>
+                                            <div className="card card-right" style={getDeckCardStyle(rightImg, cardSeed, 2, false)}></div>
+                                            <div className="card deck-front" style={getDeckCardStyle(frontImg, cardSeed, 0, true)}>
                                                 <div className="logo text-[10px] font-bold uppercase tracking-wider text-zinc-200">{camp.name}</div>
                                             </div>
                                         </div>

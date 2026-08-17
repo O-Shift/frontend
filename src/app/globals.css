@@ -1533,7 +1533,7 @@ body {
   padding: 20px;
   box-sizing: border-box;
   transform: translateY(0) scale(var(--center-scale));
-  background: var(--card-bg, #18181b);
+  background-color: var(--card-bg, #18181b);
   border: 1px solid rgba(255, 255, 255, 0.15);
   justify-content: flex-end;
 }
