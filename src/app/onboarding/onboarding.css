@@ -34,17 +34,7 @@
     overflow: hidden;
 }
 
-/* Custom Scrollbar for Left Side */
-.onboarding-left::-webkit-scrollbar {
-    width: 6px;
-}
-.onboarding-left::-webkit-scrollbar-track {
-    background: transparent;
-}
-.onboarding-left::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,0.1);
-    border-radius: 10px;
-}
+
 
 /* Headings & Text */
 .ob-title {
