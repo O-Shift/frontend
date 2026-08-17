@@ -169,7 +169,7 @@ export function getPostArtwork(post: CampaignPost, campaignFallback?: Campaign):
     return post.media_urls[0].trim();
   }
   if (campaignFallback) {
-    const [i0, i1, i2] = getDeckArtwork(campaignFallback);
+    const [i0, _i1, _i2] = getDeckArtwork(campaignFallback);
     return i0;
   }
   const hash = hashString(post.id);
