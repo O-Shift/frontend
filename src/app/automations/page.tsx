@@ -11,14 +11,8 @@ import {
 import {
   Clock,
   Plus,
-  RefreshCw,
   Zap,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  ChevronRight,
   Layers,
-  Settings,
   Sparkles,
   ToggleLeft,
   ToggleRight,
@@ -28,7 +22,9 @@ import {
   Check,
   Play,
   Info,
-  ChevronDown,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomDropdown, { DropdownOption } from '@/components/ui/CustomDropdown';
@@ -51,16 +47,16 @@ const WORKFLOW_TYPES = [
   },
   {
     id: 'oshift/analyzers.run',
-    name: 'Analysis & Knowledge Graph',
-    desc: 'Normalizes raw signals, computes threat scores, updates graph memory, and distills market signals.',
-    icon: Layers,
-    badge: 'Intelligence',
+    name: 'LLM Analyzers & Scoring Engine',
+    desc: 'Extracts strategic themes, computes vulnerability indices, and identifies momentum shifts.',
+    icon: Sparkles,
+    badge: 'Intelligence AI',
   },
   {
     id: 'oshift/reporters.run',
-    name: 'Briefs & Export Distribution',
-    desc: 'Generates executive briefs, triggers anomaly alerts, and exports to Slack and connected webhooks.',
-    icon: Settings,
+    name: 'Brief Synthesizers & Exporters',
+    desc: 'Generates structured executive reports and delivers them to connected channels.',
+    icon: Layers,
     badge: 'Reporting',
   },
 ];
@@ -89,15 +85,10 @@ export default function AutomationsPage() {
   const {
     runs,
     schedules,
-    selectedRunId,
-    selectedRunSteps,
-    isLoadingRuns,
-    isLoadingSteps,
     isLoadingSchedules,
     isTriggering,
     error,
     triggerPipeline,
-    fetchSteps,
     createSchedule,
     updateSchedule,
     deleteSchedule,
@@ -124,9 +115,6 @@ export default function AutomationsPage() {
   const [selectedWorkflow, setSelectedWorkflow] = useState('oshift-chained-master');
   const [isVerbose, setIsVerbose] = useState(false);
   const [triggerSuccessToast, setTriggerSuccessToast] = useState<string | null>(null);
-
-  // Collapsible Advanced Section
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   const handleTrigger = async (workflowTypeOverride?: string) => {
     const wf = workflowTypeOverride || selectedWorkflow;
@@ -372,158 +360,6 @@ export default function AutomationsPage() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* ── COLLAPSIBLE ADVANCED SECTION: EXECUTION STREAM & STEP INSPECTOR ── */}
-        <div className="border border-[var(--border-color)] bg-[var(--card-bg)] rounded-xl overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-            className="w-full p-4 sm:p-5 flex items-center justify-between hover:bg-[var(--item-hover)] transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[var(--card-bg-alt)] border border-[var(--border-color)] flex items-center justify-center shrink-0">
-                <Activity className="h-4 w-4 text-[var(--text-primary)]" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Advanced — Pipeline Execution Stream & Logs</h3>
-                <p className="text-xs text-[var(--text-secondary)]">Inspect raw execution runs, timing metrics, and individual step logs.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-[var(--text-secondary)] hidden sm:inline">
-                {isAdvancedOpen ? 'Hide Logs' : 'View Stream'}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 text-[var(--text-secondary)] transition-transform duration-200 ${
-                  isAdvancedOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </div>
-          </button>
-
-          <AnimatePresence>
-            {isAdvancedOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="border-t border-[var(--border-color)] p-6 space-y-6"
-              >
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                  {/* Pipeline Execution Stream */}
-                  <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-                      <div>
-                        <h4 className="font-semibold text-sm text-[var(--text-primary)]">Execution History</h4>
-                        <p className="text-xs text-[var(--text-secondary)]">Click any execution to inspect step progress.</p>
-                      </div>
-                      <button
-                        onClick={refreshRuns}
-                        className="p-1.5 rounded-md border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
-                        title="Refresh runs"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-
-                    {isLoadingRuns ? (
-                      <div className="flex items-center justify-center py-12 text-xs text-[var(--text-secondary)]">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        <span>Loading executions...</span>
-                      </div>
-                    ) : runs.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-[var(--text-secondary)]">
-                        No pipeline executions recorded yet.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {runs.map((run) => {
-                          const isSelected = run.id === selectedRunId;
-                          return (
-                            <div
-                              key={run.id}
-                              onClick={() => fetchSteps(run.id)}
-                              className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
-                                isSelected
-                                  ? 'border-[var(--text-primary)] bg-[var(--card-bg-alt)]'
-                                  : 'border-[var(--border-color)] bg-[var(--card-bg-alt)] hover:bg-[var(--item-hover)]'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                {run.status === 'completed' ? (
-                                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                                ) : run.status === 'failed' ? (
-                                  <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
-                                ) : (
-                                  <Loader2 className="h-4 w-4 animate-spin text-[var(--text-secondary)] shrink-0" />
-                                )}
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold text-[var(--text-primary)]">Pipeline Run</span>
-                                    <span className="text-[10px] font-mono text-[var(--text-secondary)]">#{run.id.slice(0, 8)}</span>
-                                  </div>
-                                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                                    Started {new Date(run.started_at).toLocaleString()}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-[var(--border-color)] text-[var(--text-secondary)]">
-                                  {run.status}
-                                </span>
-                                <ChevronRight className="h-4 w-4 text-[var(--text-secondary)]" />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Run Step Inspector */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-                      <h4 className="font-semibold text-sm text-[var(--text-primary)]">Step Inspector</h4>
-                      {selectedRunId && (
-                        <span className="text-[10px] font-mono text-[var(--text-secondary)]">#{selectedRunId.slice(0, 8)}</span>
-                      )}
-                    </div>
-
-                    {!selectedRunId ? (
-                      <div className="text-center py-10 text-xs text-[var(--text-secondary)]">
-                        Select an execution run from the left panel to inspect step metrics.
-                      </div>
-                    ) : isLoadingSteps ? (
-                      <div className="flex items-center justify-center py-10 text-xs text-[var(--text-secondary)]">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        <span>Fetching step metrics...</span>
-                      </div>
-                    ) : selectedRunSteps.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-[var(--text-secondary)]">
-                        No step details logged for this run.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {selectedRunSteps.map((step, i) => (
-                          <div key={i} className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] text-xs space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-[var(--text-primary)]">{step.step_name || `Step ${i + 1}`}</span>
-                              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-bold">{step.status}</span>
-                            </div>
-                            {step.duration_ms && (
-                              <p className="text-[11px] text-[var(--text-secondary)]">Duration: {(step.duration_ms / 1000).toFixed(1)}s</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
       </div>

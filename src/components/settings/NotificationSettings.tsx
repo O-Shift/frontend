@@ -27,6 +27,9 @@ import {
   ShieldCheck,
   Plus,
   Mail,
+  ChevronDown,
+  ChevronRight,
+  RefreshCw,
 } from 'lucide-react';
 import { FaSlack, FaDiscord, FaTelegram } from 'react-icons/fa6';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -115,7 +118,12 @@ export default function NotificationSettings() {
     schedules,
     runs,
     isLoadingSchedules,
+    isLoadingRuns,
+    isLoadingSteps,
     isTriggering,
+    selectedRunSteps,
+    selectedRunId,
+    fetchSteps,
     error: automationsError,
     triggerPipeline,
     createSchedule,
@@ -123,6 +131,8 @@ export default function NotificationSettings() {
     refreshSchedules,
     refreshRuns,
   } = useAutomations();
+
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   const {
     destinations,
@@ -811,33 +821,178 @@ export default function NotificationSettings() {
         </div>
       </div>
 
-      {/* ── SECTION 4: RECENT EXECUTION HEALTH ── */}
-      {latestRun && (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--text-secondary)]">Last Pipeline Execution:</span>
-            <span className="font-semibold text-[var(--text-primary)]">
-              {new Date(latestRun.started_at).toLocaleString()}
-            </span>
-            <span
-              className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
-                latestRun.status === 'completed'
-                  ? 'border-emerald-500/30 text-emerald-400'
-                  : latestRun.status === 'failed'
-                  ? 'border-red-500/30 text-red-400'
-                  : 'border-[var(--border-color)] text-[var(--text-secondary)]'
-              }`}
-            >
-              {latestRun.status}
-            </span>
-          </div>
+      {/* ── SECTION 4: ADVANCED SETTINGS (COLLAPSIBLE) ── */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+          className="w-full flex items-center justify-between py-2 text-left cursor-pointer transition-colors"
+        >
+          <span className="text-sm font-semibold text-[var(--text-primary)]">
+            Advanced settings
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-[var(--text-secondary)] transition-transform duration-200 ${
+              isAdvancedOpen ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
 
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-            <span>Active Destinations:</span>
-            <strong className="text-[var(--text-primary)]">{destinations.length} connected</strong>
-          </div>
-        </div>
-      )}
+        <AnimatePresence>
+          {isAdvancedOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="pt-3 space-y-4 overflow-hidden"
+            >
+              {/* Recent Execution Health & Active Destinations summary */}
+              {latestRun && (
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--text-secondary)]">Last Pipeline Execution:</span>
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {new Date(latestRun.started_at).toLocaleString()}
+                    </span>
+                    <span
+                      className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
+                        latestRun.status === 'completed'
+                          ? 'border-emerald-500/30 text-emerald-400'
+                          : latestRun.status === 'failed'
+                          ? 'border-red-500/30 text-red-400'
+                          : 'border-[var(--border-color)] text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      {latestRun.status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                    <span>Active Destinations:</span>
+                    <strong className="text-[var(--text-primary)]">{destinations.length} connected</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Execution Stream & Step Inspector */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                  {/* Pipeline Execution Stream */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+                      <div>
+                        <h4 className="font-semibold text-sm text-[var(--text-primary)]">Execution History</h4>
+                        <p className="text-xs text-[var(--text-secondary)]">Click any execution to inspect step progress.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={refreshRuns}
+                        className="p-1.5 rounded-md border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors cursor-pointer"
+                        title="Refresh runs"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {isLoadingRuns ? (
+                      <div className="flex items-center justify-center py-12 text-xs text-[var(--text-secondary)]">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span>Loading executions...</span>
+                      </div>
+                    ) : runs.length === 0 ? (
+                      <div className="text-center py-8 text-xs text-[var(--text-secondary)]">
+                        No pipeline executions recorded yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {runs.map((run) => {
+                          const isSelected = run.id === selectedRunId;
+                          return (
+                            <div
+                              key={run.id}
+                              onClick={() => fetchSteps(run.id)}
+                              className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'border-[var(--text-primary)] bg-[var(--card-bg-alt)]'
+                                  : 'border-[var(--border-color)] bg-[var(--card-bg-alt)] hover:bg-[var(--item-hover)]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                {run.status === 'completed' ? (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                                ) : run.status === 'failed' ? (
+                                  <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+                                ) : (
+                                  <Loader2 className="h-4 w-4 animate-spin text-[var(--text-secondary)] shrink-0" />
+                                )}
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-[var(--text-primary)]">Pipeline Run</span>
+                                    <span className="text-[10px] font-mono text-[var(--text-secondary)]">#{run.id.slice(0, 8)}</span>
+                                  </div>
+                                  <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                                    Started {new Date(run.started_at).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-[var(--border-color)] text-[var(--text-secondary)]">
+                                  {run.status}
+                                </span>
+                                <ChevronRight className="h-4 w-4 text-[var(--text-secondary)]" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Run Step Inspector */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+                      <h4 className="font-semibold text-sm text-[var(--text-primary)]">Step Inspector</h4>
+                      {selectedRunId && (
+                        <span className="text-[10px] font-mono text-[var(--text-secondary)]">#{selectedRunId.slice(0, 8)}</span>
+                      )}
+                    </div>
+
+                    {!selectedRunId ? (
+                      <div className="text-center py-10 text-xs text-[var(--text-secondary)]">
+                        Select an execution run from the left panel to inspect step metrics.
+                      </div>
+                    ) : isLoadingSteps ? (
+                      <div className="flex items-center justify-center py-10 text-xs text-[var(--text-secondary)]">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span>Fetching step metrics...</span>
+                      </div>
+                    ) : selectedRunSteps.length === 0 ? (
+                      <div className="text-center py-8 text-xs text-[var(--text-secondary)]">
+                        No step details logged for this run.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {selectedRunSteps.map((step, i) => (
+                          <div key={i} className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-[var(--text-primary)]">{step.step_name || `Step ${i + 1}`}</span>
+                              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-bold">{step.status}</span>
+                            </div>
+                            {step.duration_ms && (
+                              <p className="text-[11px] text-[var(--text-secondary)]">Duration: {(step.duration_ms / 1000).toFixed(1)}s</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* ── MULTI-INSTANCE INTEGRATION MANAGEMENT MODAL ── */}
       <AnimatePresence>
