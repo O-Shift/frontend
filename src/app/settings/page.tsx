@@ -7,6 +7,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { EVENTS, track } from '@/lib/analytics';
 import { createClient } from '@/utils/supabase/client';
 import { useSettings } from '@/hooks/use-settings';
+import NotificationSettings from '@/components/settings/NotificationSettings';
 
 const SampleBadge = () => (
   <span style={{ fontSize: 10, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle', textTransform: 'uppercase', fontWeight: 600 }}>Mock data</span>
@@ -23,7 +24,7 @@ export default function SettingsPage() {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [commandActive, setCommandActive] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [, setSidebarCollapsed] = useState(false);
 
   // Global thinking class toggle
   useEffect(() => {
@@ -124,11 +125,12 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="skeleton-target" style={{ background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                  <button disabled style={{ ...rowStyle, opacity: 0.5, cursor: 'not-allowed' }}>
+                  <button onClick={() => setActiveTab('notifications')} style={rowStyle} onMouseEnter={e => e.currentTarget.style.background = 'var(--item-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                      <span>Notifications (Not set)</span>
+                      <span>Notifications & Delivery Cadence</span>
                     </div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                 </div>
               </div>
@@ -282,7 +284,7 @@ export default function SettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.items.map((user: any) => (
+                    {users.items.map((user: { id: string; name: string; email: string; role: string; access: string; status: string }) => (
                       <tr key={user.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '16px 24px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -321,10 +323,10 @@ export default function SettingsPage() {
               <p style={{ marginBottom: 24 }}>By accessing or using OShift, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.</p>
 
               <h3 style={{ color: 'var(--text-primary)', fontSize: 18, marginBottom: 16 }}>2. Use License</h3>
-              <p style={{ marginBottom: 24 }}>Permission is granted to temporarily download one copy of the materials (information or software) on OShift's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title.</p>
+              <p style={{ marginBottom: 24 }}>Permission is granted to temporarily download one copy of the materials (information or software) on OShift&apos;s website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title.</p>
 
               <h3 style={{ color: 'var(--text-primary)', fontSize: 18, marginBottom: 16 }}>3. Disclaimer</h3>
-              <p style={{ marginBottom: 24 }}>The materials on OShift's website are provided on an 'as is' basis. OShift makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
+              <p style={{ marginBottom: 24 }}>The materials on OShift&apos;s website are provided on an &apos;as is&apos; basis. OShift makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
             </div>
           </motion.div>
         );
@@ -343,6 +345,14 @@ export default function SettingsPage() {
               <h3 style={{ color: 'var(--text-primary)', fontSize: 18, marginBottom: 16 }}>3. Data Security</h3>
               <p style={{ marginBottom: 24 }}>We take reasonable measures to help protect information about you from loss, theft, misuse and unauthorized access, disclosure, alteration and destruction. However, no data transmission over the Internet can be guaranteed to be 100% secure.</p>
             </div>
+          </motion.div>
+        );
+
+      case 'notifications':
+        return (
+          <motion.div key="notifications" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }}>
+            {renderHeader('Notification Preferences')}
+            <NotificationSettings />
           </motion.div>
         );
 

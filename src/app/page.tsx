@@ -586,13 +586,6 @@ export default function DashboardPage() {
                                                 </svg>
                                             ))}
                                         </div>
-                                        <button 
-                                            disabled 
-                                            title="Reply endpoint not available" 
-                                            className="text-xs font-medium border border-[var(--border-color)] text-[var(--text-secondary)] py-1 px-3 rounded-md opacity-50 cursor-not-allowed"
-                                        >
-                                            Reply
-                                        </button>
                                     </div>
                                 </div>
                             </div>
