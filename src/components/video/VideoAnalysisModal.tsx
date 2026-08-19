@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Film,
@@ -14,18 +15,15 @@ import {
   Globe,
   User,
   Heart,
-  Smile,
-  AlertTriangle,
-  Code,
   Copy,
   Check,
   Tag,
   DollarSign,
   TrendingUp,
-  Layers,
 } from 'lucide-react';
 import VideoScoreRadar from './VideoScoreRadar';
 import VideoTimeline from './VideoTimeline';
+import { useMounted } from '@/hooks/use-mounted';
 import type { VideoAsset } from '@/types/entities';
 
 interface VideoAnalysisModalProps {
@@ -38,8 +36,9 @@ type ModalTab = 'overview' | 'hook_pacing' | 'cultural' | 'timeline' | 'raw_json
 export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModalProps) {
   const [activeTab, setActiveTab] = useState<ModalTab>('overview');
   const [copiedJson, setCopiedJson] = useState(false);
+  const mounted = useMounted();
 
-  if (!asset) return null;
+  if (!mounted || !asset) return null;
 
   const analysis = asset.analysis;
   const scores = analysis?.final_scores_out_of_100;
@@ -57,8 +56,10 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-2xl overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-start justify-between p-5 border-b border-[var(--border-color)] bg-[var(--card-bg-alt)] shrink-0">
@@ -537,6 +538,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

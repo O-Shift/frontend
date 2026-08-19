@@ -289,7 +289,7 @@ export default function OpportunitiesPage() {
   // Helper to render description with hoverable spans
   const renderDescription = () => {
     if (!slide) return null;
-    let desc = slide.description;
+    const desc = slide.description;
     let parts: React.ReactNode[] = [desc];
 
     (slide.highlights || []).forEach((highlight: any, idx: number) => {

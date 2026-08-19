@@ -1,7 +1,9 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'next/navigation';
+import { useMounted } from '@/hooks/use-mounted';
 import Image from 'next/image';
 import {
   AlertCircle,
@@ -167,11 +169,8 @@ function ChatContent() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleteNotification, setDeleteNotification] = useState<string | null>(null);
-  const [heroHeadline, setHeroHeadline] = useState<string>(CHAT_HERO_HEADLINES[0]);
-
-  useEffect(() => {
-    setHeroHeadline(getRandomHeroHeadline(CHAT_HERO_HEADLINES));
-  }, []);
+  const [heroHeadline] = useState<string>(() => getRandomHeroHeadline(CHAT_HERO_HEADLINES));
+  const mounted = useMounted();
 
   const endRef = useRef<HTMLDivElement>(null);
   const autoSentQueryRef = useRef(false);
@@ -517,59 +516,63 @@ function ChatContent() {
         </AnimatePresence>
       </main>
 
-      {/* Confirmation Modal: "Are you sure?" Popup */}
-      <AnimatePresence>
-        {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-md rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-2xl"
-            >
-              <button
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-                className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-
-              <div className="flex items-center gap-3.5 mb-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-400 border border-red-500/20">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-[var(--text-primary)]">Delete Chat?</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">This action cannot be undone.</p>
-                </div>
-              </div>
-
-              <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
-                Are you sure you want to delete <strong className="text-[var(--text-primary)] font-medium">&quot;{deleteTarget.title}&quot;</strong>?
-              </p>
-
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(null)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors"
+      {/* Confirmation Modal: "Are you sure?" Popup (PORTALED TO BODY) */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {deleteTarget && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="relative w-full max-w-md rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-2xl"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDeleteConfirm()}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/90 hover:bg-red-500 text-white transition-colors shadow-lg shadow-red-500/20"
-                >
-                  Confirm Delete
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(null)}
+                    className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-400 border border-red-500/20">
+                      <AlertTriangle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-[var(--text-primary)]">Delete Chat?</h3>
+                      <p className="text-xs text-[var(--text-secondary)]">This action cannot be undone.</p>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
+                    Are you sure you want to delete <strong className="text-[var(--text-primary)] font-medium">&quot;{deleteTarget.title}&quot;</strong>?
+                  </p>
+
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(null)}
+                      className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--item-hover)] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteConfirm()}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/90 hover:bg-red-500 text-white transition-colors shadow-lg shadow-red-500/20"
+                    >
+                      Confirm Delete
+                    </button>
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 }
