@@ -21,7 +21,7 @@ interface VideoScoreRadarProps {
 export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRadarProps) {
   if (!scores) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-center text-sm text-[var(--text-secondary)] border border-[var(--border-color)] rounded-xl bg-[var(--card-bg)]">
+      <div className="flex flex-col items-center justify-center p-6 text-center text-sm text-[var(--text-secondary)] border border-[var(--border-color)] rounded-md bg-[var(--card-bg)]">
         No score breakdown available for this video.
       </div>
     );
@@ -55,7 +55,7 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
   };
 
   return (
-    <div className={`flex flex-col gap-4 p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm ${className}`}>
+    <div className={`flex flex-col gap-4 p-5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]  ${className}`}>
       <div className="flex items-center justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -76,7 +76,7 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
             <span className="text-xs text-[var(--text-secondary)] font-medium">/ 100</span>
           </div>
           <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-            {overallScore >= 80 ? '🔥 High Viral Potential' : overallScore >= 60 ? '⚡ Strong Performer' : '📊 Baseline Engagement'}
+            {overallScore >= 80 ? ' High Viral Potential' : overallScore >= 60 ? ' Strong Performer' : ' Baseline Engagement'}
           </span>
         </div>
       </div>
@@ -131,9 +131,9 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
               {item.subject}
             </span>
             <div className="flex items-center justify-between mt-1">
-              <div className="w-full bg-[var(--pill-bg)] h-1.5 rounded-full overflow-hidden mr-2">
+              <div className="w-full bg-[var(--pill-bg)] h-1.5 rounded-md overflow-hidden mr-2">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
+                  className="h-full rounded-md transition-all duration-500"
                   style={{
                     width: `${item.score}%`,
                     backgroundColor: getScoreColor(item.score),
