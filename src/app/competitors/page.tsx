@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import PromptField from '@/components/PromptField';
+import PromptField, { type AttachedContextNode } from '@/components/PromptField';
 import Skeleton from '@/components/Skeleton';
 import type { Competitor } from '@/lib/api';
 import { usePinned } from '@/context/PinnedContext';
@@ -86,7 +86,7 @@ export default function CompetitorsPage() {
   // fire the opposite write against a state the server has not acknowledged yet.
   const [pinPending, setPinPending] = useState<ReadonlySet<string>>(() => new Set());
 
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<AttachedContextNode | null>(null);
   const [commandActive, setCommandActive] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isThinking, setIsThinking] = useState(false);

@@ -6,8 +6,8 @@ import dynamic from 'next/dynamic';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
 import CompetitorDetailSkeleton from '@/components/skeletons/CompetitorDetailSkeleton';
 import { ZINC_PALETTE } from '@/components/charts/palette';
-import PromptField from '@/components/PromptField';
-import { triggerCompetitorScrape } from '@/lib/api';
+import PromptField, { type AttachedContextNode } from '@/components/PromptField';
+import { triggerCompetitorScrape, type SenseReview } from '@/lib/api';
 import { stringToHue } from '@/lib/colors';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
 import { useCompetitorDetail } from '@/hooks/use-competitors';
@@ -50,6 +50,11 @@ function formatValuation(val?: number | null): string {
   return `$${val.toLocaleString()}`;
 }
 
+function metaString(metadata: SenseReview['metadata'], key: string): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
 function CompetitorDetailPageContent() {
   const params = useParams();
   const router = useRouter();
@@ -75,7 +80,7 @@ function CompetitorDetailPageContent() {
   const [scrapeMessage, setScrapeMessage] = useState<string | null>(null);
 
   // PromptField & UI state
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<AttachedContextNode | null>(null);
   const [commandActive, setCommandActive] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
@@ -571,12 +576,12 @@ function CompetitorDetailPageContent() {
                       }} />
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          {(rev.metadata as any)?.avatar_url && (
-                            <img src={(rev.metadata as any).avatar_url} alt="Avatar" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                          {metaString(rev.metadata, 'avatar_url') && (
+                            <img src={metaString(rev.metadata, 'avatar_url')} alt="Avatar" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
                           )}
                           <div>
                             <div className="review-author" style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700 }}>
-                              {(rev.metadata as any)?.author_name || (rev.platform ? rev.platform.toUpperCase() : 'Review')}
+                              {metaString(rev.metadata, 'author_name') || (rev.platform ? rev.platform.toUpperCase() : 'Review')}
                             </div>
                             <div className="review-date" style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
                               {rev.reviewed_at ? new Date(rev.reviewed_at).toLocaleDateString() : 'Recent'}
@@ -592,7 +597,7 @@ function CompetitorDetailPageContent() {
                         </div>
                       </div>
                       <div className="company-review-text" style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.6 }}>
-                        "{rev.body || rev.title || 'No review body'}"
+                        &ldquo;{rev.body || rev.title || 'No review body'}&rdquo;
                       </div>
                       {rev.url && (
                         <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
