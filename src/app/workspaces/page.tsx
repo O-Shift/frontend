@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiArrowRight, FiPlus, FiSearch, FiX } from 'react-icons/fi';
+import { AlertCircle, ArrowRight, Plus, Search, X } from 'lucide-react';
 import {
   apiFetch,
   getActiveWorkspaceId,
@@ -193,7 +193,7 @@ export default function WorkspacesPage() {
 
         {error && (
           <div className="ws-error" role="alert">
-            <FiAlertCircle size={16} />
+            <AlertCircle size={16} />
             <span>{error}</span>
           </div>
         )}
@@ -218,7 +218,7 @@ export default function WorkspacesPage() {
         {!loading && workspaces.length > 7 && (
           <div className="ws-filter">
             <span className="ws-filter-icon">
-              <FiSearch size={15} />
+              <Search size={15} />
             </span>
             <input
               type="text"
@@ -262,7 +262,7 @@ export default function WorkspacesPage() {
                     </span>
                   </span>
                   <span className="ws-row-arrow" aria-hidden="true">
-                    {entering === ws.id ? <span>…</span> : <FiArrowRight size={17} />}
+                    {entering === ws.id ? <span>…</span> : <ArrowRight size={17} />}
                   </span>
                 </button>
               </li>
@@ -310,7 +310,7 @@ export default function WorkspacesPage() {
                   }}
                   aria-label="Cancel creating a workspace"
                 >
-                  <FiX size={15} />
+                  <X size={15} />
                 </button>
               )}
             </form>
@@ -320,7 +320,7 @@ export default function WorkspacesPage() {
               className="ws-create-toggle"
               onClick={() => setCreateOpen(true)}
             >
-              <FiPlus size={15} />
+              <Plus size={15} />
               New workspace
             </button>
           ))}

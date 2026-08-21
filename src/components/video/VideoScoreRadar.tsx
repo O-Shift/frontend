@@ -99,7 +99,7 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'var(--dropdown-bg)',
+                backgroundColor: 'var(--surface-raised)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '8px',
                 color: 'var(--text-primary)',

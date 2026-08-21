@@ -22,26 +22,28 @@
   --card-bg-alt: #1c1c22;
   --item-hover: rgba(255, 255, 255, 0.05);
   --item-hover-alt: #232329;
-  --dropdown-bg: #18181b;
+  --surface-raised: #18181b;
+  --surface-raised-hover: #27272a;
   --dropdown-item-hover: #27272a;
   --pill-bg: #222227;
   --pill-bg-hover: #33333a;
-  --sugg-btn-bg: #18181b;
   --sugg-btn-hover: #27272a;
-  --br-pill-bg: #18181b;
   --br-circle-bg: #18181b;
   --br-zoom-color: #ffffff;
   --context-chip-bg: #27272a;
   --context-chip-border: #3f3f46;
-  --v0-sidebar-bg: #18181b;
   --v0-action-bg: #1e1e20;
   --v0-action-hover: #27272a;
   --key-bg: rgba(255, 255, 255, 0.05);
   --key-border: rgba(255, 255, 255, 0.08);
   --shadow-color: rgba(0, 0, 0, 0.5);
   --cluster-label-color: rgba(255, 255, 255, 0.05);
-  --command-bar-bg: #18181b;
   --context-menu-bg: rgba(30, 30, 30, 0.95);
+
+  /* ── Status Colors ── */
+  --color-success: #3ddc97;
+  --color-danger: #ef4444;
+  --color-warning: #f5a623;
 
   /* ── Design System Tokens ── */
   --space-xs: 4px;
@@ -88,26 +90,28 @@
   --card-bg-alt: #f8fafc;
   --item-hover: #f1f5f9;
   --item-hover-alt: #f1f5f9;
-  --dropdown-bg: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-raised-hover: #f4f4f5;
   --dropdown-item-hover: #f4f4f5;
   --pill-bg: #f0f1f4;
   --pill-bg-hover: #e4e4e7;
-  --sugg-btn-bg: #ffffff;
   --sugg-btn-hover: #f4f4f5;
-  --br-pill-bg: #ffffff;
   --br-circle-bg: #ffffff;
   --br-zoom-color: #18181b;
   --context-chip-bg: #f4f4f5;
   --context-chip-border: #e4e4e7;
-  --v0-sidebar-bg: #ffffff;
   --v0-action-bg: #fafafa;
   --v0-action-hover: #f4f4f5;
   --key-bg: rgba(0, 0, 0, 0.04);
   --key-border: rgba(0, 0, 0, 0.08);
   --shadow-color: rgba(0, 0, 0, 0.06);
   --cluster-label-color: rgba(0, 0, 0, 0.06);
-  --command-bar-bg: #ffffff;
   --context-menu-bg: rgba(255, 255, 255, 0.97);
+
+  /* ── Status Colors (light: darker, AA-on-white variants) ── */
+  --color-success: #047857;
+  --color-danger: #dc2626;
+  --color-warning: #b45309;
 
   /* ── Design System Tokens (light overrides) ── */
   --card-shadow: none;
@@ -1273,11 +1277,15 @@ body {
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
   padding: 24px;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
 }
 
 .card:hover {
   box-shadow: var(--card-shadow-hover);
+}
+
+.card-sm {
+  border-radius: var(--card-radius-sm);
 }
 
 .card-lg {
@@ -1301,7 +1309,10 @@ body {
 }
 
 .main-header h1 {
-  font-family: var(--font-playfair);
+  /* --font-playfair is only defined if a route loads Playfair_Display with
+     variable: "--font-playfair" (campaigns/[id] currently does not), so fall
+     through to a literal serif stack instead of inheriting the sans font. */
+  font-family: var(--font-playfair, 'Playfair Display'), Georgia, 'Times New Roman', serif;
   font-size: 18px;
   font-weight: 600;
   margin: 0;
@@ -1341,7 +1352,7 @@ body {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  background: var(--dropdown-bg);
+  background: var(--surface-raised);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 4px;
@@ -1404,7 +1415,7 @@ body {
 }
 
 .br-pill {
-  background: var(--br-pill-bg);
+  background: var(--surface-raised);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   display: flex;
@@ -1731,7 +1742,7 @@ body {
   max-height: min(58vh, 520px);
   border: 1px solid var(--border-color);
   border-radius: var(--card-radius-lg);
-  background: var(--command-bar-bg);
+  background: var(--surface-raised);
   box-shadow: 0 24px 64px -24px var(--shadow-color);
   overflow: hidden;
   animation: chatPanelIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1887,7 +1898,7 @@ body {
    at 3.1:1, under the 4.5:1 body-text floor. Mixing the accent into the
    panel surface keeps the ownership cue and the legible foreground. */
 .user-bubble {
-  background: color-mix(in srgb, var(--accent) 13%, var(--command-bar-bg));
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface-raised));
   border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
   border-bottom-right-radius: var(--space-xs);
 }
@@ -1899,8 +1910,8 @@ body {
 }
 
 .error-bubble {
-  background: color-mix(in srgb, #ef4444 12%, var(--command-bar-bg));
-  border: 1px solid color-mix(in srgb, #ef4444 40%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 40%, transparent);
   border-bottom-left-radius: var(--space-xs);
 }
 
@@ -1997,7 +2008,7 @@ body {
 }
 
 .sugg-btn {
-  background: var(--sugg-btn-bg);
+  background: var(--surface-raised);
   color: var(--text-primary);
   border: none;
   padding: 4px 11px;
@@ -2026,7 +2037,7 @@ body {
   position: relative;
   width: 100%;
   border-radius: 20px;
-  background: var(--command-bar-bg);
+  background: var(--surface-raised);
 }
 
 .command-bar {
@@ -2243,7 +2254,7 @@ body {
   position: fixed;
   top: 28px;
   right: 28px;
-  background: var(--v0-sidebar-bg);
+  background: var(--surface-raised);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   z-index: 100;
@@ -2826,19 +2837,8 @@ body.is-thinking-active .app-window::after {
   font-weight: 500;
 }
 
-/* ── Unified Card ── */
-.card {
-  background: var(--card-bg);
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--border-color);
-  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
-}
-.card:hover {
-  box-shadow: var(--card-shadow-hover);
-}
-.card-sm  { border-radius: var(--card-radius-sm); }
-.card-lg  { border-radius: var(--card-radius-lg); }
+/* .card, .card:hover, .card-sm and .card-lg are defined once above (near
+   .page-inner); only card variants unique to this section live here. */
 .card-flat {
   box-shadow: none;
   border: 1px solid var(--border-color);

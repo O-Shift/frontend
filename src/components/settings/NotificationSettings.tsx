@@ -57,9 +57,6 @@ interface PlatformMeta {
   desc: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   color: string;
-  bgLight: string;
-  bgDark: string;
-  borderLight: string;
 }
 
 const SUPPORTED_PLATFORMS: PlatformMeta[] = [
@@ -69,9 +66,6 @@ const SUPPORTED_PLATFORMS: PlatformMeta[] = [
     desc: 'Deliver executive briefs & critical alerts directly to your team (via agent@oshift.sheref.dev).',
     icon: Mail,
     color: '#10B981',
-    bgLight: '#ecfdf5',
-    bgDark: 'rgba(16, 185, 129, 0.1)',
-    borderLight: 'rgba(16, 185, 129, 0.25)',
   },
   {
     id: 'slack',
@@ -79,9 +73,6 @@ const SUPPORTED_PLATFORMS: PlatformMeta[] = [
     desc: 'Send executive briefs and market alerts into your team channel.',
     icon: FaSlack,
     color: '#E01E5A',
-    bgLight: '#fdf2f4',
-    bgDark: 'rgba(224, 30, 90, 0.1)',
-    borderLight: 'rgba(224, 30, 90, 0.25)',
   },
   {
     id: 'discord',
@@ -89,9 +80,6 @@ const SUPPORTED_PLATFORMS: PlatformMeta[] = [
     desc: 'Deliver intelligence digests and competitor updates to your Discord server.',
     icon: FaDiscord,
     color: '#5865F2',
-    bgLight: '#f0f2fe',
-    bgDark: 'rgba(88, 101, 242, 0.1)',
-    borderLight: 'rgba(88, 101, 242, 0.25)',
   },
   {
     id: 'telegram',
@@ -99,9 +87,6 @@ const SUPPORTED_PLATFORMS: PlatformMeta[] = [
     desc: 'Receive mobile intelligence summaries in a Telegram group or channel.',
     icon: FaTelegram,
     color: '#229ED9',
-    bgLight: '#eef8fc',
-    bgDark: 'rgba(34, 158, 217, 0.1)',
-    borderLight: 'rgba(34, 158, 217, 0.25)',
   },
   {
     id: 'webhook',
@@ -109,9 +94,6 @@ const SUPPORTED_PLATFORMS: PlatformMeta[] = [
     desc: 'Forward raw JSON intelligence payloads to any custom API endpoint.',
     icon: Globe,
     color: '#FF5A00',
-    bgLight: '#fff5ed',
-    bgDark: 'rgba(255, 90, 0, 0.1)',
-    borderLight: 'rgba(255, 90, 0, 0.25)',
   },
 ];
 
@@ -620,8 +602,8 @@ export default function NotificationSettings() {
                     <div
                       className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border"
                       style={{
-                        backgroundColor: platform.bgDark,
-                        borderColor: platform.borderLight,
+                        backgroundColor: 'var(--item-hover)',
+                        borderColor: 'var(--border-color)',
                       }}
                     >
                       <Icon className="h-6 w-6" style={{ color: platform.color }} />
@@ -1020,8 +1002,8 @@ export default function NotificationSettings() {
                       <div
                         className="w-9 h-9 rounded-lg flex items-center justify-center border shrink-0"
                         style={{
-                          backgroundColor: activePlatformModal.bgDark,
-                          borderColor: activePlatformModal.borderLight,
+                          backgroundColor: 'var(--item-hover)',
+                          borderColor: 'var(--border-color)',
                         }}
                       >
                         <activePlatformModal.icon className="h-5 w-5" style={{ color: activePlatformModal.color }} />

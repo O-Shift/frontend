@@ -517,7 +517,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
                   )}
                 </button>
               </div>
-              <pre className="p-4 rounded-xl border border-[var(--border-color)] bg-[#0d0d11] text-[11px] font-mono text-zinc-300 overflow-x-auto max-h-96 leading-relaxed">
+              <pre className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg-alt)] text-[11px] font-mono text-[var(--text-secondary)] overflow-x-auto max-h-96 leading-relaxed">
                 {JSON.stringify(analysis, null, 2)}
               </pre>
             </div>

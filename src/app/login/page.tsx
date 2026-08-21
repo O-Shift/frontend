@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from 'react-icons/fi';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaMicrosoft, FaApple } from 'react-icons/fa';
 import AuthRightPanel from '@/components/AuthRightPanel';
@@ -106,13 +106,13 @@ function LoginForm() {
                     <form className="auth-form" onSubmit={handleLogin}>
                         {errors.general && (
                             <div className="auth-error-box">
-                                <FiAlertCircle className="auth-error-icon" />
+                                <AlertCircle className="auth-error-icon" />
                                 {errors.general}
                             </div>
                         )}
                         <div className="auth-field">
                             <div className={`auth-input-wrapper ${errors.email ? 'error' : ''}`}>
-                                <FiMail className="auth-input-icon" />
+                                <Mail className="auth-input-icon" />
                                 <input 
                                     type="email" 
                                     className={`auth-input ${errors.email ? 'error' : ''}`}
@@ -131,7 +131,7 @@ function LoginForm() {
 
                         <div className="auth-field">
                             <div className={`auth-input-wrapper ${errors.password ? 'error' : ''}`}>
-                                <FiLock className="auth-input-icon" />
+                                <Lock className="auth-input-icon" />
                                 <input 
                                     type={showPassword ? 'text' : 'password'}
                                     className={`auth-input ${errors.password ? 'error' : ''}`}
@@ -150,7 +150,7 @@ function LoginForm() {
                                     onClick={() => setShowPassword(prev => !prev)}
                                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                                 >
-                                    {showPassword ? <FiEye /> : <FiEyeOff />}
+                                    {showPassword ? <Eye /> : <EyeOff />}
                                 </button>
                             </div>
                             {errors.password && <div className="auth-error-text">{errors.password}</div>}
@@ -166,7 +166,7 @@ function LoginForm() {
                             </Link>
                         </div>
 
-                        <button type="submit" className="auth-submit-btn" disabled={loading}>
+                        <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
                             {loading ? 'Signing in…' : 'Log in'}
                             {!loading ? (
                                 <span className="btn-icon">→</span>

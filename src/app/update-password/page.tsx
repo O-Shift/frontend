@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 import AuthRightPanel from '@/components/AuthRightPanel';
 
 export default function UpdatePasswordPage() {
@@ -71,7 +71,7 @@ export default function UpdatePasswordPage() {
                         )}
                         <div className="auth-field">
                             <div className="auth-input-wrapper">
-                                <FiLock className="auth-input-icon" />
+                                <Lock className="auth-input-icon" />
                                 <input 
                                     type={showPassword1 ? 'text' : 'password'}
                                     className="auth-input" 
@@ -85,7 +85,7 @@ export default function UpdatePasswordPage() {
                                     className="auth-eye-btn"
                                     onClick={() => setShowPassword1(prev => !prev)}
                                 >
-                                    {showPassword1 ? <FiEye /> : <FiEyeOff />}
+                                    {showPassword1 ? <Eye /> : <EyeOff />}
                                 </button>
                             </div>
                             {password && (
@@ -102,7 +102,7 @@ export default function UpdatePasswordPage() {
 
                         <div className="auth-field">
                             <div className="auth-input-wrapper">
-                                <FiLock className="auth-input-icon" />
+                                <Lock className="auth-input-icon" />
                                 <input 
                                     type={showPassword2 ? 'text' : 'password'}
                                     className="auth-input" 
@@ -116,12 +116,12 @@ export default function UpdatePasswordPage() {
                                     className="auth-eye-btn"
                                     onClick={() => setShowPassword2(prev => !prev)}
                                 >
-                                    {showPassword2 ? <FiEye /> : <FiEyeOff />}
+                                    {showPassword2 ? <Eye /> : <EyeOff />}
                                 </button>
                             </div>
                         </div>
 
-                        <button type="submit" className="auth-submit-btn glow" style={{ marginTop: '0.5rem' }}>
+                        <button type="submit" className="btn-primary glow" style={{ marginTop: '0.5rem', width: '100%' }}>
                             Save
                             <span className="btn-icon" style={{ marginLeft: '4px', fontSize: '1.2rem' }}>→</span>
                         </button>

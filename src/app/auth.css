@@ -267,34 +267,9 @@
   color: var(--text-primary);
 }
 
-.auth-submit-btn {
-  background: var(--accent);
-  color: var(--bg-body);
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  padding: 0.75rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.auth-submit-btn:hover {
-  background: transparent;
-  color: var(--accent);
-}
-
 .btn-icon {
   display: inline-block;
   transition: transform 0.3s ease;
-}
-
-.auth-submit-btn:hover .btn-icon {
-  transform: translateX(4px);
 }
 
 .auth-divider {

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiChevronLeft, FiChevronRight, FiSearch, FiX, FiCheck, FiUploadCloud, FiMessageSquare } from 'react-icons/fi';
+import { ChevronLeft, ChevronRight, Search, X, Check, UploadCloud, MessageSquare } from 'lucide-react';
 import { EVENTS, track } from '@/lib/analytics';
 import { upsertCompany, createCompetitorsBatch } from '@/lib/api';
 import './onboarding.css';
@@ -240,7 +240,7 @@ export default function IntelligenceBriefing() {
             <div className="ob-footer">
                 <div />
                 <button className="ob-btn-primary" onClick={() => nextStep({ mission })} disabled={!mission} style={{ opacity: mission ? 1 : 0.5 }}>
-                    Build my intelligence workspace <FiChevronRight />
+                    Build my intelligence workspace <ChevronRight />
                 </button>
             </div>
         </div>
@@ -310,14 +310,14 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({
                         has_website: Boolean(company.website),
                         industry: company.industry,
                         market: company.market,
                         stage: company.stage
                     })} disabled={!company.name || !host} style={{ opacity: company.name && host ? 1 : 0.5 }}>
-                        Continue to competitors <FiChevronRight />
+                        Continue to competitors <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -371,7 +371,7 @@ export default function IntelligenceBriefing() {
                                 />
                                 <span style={{ color: '#8d6e63', fontSize: 13 }}>{c.domain}</span>
                                 <button className="ob-btn-text" style={{ padding: 0 }} aria-label={`Remove ${c.name}`} onClick={() => removeCompetitor(c.domain)}>
-                                    <FiX />
+                                    <X />
                                 </button>
                             </div>
                         ))}
@@ -380,7 +380,7 @@ export default function IntelligenceBriefing() {
 
                 {competitors.length < 5 && (
                     <div className="ob-input-group" style={{ position: 'relative' }}>
-                        <FiSearch style={{ position: 'absolute', left: 20, top: 20, color: '#8d6e63' }} />
+                        <Search style={{ position: 'absolute', left: 20, top: 20, color: '#8d6e63' }} />
                         <input
                             className="ob-input"
                             style={{ paddingLeft: 50 }}
@@ -411,9 +411,9 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({ competitor_count: competitors.length })}>
-                        Define what matters <FiChevronRight />
+                        Define what matters <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -478,13 +478,13 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({
                         keyword_count: signals.keywords.length,
                         category_count: signals.categories.length,
                         trend_count: signals.trends.length
                     })}>
-                        Add business context <FiChevronRight />
+                        Add business context <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -524,7 +524,7 @@ export default function IntelligenceBriefing() {
 
                     <div className="ob-footer" style={{ marginTop: 24 }}>
                         <button className="ob-btn-text" onClick={() => setMethod('choice')}>Edit later</button>
-                        <button className="ob-btn-primary" onClick={() => nextStep({ profile_method: profileMethod.current, skipped: false })}>Continue <FiChevronRight /></button>
+                        <button className="ob-btn-primary" onClick={() => nextStep({ profile_method: profileMethod.current, skipped: false })}>Continue <ChevronRight /></button>
                     </div>
                 </div>
             );
@@ -549,7 +549,7 @@ export default function IntelligenceBriefing() {
                                 simulateProcessing(['Analyzing answers...', 'Mapping to BMC...'], () => setMethod('review'));
                             }
                         }}>
-                            {qIndex < questions.length - 1 ? 'Next Question' : 'Complete Interview'} <FiChevronRight />
+                            {qIndex < questions.length - 1 ? 'Next Question' : 'Complete Interview'} <ChevronRight />
                         </button>
                     </div>
                 </div>
@@ -570,7 +570,7 @@ export default function IntelligenceBriefing() {
                         track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
                         simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
                     }}>
-                        <FiUploadCloud size={32} color="#ff7043" style={{ marginBottom: 12 }} />
+                        <UploadCloud size={32} color="#ff7043" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Upload a business document</div>
                         <div className="ob-card-desc">Upload an existing Business Model Canvas, company profile, strategy document, pitch deck, or business plan.</div>
                         <div style={{ marginTop: 16, fontSize: 13, color: '#ff9800', fontWeight: 600 }}>Click to simulate upload</div>
@@ -581,14 +581,14 @@ export default function IntelligenceBriefing() {
                         setMethod('interview');
                     }}>
                         <div style={{ position: 'absolute', top: -12, right: 20, background: '#4CAF50', color: '#fff', fontSize: 11, padding: '4px 12px', borderRadius: 12, fontWeight: 700 }}>RECOMMENDED</div>
-                        <FiMessageSquare size={32} color="#ff7043" style={{ marginBottom: 12 }} />
+                        <MessageSquare size={32} color="#ff7043" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Let Oshift interview you</div>
                         <div className="ob-card-desc">Answer a few simple questions and the agent will create your company profile and Business Model Canvas.</div>
                     </div>
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-text" onClick={() => nextStep({ profile_method: null, skipped: true })}>Skip for now</button>
                 </div>
             </div>
@@ -639,13 +639,13 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({
                         platform_count: sources.platforms.length,
                         platforms: sources.platforms,
                         frequency: sources.frequency
                     })}>
-                        Review my setup <FiChevronRight />
+                        Review my setup <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -669,7 +669,7 @@ export default function IntelligenceBriefing() {
                         <div><span style={{ color: '#8d6e63', fontSize: 13, display: 'block' }}>Briefing</span><strong>{sources.frequency}</strong></div>
                     </div>
                     <div style={{ color: '#d84315', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <FiCheck /> Ready to save
+                        <Check /> Ready to save
                     </div>
                 </div>
 
@@ -686,9 +686,9 @@ export default function IntelligenceBriefing() {
                 )}
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Edit setup</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Edit setup</button>
                     <button className="ob-btn-primary" onClick={activate} disabled={isProcessing || !company.name || !toHost(company.website)} style={{ opacity: isProcessing || !company.name || !toHost(company.website) ? 0.5 : 1 }}>
-                        {isProcessing ? 'Saving...' : saveError ? 'Try again' : 'Activate Oshift'} <FiChevronRight />
+                        {isProcessing ? 'Saving...' : saveError ? 'Try again' : 'Activate Oshift'} <ChevronRight />
                     </button>
                 </div>
             </div>

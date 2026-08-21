@@ -14,7 +14,7 @@ export default function AuthCodeErrorPage() {
           The authorization link may have expired or was already used. Try signing
           in again.
         </p>
-        <Link href="/login" className="auth-submit-btn" style={{ display: "inline-block" }}>
+        <Link href="/login" className="btn-primary" style={{ display: "inline-block" }}>
           Back to login
         </Link>
       </div>

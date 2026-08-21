@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { FiMail, FiAlertCircle } from 'react-icons/fi';
+import { Mail, AlertCircle } from 'lucide-react';
 import AuthRightPanel from '@/components/AuthRightPanel';
 
 export default function ForgotPasswordPage() {
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
                         <form className="auth-form" onSubmit={handleSubmit}>
                             <div className="auth-field">
                                 <div className={`auth-input-wrapper ${error ? 'error' : ''}`}>
-                                    <FiMail className="auth-input-icon" />
+                                    <Mail className="auth-input-icon" />
                                     <input 
                                         type="email" 
                                         className={`auth-input ${error ? 'error' : ''}`}
@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
                                 {error && <div className="auth-error-text">{error}</div>}
                             </div>
 
-                            <button type="submit" className="auth-submit-btn">
+                            <button type="submit" className="btn-primary" style={{ width: '100%' }}>
                                 Send Reset Link
                                 <span className="btn-icon">→</span>
                             </button>

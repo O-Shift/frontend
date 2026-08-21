@@ -266,7 +266,7 @@ function ChatContent() {
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-2xl text-xs text-[var(--text-primary)]"
           >
-            <Check className="h-4 w-4 text-[#3ddc97] shrink-0" />
+            <Check className="h-4 w-4 text-[var(--color-success)] shrink-0" />
             <span>{deleteNotification}</span>
           </motion.div>
         )}
