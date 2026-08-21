@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
 import { useTheme } from '@/components/ThemeProvider';
@@ -8,7 +9,24 @@ import { EVENTS, track } from '@/lib/analytics';
 import { createClient } from '@/utils/supabase/client';
 import { useSettings } from '@/hooks/use-settings';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import NotificationSettings from '@/components/settings/NotificationSettings';
+
+const NotificationSettings = dynamic(() => import('@/components/settings/NotificationSettings'), {
+  ssr: false,
+  loading: () => (
+    <div
+      aria-hidden="true"
+      className="skeleton-target"
+      style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}
+    >
+      {[0, 1, 2].map(i => (
+        <div key={i} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: i < 2 ? '1px solid var(--border-color)' : 'none' }}>
+          <div className="skeleton skeleton-line" style={{ width: '40%' }} />
+          <div className="skeleton skeleton-line-sm" style={{ width: '65%' }} />
+        </div>
+      ))}
+    </div>
+  ),
+});
 
 const SampleBadge = () => (
   <span style={{ fontSize: 10, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle', textTransform: 'uppercase', fontWeight: 600 }}>Mock data</span>
