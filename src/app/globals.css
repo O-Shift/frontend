@@ -2696,38 +2696,6 @@ body.is-thinking-active .app-window::after {
   z-index: 1;
 }
 
-/* ── Profile Dashboard Grid ── */
-.profile-grid {
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 300px;
-  gap: 28px;
-  align-items: start;
-}
-@media (max-width: 1120px) {
-  .profile-grid { grid-template-columns: 300px minmax(0, 1fr); }
-  .profile-grid > :last-child {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
-  }
-}
-@media (max-width: 780px) {
-  .profile-grid { grid-template-columns: minmax(0, 1fr); }
-  .profile-grid > :last-child { display: flex; flex-direction: column; }
-}
-
-/* ── Dashboard 2-Column Bento Grid ── */
-.dash-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 28px;
-  align-items: start;
-}
-@media (max-width: 1100px) {
-  .dash-grid { grid-template-columns: minmax(0, 1fr); }
-}
-
 /* ── Company Hero Card ── */
 .company-hero {
   background: var(--card-bg);
@@ -2821,17 +2789,6 @@ body.is-thinking-active .app-window::after {
 }
 @media (prefers-reduced-motion: reduce) {
   .profile-globe-placeholder { animation: none; }
-}
-
-/* ── Dashboard Bento Grid ── */
-.dash-grid {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 28px;
-  align-items: start;
-}
-@media (max-width: 1100px) {
-  .dash-grid { grid-template-columns: 1fr; }
 }
 
 /* TYPE A: Full-bleed canvas page */
@@ -2962,27 +2919,6 @@ body.is-thinking-active .app-window::after {
 .btn-secondary:hover {
   background: var(--item-hover-alt);
   transform: translateY(-1px);
-}
-
-.btn-ink {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
-  border-radius: 999px;
-  background: var(--text-primary);
-  color: var(--card-bg);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: inherit;
-  box-shadow: var(--card-shadow);
-}
-.btn-ink:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--card-shadow-hover);
 }
 
 /* ── Stat Block ── */

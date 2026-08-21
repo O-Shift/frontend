@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "./light-overrides.css";
-import "./profile.css";
 import AppShell from "@/components/AppShell";
 import AnalyticsIdentity from "@/components/AnalyticsIdentity";
 import { ThemeProvider } from "@/components/ThemeProvider";
