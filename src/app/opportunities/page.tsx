@@ -2,10 +2,47 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
-import { fetchOpportunities, generateOpportunities, triggerPipeline, Opportunity } from '@/lib/api';
+import {
+  fetchOpportunities,
+  generateOpportunities,
+  triggerPipeline,
+  Opportunity,
+  type OpportunityHighlight,
+  type OpportunityGapBullet,
+} from '@/lib/api';
 import Link from 'next/link';
 import OpportunitiesSkeleton from '@/components/skeletons/OpportunitiesSkeleton';
 import { useMediaQuery } from '@/hooks/use-media-query';
+
+/** One mapped opportunity as the board renders it. */
+interface OpportunitySlide {
+  id: string;
+  title: string;
+  description: string;
+  highlights: OpportunityHighlight[];
+  gapBullets: OpportunityGapBullet[];
+  effort: string | null;
+  impact: string | null;
+  topComplaint: string | null;
+  rootCause: string | null;
+  gapIdentified: string | null;
+  opportunityText: string | null;
+  priorityScore: number | null;
+  priorityReasoning: string | null;
+  earlyWarning: string | null;
+  quickWin: string | null;
+}
+
+/** A citation is usually a URL string, but older rows carry labelled objects. */
+type Citation = string | { title?: unknown; name?: unknown; url?: unknown };
+
+function asText(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null;
+}
+
+function asGapBullets(value: unknown): OpportunityGapBullet[] {
+  return Array.isArray(value) ? (value as OpportunityGapBullet[]) : [];
+}
 
 function CompanyPile({ companies }: { companies: string[] }) {
   const [hovered, setHovered] = useState(false);
@@ -93,7 +130,7 @@ function SeamlessBackground({ slideIndex, totalSlides }: { slideIndex: number, t
 }
 
 export default function OpportunitiesPage() {
-  const [opportunitiesList, setOpportunitiesList] = useState<any[]>([]);
+  const [opportunitiesList, setOpportunitiesList] = useState<OpportunitySlide[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -147,11 +184,10 @@ export default function OpportunitiesPage() {
         // keys older rows were written with, not substitutes for missing data.
         const highlights = Array.isArray(af.highlights) ? af.highlights : [];
 
-        const gapBullets = Array.isArray(af.gapBullets) && af.gapBullets.length > 0
-          ? af.gapBullets
-          : Array.isArray((af as any).gap_bullets) && (af as any).gap_bullets.length > 0
-            ? (af as any).gap_bullets
-            : [];
+        const gapBullets =
+          Array.isArray(af.gapBullets) && af.gapBullets.length > 0
+            ? af.gapBullets
+            : asGapBullets(af.gap_bullets);
 
         // priority_score is an integer 0-100. Stringifying it and comparing
         // against 'HIGH' meant the score never coloured anything, and the `?:`
@@ -173,14 +209,14 @@ export default function OpportunitiesPage() {
           gapBullets,
           effort: op.effort ? op.effort.charAt(0).toUpperCase() + op.effort.slice(1) : null,
           impact: op.impact ? op.impact.charAt(0).toUpperCase() + op.impact.slice(1) : null,
-          topComplaint: af.topComplaint || (af as any).top_complaint || null,
-          rootCause: af.rootCause || (af as any).root_cause || null,
-          gapIdentified: af.gapIdentified || (af as any).gap_identified || null,
-          opportunityText: af.opportunityText || (af as any).opportunity_text || null,
+          topComplaint: af.topComplaint || asText(af.top_complaint),
+          rootCause: af.rootCause || asText(af.root_cause),
+          gapIdentified: af.gapIdentified || asText(af.gap_identified),
+          opportunityText: af.opportunityText || asText(af.opportunity_text),
           priorityScore,
           priorityReasoning: op.priority_reasoning || null,
-          earlyWarning: af.earlyWarning || (af as any).early_warning || null,
-          quickWin: af.quickWin || (af as any).quick_win || null,
+          earlyWarning: af.earlyWarning || asText(af.early_warning),
+          quickWin: af.quickWin || asText(af.quick_win),
         };
       });
       setOpportunitiesList(mapped);
@@ -296,7 +332,7 @@ export default function OpportunitiesPage() {
     const desc = slide.description;
     let parts: React.ReactNode[] = [desc];
 
-    (slide.highlights || []).forEach((highlight: any, idx: number) => {
+    (slide.highlights || []).forEach((highlight, idx) => {
       const newParts: React.ReactNode[] = [];
       parts.forEach(part => {
         if (typeof part === 'string') {
@@ -346,7 +382,7 @@ export default function OpportunitiesPage() {
     }
   };
 
-  const activeCitations: string[] = hoveredNode?.type === 'desc'
+  const activeCitations: Citation[] = hoveredNode?.type === 'desc'
     ? slide?.highlights[hoveredNode.id]?.citations || []
     : hoveredNode?.type === 'gap'
       ? slide?.gapBullets[hoveredNode.id]?.citations || []
@@ -560,7 +596,7 @@ export default function OpportunitiesPage() {
                           </p>
                         ) : (
                         <ul className="skeleton-target" style={{ margin: 0, paddingLeft: 16, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
-                          {slide.gapBullets.map((bullet: any, i: number) => {
+                          {slide.gapBullets.map((bullet, i) => {
                             const isHovered = hoveredNode?.type === 'gap' && hoveredNode?.id === i;
                             return (
                               <li
@@ -644,8 +680,10 @@ export default function OpportunitiesPage() {
                                   No source recorded for this item. Run Generate to rebuild it from collected signals.
                                 </p>
                               )}
-                              {activeCitations.map((cit: any, i: number) => {
-                                const title = typeof cit === 'string' ? cit : cit.title || cit.name || 'Source Citation';
+                              {activeCitations.map((cit, i) => {
+                                const title = typeof cit === 'string'
+                                  ? cit
+                                  : asText(cit.title) || asText(cit.name) || 'Source Citation';
                                 const rawUrl = typeof cit === 'object' && cit.url
                                   ? String(cit.url)
                                   : (typeof cit === 'string' && cit.startsWith('http') ? cit : '');

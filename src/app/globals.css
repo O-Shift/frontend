@@ -1309,9 +1309,9 @@ body {
 }
 
 .main-header h1 {
-  /* --font-playfair is only defined if a route loads Playfair_Display with
-     variable: "--font-playfair" (campaigns/[id] currently does not), so fall
-     through to a literal serif stack instead of inheriting the sans font. */
+  /* --font-playfair is only defined on routes that load Playfair_Display with
+     variable: "--font-playfair" (campaigns/[id] does), so fall through to a
+     literal serif stack everywhere else instead of inheriting the sans font. */
   font-family: var(--font-playfair, 'Playfair Display'), Georgia, 'Times New Roman', serif;
   font-size: 18px;
   font-weight: 600;

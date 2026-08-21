@@ -23,6 +23,7 @@ import AgentProgress from '@/components/chat/AgentProgress';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import type { ChatContextItem, ChatContextKind } from '@/lib/utils/chat-context';
 import { apiFetch, fetchCompany, fetchCampaigns, fetchGaps, fetchOpportunities, type Campaign } from '@/lib/api';
+import { extractDomain as extractDomainRaw } from '@/lib/utils/domain';
 import { logoUrl } from '@/lib/logos';
 import MentionPicker, { type MentionEntity } from '@/components/chat/MentionPicker';
 
@@ -337,18 +338,13 @@ export default function PromptField({
 
       // Helper to check if a competitor row in DB is actually the user's company
       const normalizeStr = (s?: string | null) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const extractDomain = (url?: string | null) => {
-        if (!url) return '';
-        try {
-          const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-          return parsed.hostname.replace(/^www\./, '').toLowerCase();
-        } catch {
-          return url.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
-        }
-      };
+
+      // URL-parsed hostnames are already lowercase; toLowerCase() only matters
+      // on the fallback path where a mixed-case string failed URL parsing.
+      const extractDomain = (input?: string | null): string => extractDomainRaw(input ?? '').toLowerCase();
 
       const selfNameNorm = normalizeStr(selfCompany?.name);
-      const selfDomain = extractDomain(selfCompany?.website || selfCompany?.name);
+      const selfDomain = extractDomain(selfCompany?.website || selfCompany?.name || '');
 
       const isSelfCompetitor = (comp: { id: string; name: string; website?: string; domain?: string }) => {
         if (!selfCompany) return false;
@@ -357,7 +353,7 @@ export default function PromptField({
         if (selfNameNorm && cNameNorm && (selfNameNorm === cNameNorm || cNameNorm.includes(selfNameNorm) || selfNameNorm.includes(cNameNorm))) {
           return true;
         }
-        const cDomain = extractDomain(comp.website || comp.domain);
+        const cDomain = extractDomain(comp.website || comp.domain || '');
         if (selfDomain && cDomain && (selfDomain === cDomain || cDomain.includes(selfDomain) || selfDomain.includes(cDomain))) {
           return true;
         }

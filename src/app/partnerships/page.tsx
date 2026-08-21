@@ -34,8 +34,24 @@ import PromptField from '@/components/PromptField';
 import { apiFetch } from '@/lib/api';
 import { logoUrl } from '@/lib/logos';
 import Skeleton from '@/components/Skeleton';
+import { extractDomain as extractDomainRaw } from '@/lib/utils/domain';
+import { stringToHue } from '@/lib/colors';
+import type { LucideIcon } from 'lucide-react';
+
+type Canvas2D = CanvasRenderingContext2D & { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void };
 
 // ── Types ─────────────────────────────────────────────────────────────
+
+export interface NodeMetadata {
+  domain?: string;
+  website?: string;
+  url?: string;
+  color?: string;
+  is_hub?: boolean;
+  description?: string;
+  summary?: string;
+  [key: string]: unknown;
+}
 
 interface DBGraphNode {
   id: string;
@@ -50,7 +66,8 @@ interface DBGraphNode {
     value?: number;
     description?: string;
     summary?: string;
-    [key: string]: any;
+    is_hub?: boolean;
+    [key: string]: unknown;
   };
   created_at?: string;
   updated_at?: string;
@@ -66,7 +83,7 @@ interface DBGraphEdge {
   target_name?: string;
   target_type?: string;
   weight?: number | null;
-  metadata?: any;
+  metadata?: NodeMetadata;
 }
 
 interface PartnershipsResponse {
@@ -117,7 +134,7 @@ export interface GraphNode extends SimulationNodeDatum {
   timelineX: number;
   timelineY: number;
   orbitOffset: number;
-  metadata?: any;
+  metadata?: NodeMetadata;
   x?: number;
   y?: number;
   vx?: number;
@@ -132,7 +149,7 @@ export interface GraphLink extends SimulationLinkDatum<GraphNode> {
   target: GraphNode;
   rel_type: string;
   weight?: number | null;
-  metadata?: any;
+  metadata?: NodeMetadata;
 }
 
 // ── Domain & Color Utilities ──────────────────────────────────────────
@@ -140,24 +157,13 @@ export interface GraphLink extends SimulationLinkDatum<GraphNode> {
 function extractDomain(input?: string | null): string {
   if (!input) return '';
   const str = input.trim();
-  try {
-    const urlStr = str.startsWith('http://') || str.startsWith('https://')
-      ? str
-      : `https://${str}`;
-    const host = new URL(urlStr).hostname.replace(/^www\./, '');
-    if (host.includes('.')) return host;
-  } catch {
-    // fallback
-  }
-
-  if (str.includes('.')) {
-    return str.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-  }
-
-  return '';
+  const host = extractDomainRaw(str);
+  if (host.includes('.')) return host;
+  if (!str.includes('.')) return '';
+  return str.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
 }
 
-function getDynamicDomain(metadata?: any): string {
+function getDynamicDomain(metadata?: NodeMetadata): string {
   if (metadata?.domain) return extractDomain(metadata.domain);
   if (metadata?.website) return extractDomain(metadata.website);
   if (metadata?.url) return extractDomain(metadata.url);
@@ -166,12 +172,7 @@ function getDynamicDomain(metadata?: any): string {
 
 function getDynamicBrandColor(str: string): string {
   if (!str) return 'hsl(215, 80%, 55%)';
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 70%, 52%)`;
+  return `hsl(${stringToHue(str)}, 70%, 52%)`;
 }
 
 function formatRelType(type: string): string {
@@ -270,7 +271,7 @@ export default function PartnershipsPage() {
     const targetKey = selectedNode.domain || selectedNode.id;
     if (targetKey) {
       setBriefLoading(true);
-      apiFetch<any>(`/competitors/${encodeURIComponent(targetKey)}`)
+      apiFetch<{ description?: string; summary?: string }>(`/competitors/${encodeURIComponent(targetKey)}`)
         .then(res => {
           if (res.ok && res.data?.description) {
             setEntityBrief(res.data.description);
@@ -344,7 +345,7 @@ export default function PartnershipsPage() {
       color: string;
       isHub: boolean;
       created_at?: string;
-      metadata?: any;
+      metadata?: NodeMetadata;
     }> = [];
 
     if (dbGraphData?.nodes) {
@@ -466,7 +467,8 @@ export default function PartnershipsPage() {
 
         xctx.beginPath();
         if (type === 'company') {
-          if ((xctx as any).roundRect) (xctx as any).roundRect(4, 4, 120, 120, 24);
+          const rc = xctx as Canvas2D;
+          if (rc.roundRect) rc.roundRect(4, 4, 120, 120, 24);
           else xctx.rect(4, 4, 120, 120);
         } else {
           xctx.arc(64, 64, 58, 0, Math.PI * 2);
@@ -518,7 +520,8 @@ export default function PartnershipsPage() {
 
         xctx.beginPath();
         if (type === 'company') {
-          if ((xctx as any).roundRect) (xctx as any).roundRect(4, 4, 120, 120, 24);
+          const rc = xctx as Canvas2D;
+          if (rc.roundRect) rc.roundRect(4, 4, 120, 120, 24);
           else xctx.rect(4, 4, 120, 120);
         } else {
           xctx.arc(64, 64, 58, 0, Math.PI * 2);
@@ -676,24 +679,24 @@ export default function PartnershipsPage() {
       .force(
         'link',
         forceLink<GraphNode, GraphLink>(links)
-          .id((d: any) => d.id)
-          .distance((link: any) => {
-            const src = link.source as GraphNode;
-            const tgt = link.target as GraphNode;
+          .id(d => d.id)
+          .distance(link => {
+            const src = link.source;
+            const tgt = link.target;
             if (src.isHub && tgt.isHub) return 290;
             if (src.isHub || tgt.isHub) return 140;
             return 95;
           })
-          .strength((link: any) => {
-            const srcDegree = (link.source as GraphNode).degree || 1;
-            const tgtDegree = (link.target as GraphNode).degree || 1;
+          .strength(link => {
+            const srcDegree = link.source.degree || 1;
+            const tgtDegree = link.target.degree || 1;
             return Math.min(1.2 / Math.min(srcDegree, tgtDegree), 0.7);
           })
       )
       .force(
         'charge',
         forceManyBody<GraphNode>()
-          .strength((d: any) => (d.isHub ? -1000 : -280))
+          .strength(d => (d.isHub ? -1000 : -280))
           .distanceMin(25)
           .distanceMax(1100)
           .theta(0.85)
@@ -701,7 +704,7 @@ export default function PartnershipsPage() {
       .force(
         'collide',
         forceCollide<GraphNode>()
-          .radius((d: any) => d.radius + (d.isHub ? 38 : 26))
+          .radius(d => d.radius + (d.isHub ? 38 : 26))
           .iterations(3)
           .strength(0.9)
       )
@@ -889,8 +892,9 @@ export default function PartnershipsPage() {
 
             // Calm frosted capsule
             ctx.beginPath();
-            if ((ctx as any).roundRect) {
-              (ctx as any).roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, 8.5 / tr.k);
+            const ccLinkPill = ctx as Canvas2D;
+            if (ccLinkPill.roundRect) {
+              ccLinkPill.roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, 8.5 / tr.k);
             } else {
               ctx.rect(midX - pillW / 2, midY - pillH / 2, pillW, pillH);
             }
@@ -1012,7 +1016,8 @@ export default function PartnershipsPage() {
           ctx.beginPath();
           if (n.type === 'company') {
             const size = scaledRadius * 2;
-            if ((ctx as any).roundRect) (ctx as any).roundRect(n.x - scaledRadius, n.y - scaledRadius, size, size, scaledRadius * 0.32);
+            const ccNode = ctx as Canvas2D;
+            if (ccNode.roundRect) ccNode.roundRect(n.x - scaledRadius, n.y - scaledRadius, size, size, scaledRadius * 0.32);
             else ctx.rect(n.x - scaledRadius, n.y - scaledRadius, size, size);
           } else {
             ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
@@ -1026,7 +1031,8 @@ export default function PartnershipsPage() {
           ctx.beginPath();
           if (n.type === 'company') {
             const size = scaledRadius * 2;
-            if ((ctx as any).roundRect) (ctx as any).roundRect(n.x - scaledRadius, n.y - scaledRadius, size, size, scaledRadius * 0.32);
+            const ccNode = ctx as Canvas2D;
+            if (ccNode.roundRect) ccNode.roundRect(n.x - scaledRadius, n.y - scaledRadius, size, size, scaledRadius * 0.32);
             else ctx.rect(n.x - scaledRadius, n.y - scaledRadius, size, size);
           } else {
             ctx.arc(n.x, n.y, scaledRadius, 0, Math.PI * 2);
@@ -1090,8 +1096,9 @@ export default function PartnershipsPage() {
 
         // Dedicated Frosted Label Pill for 100% Crisp Visibility
         ctx.beginPath();
-        if ((ctx as any).roundRect) {
-          (ctx as any).roundRect(n.x - pillW / 2, pillY, pillW, pillH, 6 / tr.k);
+        const ccLabel = ctx as Canvas2D;
+        if (ccLabel.roundRect) {
+          ccLabel.roundRect(n.x - pillW / 2, pillY, pillW, pillH, 6 / tr.k);
         } else {
           ctx.rect(n.x - pillW / 2, pillY, pillW, pillH);
         }
@@ -1342,7 +1349,7 @@ export default function PartnershipsPage() {
 
   // ── Category Filters ────────────────────────────────────────────────
 
-  const categories: Array<{ key: EntityCategory; label: string; icon: any }> = [
+  const categories: Array<{ key: EntityCategory; label: string; icon: LucideIcon }> = [
     { key: 'all', label: 'All Alliances', icon: Network },
     { key: 'company', label: 'Competitors & Hubs', icon: Building2 },
     { key: 'integration', label: 'Tech Integrations', icon: Layers },

@@ -7,19 +7,10 @@ import ChartSkeleton from '@/components/charts/ChartSkeleton';
 import CompetitorDetailSkeleton from '@/components/skeletons/CompetitorDetailSkeleton';
 import { ZINC_PALETTE } from '@/components/charts/palette';
 import PromptField from '@/components/PromptField';
-import {
-  Competitor,
-  AggregatedMetricPoint,
-  InsightGap,
-  Campaign,
-  SenseReview,
-  getCompetitor,
-  getCompetitorAggregatedMetrics,
-  getInsightsGaps,
-  getCompetitorCampaigns,
-  getSenseReviews,
-  triggerCompetitorScrape,
-} from '@/lib/api';
+import { triggerCompetitorScrape } from '@/lib/api';
+import { stringToHue } from '@/lib/colors';
+import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { useCompetitorDetail } from '@/hooks/use-competitors';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 // Three charts on this page, one 340 KB dependency behind all of them, and all
@@ -48,11 +39,7 @@ function getBrandColors(domain: string) {
     return knownBrands[key];
   }
 
-  let hash = 0;
-  for (let i = 0; i < domain.length; i++) {
-    hash = domain.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
+  const hue = stringToHue(domain);
   return [`hsl(${hue}, 80%, 50%)`, `hsl(${(hue + 40) % 360}, 80%, 40%)`];
 }
 
@@ -68,19 +55,20 @@ function CompetitorDetailPageContent() {
   const router = useRouter();
   const competitorId = typeof params.id === 'string' ? params.id : '';
 
-  const [competitor, setCompetitor] = useState<Competitor | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Time-series metric points
-  const [scoreData, setScoreData] = useState<AggregatedMetricPoint[]>([]);
-  const [volumeData, setVolumeData] = useState<AggregatedMetricPoint[]>([]);
-  const [engagementData, setEngagementData] = useState<AggregatedMetricPoint[]>([]);
-
-  // Domain intelligence data
-  const [gaps, setGaps] = useState<InsightGap[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [reviews, setReviews] = useState<SenseReview[]>([]);
+  // Fetch all competitor details & data feeds
+  const {
+    competitor,
+    isLoading: loading,
+    error,
+    metrics,
+    gaps,
+    campaigns,
+    reviews,
+    refetch: loadData,
+  } = useCompetitorDetail(competitorId);
+  const scoreData = metrics.share;
+  const volumeData = metrics.engagement;
+  const engagementData = metrics.sentiment;
 
   // Scrape trigger state
   const [scraping, setScraping] = useState(false);
@@ -112,46 +100,6 @@ function CompetitorDetailPageContent() {
     return () => window.removeEventListener('keydown', onEsc);
   }, []);
 
-  // Fetch all competitor details & data feeds
-  const loadData = async () => {
-    if (!competitorId) return;
-    setLoading(true);
-    setError(null);
-
-    const [compRes, msRes, engRes, sentRes, gapsRes, campRes, revRes] = await Promise.all([
-      getCompetitor(competitorId),
-      getCompetitorAggregatedMetrics(competitorId, 'market_share', '6m', 'month'),
-      getCompetitorAggregatedMetrics(competitorId, 'engagement', '6m', 'month'),
-      getCompetitorAggregatedMetrics(competitorId, 'sentiment', '6m', 'month'),
-      getInsightsGaps(competitorId),
-      getCompetitorCampaigns(competitorId),
-      getSenseReviews(competitorId),
-    ]);
-
-    if (!compRes.ok) {
-      setError(compRes.error || 'Failed to load competitor');
-      setLoading(false);
-      return;
-    }
-
-    setCompetitor(compRes.data);
-
-    if (msRes.ok) setScoreData(msRes.data.points || []);
-    if (engRes.ok) setVolumeData(engRes.data.points || []);
-    if (sentRes.ok) setEngagementData(sentRes.data.points || []);
-
-    if (gapsRes.ok) setGaps(Array.isArray(gapsRes.data) ? gapsRes.data : (gapsRes.data as any)?.gaps || []);
-    if (campRes.ok) setCampaigns(Array.isArray(campRes.data) ? campRes.data : (campRes.data as any)?.campaigns || []);
-    if (revRes.ok) setReviews(Array.isArray(revRes.data) ? revRes.data : (revRes.data as any)?.reviews || []);
-
-
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [competitorId]);
-
   const handleTriggerScrape = async () => {
     if (!competitorId || scraping) return;
     setScraping(true);
@@ -182,72 +130,14 @@ function CompetitorDetailPageContent() {
 
 
 
-  // Drag-scroll refs
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-
-  const scrollList = (dir: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const amount = 344;
-      scrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-    }
-  };
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!scrollRef.current) return;
-    setIsDragging(true);
-    setDragStartX(e.pageX - scrollRef.current.offsetLeft);
-    setScrollLeft(scrollRef.current.scrollLeft);
-    scrollRef.current.style.cursor = 'grabbing';
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging || !scrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - scrollRef.current.offsetLeft;
-    const walk = (x - dragStartX) * 2;
-    scrollRef.current.scrollLeft = scrollLeft - walk;
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
-  };
-
+  // Drag-scroll carousels: reviews list and strategic gaps
+  const reviewsScrollRef = useRef<HTMLDivElement>(null);
   const gapsScrollRef = useRef<HTMLDivElement>(null);
-  const [isGapsDragging, setIsGapsDragging] = useState(false);
-  const [gapsDragStartX, setGapsDragStartX] = useState(0);
-  const [gapsScrollLeft, setGapsScrollLeft] = useState(0);
+  const reviewsScroll = useDragScroll(reviewsScrollRef);
+  const gapsScroll = useDragScroll(gapsScrollRef);
 
-  const scrollGaps = (dir: 'left' | 'right') => {
-    if (gapsScrollRef.current) {
-      const amount = 344;
-      gapsScrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-    }
-  };
-
-  const handleGapsPointerDown = (e: React.PointerEvent) => {
-    if (!gapsScrollRef.current) return;
-    setIsGapsDragging(true);
-    setGapsDragStartX(e.pageX - gapsScrollRef.current.offsetLeft);
-    setGapsScrollLeft(gapsScrollRef.current.scrollLeft);
-    gapsScrollRef.current.style.cursor = 'grabbing';
-  };
-
-  const handleGapsPointerMove = (e: React.PointerEvent) => {
-    if (!isGapsDragging || !gapsScrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - gapsScrollRef.current.offsetLeft;
-    const walk = (x - gapsDragStartX) * 2;
-    gapsScrollRef.current.scrollLeft = gapsScrollLeft - walk;
-  };
-
-  const handleGapsPointerUp = () => {
-    setIsGapsDragging(false);
-    if (gapsScrollRef.current) gapsScrollRef.current.style.cursor = 'grab';
-  };
+  const scrollList = reviewsScroll.scrollBy;
+  const scrollGaps = gapsScroll.scrollBy;
 
   const domain = competitor?.website
     ? competitor.website.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
@@ -577,10 +467,7 @@ function CompetitorDetailPageContent() {
 
             <div
               ref={gapsScrollRef}
-              onPointerDown={handleGapsPointerDown}
-              onPointerMove={handleGapsPointerMove}
-              onPointerUp={handleGapsPointerUp}
-              onPointerLeave={handleGapsPointerUp}
+              {...gapsScroll.handlers}
               style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', flex: 1, cursor: 'grab', alignItems: 'center' }}
             >
               {gaps.length > 0 ? (
@@ -661,11 +548,8 @@ function CompetitorDetailPageContent() {
             </div>
 
             <div
-              ref={scrollRef}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
+              ref={reviewsScrollRef}
+              {...reviewsScroll.handlers}
               style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', flex: 1, cursor: 'grab' }}
             >
               {reviews.length > 0 ? (
