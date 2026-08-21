@@ -57,7 +57,31 @@ function contextKey(item: ChatContextItem): string {
   return `${item.kind}:${item.id}`;
 }
 
-function nodeToContextItem(node: any): ChatContextItem | null {
+/**
+ * Structural shape nodeToContextItem actually reads. Producers across the app
+ * hand this chain different concrete nodes — partnerships GraphNode, the
+ * campaigns deck node, or a bare string — so the chain is typed by the fields
+ * it consumes, which every producer satisfies structurally.
+ */
+export interface AttachedContextNode {
+  id?: string | number;
+  name?: string;
+  label?: string;
+  title?: string;
+  domain?: string;
+  website?: string;
+  type?: string;
+  entity_type?: string;
+  category?: string;
+  impact?: string;
+  competitor_id?: string;
+  status?: string;
+  description?: string;
+  summary?: string;
+  desc?: string;
+}
+
+function nodeToContextItem(node: AttachedContextNode | string | null): ChatContextItem | null {
   if (!node) return null;
   if (typeof node === 'string') {
     return {
@@ -167,8 +191,8 @@ function MessageContext({ items }: { items: ChatContextItem[] }) {
 }
 
 export interface PromptFieldProps {
-  selectedNode?: any;
-  setSelectedNode?: (node: any) => void;
+  selectedNode?: AttachedContextNode | string | null;
+  setSelectedNode?(node: unknown): void;
   commandActive: boolean;
   setCommandActive: (active: boolean) => void;
   setSidebarCollapsed?: (collapsed: boolean) => void;

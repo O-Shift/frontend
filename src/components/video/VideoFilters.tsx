@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import type { Competitor } from '@/lib/api';
+import type { VideoSortKey } from '@/hooks/use-videos';
 
 interface VideoFiltersProps {
   searchQuery: string;
@@ -24,8 +25,8 @@ interface VideoFiltersProps {
   setTagFilter: (tag: string) => void;
   minHookScore: number;
   setMinHookScore: (score: number) => void;
-  sortBy: string;
-  setSortBy: (sort: any) => void;
+  sortBy: VideoSortKey;
+  setSortBy: (sort: VideoSortKey) => void;
   competitors: Competitor[];
   allTags: string[];
   totalResults: number;
@@ -141,7 +142,7 @@ export default function VideoFilters({
           </div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => setSortBy(e.target.value as VideoSortKey)}
             className="w-full pl-9 pr-8 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
           >
             <option value="newest">Sort: Newest Captured</option>

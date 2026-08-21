@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
 import { TOKEN_PALETTE } from '@/components/charts/palette';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
@@ -234,13 +234,13 @@ export default function DashboardPage() {
         setCampaignIdx((prev) => (prev - 1 + campaigns.items.length) % campaigns.items.length);
     };
 
-    const containerVariants: any = {
+    const containerVariants: Variants = {
         hidden: (dir: number) => ({}),
         visible: { transition: { staggerChildren: 0.1 } },
         exit: (dir: number) => ({ transition: { staggerChildren: 0.05, staggerDirection: -1 } })
     };
 
-    const childVariants: any = {
+    const childVariants: Variants = {
         hidden: (dir: number) => ({ opacity: 0, x: dir > 0 ? 30 : -30 }),
         visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
         exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -30 : 30, transition: { duration: 0.2 } })

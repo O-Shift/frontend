@@ -106,7 +106,7 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
                 fontSize: '12px',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
               }}
-              formatter={(value: any) => [`${value}/100`, 'Score']}
+              formatter={(value) => [`${value}/100`, 'Score']}
             />
             <Radar
               name="Viral Score"
