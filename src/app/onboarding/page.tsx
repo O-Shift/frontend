@@ -1,9 +1,11 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Search, X, Check, UploadCloud, MessageSquare } from 'lucide-react';
 import { EVENTS, track } from '@/lib/analytics';
 import { upsertCompany, createCompetitorsBatch } from '@/lib/api';
+import mascotImg from '../../../public/investigator_mascot.png';
 import './onboarding.css';
 
 // Type Definitions
@@ -33,6 +35,12 @@ const stepProps = (step: number, extra?: Record<string, unknown>) => ({
     step_name: STEP_NAMES[step],
     ...extra
 });
+
+const onActivateKey = (action: () => void) => (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    action();
+};
 
 /** Strip a bare domain down to its host. Returns '' when there is nothing usable. */
 const toHost = (input: string): string => {
@@ -219,19 +227,43 @@ export default function IntelligenceBriefing() {
             <p className="ob-desc">Choose what matters most right now. You can activate additional intelligence modules later.</p>
 
             <div className="ob-cards-grid">
-                <div className={`ob-card ${mission === 'campaigns' ? 'selected' : ''}`} onClick={() => setMission('campaigns')}>
+                <div
+                    className={`ob-card ${mission === 'campaigns' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('campaigns')}
+                    onKeyDown={onActivateKey(() => setMission('campaigns'))}
+                >
                     <div className="ob-card-title">Decode competitor campaigns</div>
                     <div className="ob-card-desc">Discover which campaigns succeeded, why they worked, and how your company can adapt the winning strategy.</div>
                 </div>
-                <div className={`ob-card ${mission === 'gaps' ? 'selected' : ''}`} onClick={() => setMission('gaps')}>
+                <div
+                    className={`ob-card ${mission === 'gaps' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('gaps')}
+                    onKeyDown={onActivateKey(() => setMission('gaps'))}
+                >
                     <div className="ob-card-title">Find market gaps</div>
                     <div className="ob-card-desc">Identify competitor weaknesses, customer complaints, unmet needs, and opportunities your company can own.</div>
                 </div>
-                <div className={`ob-card ${mission === 'moves' ? 'selected' : ''}`} onClick={() => setMission('moves')}>
+                <div
+                    className={`ob-card ${mission === 'moves' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('moves')}
+                    onKeyDown={onActivateKey(() => setMission('moves'))}
+                >
                     <div className="ob-card-title">Track strategic moves</div>
                     <div className="ob-card-desc">Monitor partnerships, expansions, acquisitions, sponsorships, product launches, and important market activity.</div>
                 </div>
-                <div className={`ob-card ${mission === 'complete' ? 'selected' : ''}`} onClick={() => setMission('complete')}>
+                <div
+                    className={`ob-card ${mission === 'complete' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('complete')}
+                    onKeyDown={onActivateKey(() => setMission('complete'))}
+                >
                     <div className="ob-card-title">Build a complete intelligence view</div>
                     <div className="ob-card-desc">Combine campaign analysis, opportunity discovery, and strategic-movement tracking.</div>
                 </div>
@@ -274,8 +306,8 @@ export default function IntelligenceBriefing() {
 
                 <div className="ob-input-group" style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <label className="ob-label">Company Website</label>
-                        <input className="ob-input" placeholder="e.g. yourcompany.com" value={company.website} onChange={e => setCompany({ ...company, website: e.target.value })} />
+                        <label htmlFor="ob-company-website" className="ob-label">Company Website</label>
+                        <input id="ob-company-website" className="ob-input" placeholder="e.g. yourcompany.com" value={company.website} onChange={e => setCompany({ ...company, website: e.target.value })} />
                     </div>
                     <button className="ob-btn-secondary" onClick={fillNameFromDomain} disabled={!host}>
                         Use domain as name
@@ -283,24 +315,24 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-input-group">
-                    <label className="ob-label">Company Name</label>
-                    <input className="ob-input" value={company.name} onChange={e => setCompany({ ...company, name: e.target.value })} />
+                    <label htmlFor="ob-company-name" className="ob-label">Company Name</label>
+                    <input id="ob-company-name" className="ob-input" value={company.name} onChange={e => setCompany({ ...company, name: e.target.value })} />
                 </div>
 
                 <div style={{ display: 'flex', gap: 20 }}>
                     <div className="ob-input-group" style={{ flex: 1 }}>
-                        <label className="ob-label">Industry</label>
-                        <input className="ob-input" value={company.industry} onChange={e => setCompany({ ...company, industry: e.target.value })} />
+                        <label htmlFor="ob-company-industry" className="ob-label">Industry</label>
+                        <input id="ob-company-industry" className="ob-input" value={company.industry} onChange={e => setCompany({ ...company, industry: e.target.value })} />
                     </div>
                     <div className="ob-input-group" style={{ flex: 1 }}>
-                        <label className="ob-label">Main Market / Country</label>
-                        <input className="ob-input" value={company.market} onChange={e => setCompany({ ...company, market: e.target.value })} />
+                        <label htmlFor="ob-company-market" className="ob-label">Main Market / Country</label>
+                        <input id="ob-company-market" className="ob-input" value={company.market} onChange={e => setCompany({ ...company, market: e.target.value })} />
                     </div>
                 </div>
 
                 <div className="ob-input-group">
-                    <label className="ob-label">Company Stage</label>
-                    <select className="ob-select" value={company.stage} onChange={e => setCompany({ ...company, stage: e.target.value })}>
+                    <label htmlFor="ob-company-stage" className="ob-label">Company Stage</label>
+                    <select id="ob-company-stage" className="ob-select" value={company.stage} onChange={e => setCompany({ ...company, stage: e.target.value })}>
                         <option value="Idea">Idea</option>
                         <option value="Early stage">Early stage</option>
                         <option value="Growing">Growing</option>
@@ -432,6 +464,10 @@ export default function IntelligenceBriefing() {
 
         const list = activeTab === 'keywords' ? signals.keywords : activeTab === 'products' ? signals.categories : signals.trends;
 
+        const addSuggestedKeyword = (s: string) => {
+            setSignals({ ...signals, keywords: [...signals.keywords, s] });
+        };
+
         return (
             <div className="ob-step-container">
                 <div className="ob-step-indicator" style={{ marginBottom: 40 }}>
@@ -470,9 +506,15 @@ export default function IntelligenceBriefing() {
                     <div style={{ fontSize: 13, color: '#8d6e63', marginBottom: 12, fontWeight: 600 }}>SUGGESTIONS</div>
                     <div className="ob-chips-container">
                         {['AI automation', 'Pricing changes', 'Social commerce'].map(s => (
-                            <div key={s} className="ob-chip" style={{ background: '#fff3e0', border: 'none' }} onClick={() => {
-                                setSignals({ ...signals, keywords: [...signals.keywords, s] });
-                            }}>+ {s}</div>
+                            <div
+                                key={s}
+                                className="ob-chip"
+                                style={{ background: '#fff3e0', border: 'none' }}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => addSuggestedKeyword(s)}
+                                onKeyDown={onActivateKey(() => addSuggestedKeyword(s))}
+                            >+ {s}</div>
                         ))}
                     </div>
                 </div>
@@ -565,21 +607,45 @@ export default function IntelligenceBriefing() {
                 <p className="ob-desc">The more context Oshift has, the more relevant its opportunities, threats, and recommendations become.</p>
 
                 <div className="ob-cards-grid">
-                    <div className="ob-card" onClick={() => {
-                        profileMethod.current = 'document';
-                        track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
-                        simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
-                    }}>
+                    <div
+                        className="ob-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                            profileMethod.current = 'document';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
+                            simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
+                        }}
+                        onKeyDown={e => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                            e.preventDefault();
+                            profileMethod.current = 'document';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
+                            simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
+                        }}
+                    >
                         <UploadCloud size={32} color="#ff7043" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Upload a business document</div>
                         <div className="ob-card-desc">Upload an existing Business Model Canvas, company profile, strategy document, pitch deck, or business plan.</div>
                         <div style={{ marginTop: 16, fontSize: 13, color: '#ff9800', fontWeight: 600 }}>Click to simulate upload</div>
                     </div>
-                    <div className="ob-card" onClick={() => {
-                        profileMethod.current = 'interview';
-                        track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'interview' }));
-                        setMethod('interview');
-                    }}>
+                    <div
+                        className="ob-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                            profileMethod.current = 'interview';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'interview' }));
+                            setMethod('interview');
+                        }}
+                        onKeyDown={e => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                            e.preventDefault();
+                            profileMethod.current = 'interview';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'interview' }));
+                            setMethod('interview');
+                        }}
+                    >
                         <div style={{ position: 'absolute', top: -12, right: 20, background: '#4CAF50', color: '#fff', fontSize: 11, padding: '4px 12px', borderRadius: 12, fontWeight: 700 }}>RECOMMENDED</div>
                         <MessageSquare size={32} color="#ff7043" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Let Oshift interview you</div>
@@ -610,7 +676,16 @@ export default function IntelligenceBriefing() {
                     <div className="ob-label" style={{ marginBottom: 12 }}>Social Sources</div>
                     <div className="ob-chips-container">
                         {['LinkedIn', 'Instagram', 'TikTok', 'X'].map(p => (
-                            <div key={p} className="ob-chip" style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }} onClick={() => togglePlat(p)}>
+                            <div
+                                key={p}
+                                className="ob-chip"
+                                style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }}
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={sources.platforms.includes(p)}
+                                onClick={() => togglePlat(p)}
+                                onKeyDown={onActivateKey(() => togglePlat(p))}
+                            >
                                 {p}
                             </div>
                         ))}
@@ -621,7 +696,16 @@ export default function IntelligenceBriefing() {
                     <div className="ob-label" style={{ marginBottom: 12 }}>Review Sources</div>
                     <div className="ob-chips-container">
                         {['Google Reviews', 'Trustpilot', 'G2', 'App Store'].map(p => (
-                            <div key={p} className="ob-chip" style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }} onClick={() => togglePlat(p)}>
+                            <div
+                                key={p}
+                                className="ob-chip"
+                                style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }}
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={sources.platforms.includes(p)}
+                                onClick={() => togglePlat(p)}
+                                onKeyDown={onActivateKey(() => togglePlat(p))}
+                            >
                                 {p}
                             </div>
                         ))}
@@ -629,8 +713,8 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-input-group">
-                    <label className="ob-label">How often should Oshift brief you?</label>
-                    <select className="ob-select" value={sources.frequency} onChange={e => setSources({ ...sources, frequency: e.target.value })}>
+                    <label htmlFor="ob-brief-frequency" className="ob-label">How often should Oshift brief you?</label>
+                    <select id="ob-brief-frequency" className="ob-select" value={sources.frequency} onChange={e => setSources({ ...sources, frequency: e.target.value })}>
                         <option>Important alerts only</option>
                         <option>Daily summary</option>
                         <option>Weekly intelligence brief</option>
@@ -728,8 +812,8 @@ export default function IntelligenceBriefing() {
                     let currentScale = 1.3;
                     
                     return (
-                        <img
-                            src="/investigator_mascot.png"
+                        <Image
+                            src={mascotImg}
                             alt="Oshift Mascot"
                             className="ob-mascot"
                             style={{

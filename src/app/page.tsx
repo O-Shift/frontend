@@ -607,7 +607,7 @@ export default function DashboardPage() {
                         ) : campaigns.items.length === 0 ? (
                             <div className="text-sm text-[var(--text-secondary)]">No active campaigns.</div>
                         ) : campaigns.items.map((camp) => (
-                            <div key={camp.id} className="min-w-[280px] p-5 rounded-lg border border-[var(--border-color)] flex flex-col cursor-pointer hover:border-[var(--text-primary)] transition-colors" onClick={() => router.push(`/campaigns/${camp.id}`)}>
+                            <div key={camp.id} className="min-w-[280px] p-5 rounded-lg border border-[var(--border-color)] flex flex-col cursor-pointer hover:border-[var(--text-primary)] transition-colors" role="button" tabIndex={0} onClick={() => router.push(`/campaigns/${camp.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/campaigns/${camp.id}`); } }}>
                                 <span className="text-sm font-semibold text-[var(--text-primary)] mb-2 truncate">{camp.title}</span>
                                 <div className="text-xs text-[var(--text-secondary)] mb-4">{campaignDate(camp)}</div>
                                 <div className="flex items-center justify-between mt-auto">

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Chess } from 'chess.js';
+import type { Chess, Square } from 'chess.js';
 import { useRouter } from 'next/navigation';
 import { Poppins } from 'next/font/google';
 import { FaChessKing, FaChessQueen, FaChessRook, FaChessBishop, FaChessKnight, FaChessPawn } from 'react-icons/fa';
@@ -10,7 +10,10 @@ const poppins = Poppins({ subsets: ['latin'], weight: ['300', '400', '500', '600
 
 const pieceValues: Record<string, number> = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 1000 };
 
-function evalBoard(board: any[][]): number {
+type BoardState = ReturnType<Chess['board']>;
+const EMPTY_BOARD: BoardState = [];
+
+function evalBoard(board: BoardState): number {
   let s = 0;
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
     const p = board[r][c]; if (!p) continue;
@@ -52,7 +55,7 @@ const PieceGraphics: Record<string, React.ElementType> = {
   p: FaChessPawn
 };
 
-function getCapturedPieces(board: any[][]) {
+function getCapturedPieces(board: BoardState) {
   if (!board || board.length === 0) return { capturedW: [], capturedB: [] };
   const counts = { w: { p: 0, n: 0, b: 0, r: 0, q: 0 }, b: { p: 0, n: 0, b: 0, r: 0, q: 0 } };
   for (let r = 0; r < 8; r++) {
@@ -80,13 +83,14 @@ export default function NotFoundPage() {
 
   // Chess state
   const [game, setGame] = useState<Chess | null>(null);
-  const [board, setBoard] = useState<any[][]>([]);
+  const [board, setBoard] = useState<BoardState>(EMPTY_BOARD);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [validDestinations, setValidDestinations] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState('');
 
-  const initGame = () => {
-    const g = new Chess();
+  const initGame = async () => {
+    const { Chess: ChessCtor } = await import('chess.js');
+    const g = new ChessCtor();
     setGame(g); setBoard(g.board());
     setSelectedSquare(null); setValidDestinations([]);
     setGameStatus('Your turn');
@@ -125,8 +129,8 @@ export default function NotFoundPage() {
     const piece = board[row]?.[col];
     if (piece && piece.color === 'w') {
       setSelectedSquare(sq);
-      const mvs = game.moves({ square: sq as any, verbose: true }) as any[];
-      setValidDestinations(mvs.map((m: any) => m.to));
+      const mvs = game.moves({ square: sq as Square, verbose: true });
+      setValidDestinations(mvs.map((m) => m.to));
     } else { setSelectedSquare(null); setValidDestinations([]); }
   };
 

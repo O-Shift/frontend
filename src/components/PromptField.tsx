@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import Image from 'next/image';
 import { useAgentChat } from '@/hooks/use-agent-chat';
 import AgentProgress from '@/components/chat/AgentProgress';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
@@ -109,13 +110,15 @@ function ContextItemLogo({ item }: { item: ChatContextItem }) {
   if (item.logo && !error) {
     return (
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)] overflow-hidden p-1">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={item.logo}
           alt=""
+          width={32}
+          height={32}
           className="h-full w-full object-contain rounded"
           onError={() => setError(true)}
           loading="lazy"
+          unoptimized
         />
       </span>
     );
@@ -135,12 +138,14 @@ function MessageContextItem({ item }: { item: ChatContextItem }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--context-chip-border)] bg-[var(--context-chip-bg)] px-2.5 py-0.5 text-[11px] text-[var(--text-primary)]">
       {item.logo && !imgErr ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={item.logo}
           alt=""
+          width={12}
+          height={12}
           className="h-3 w-3 rounded object-contain shrink-0"
           onError={() => setImgErr(true)}
+          unoptimized
         />
       ) : (
         <Icon className="h-3 w-3 text-[var(--accent)] shrink-0" />
@@ -806,11 +811,13 @@ export default function PromptField({
                       className="context-chip"
                     >
                       {item.logo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={item.logo}
                           alt=""
+                          width={12}
+                          height={12}
                           className="h-3 w-3 rounded object-contain shrink-0"
+                          unoptimized
                         />
                       ) : (
                         <Icon className="h-3 w-3 text-[var(--accent)] shrink-0" />

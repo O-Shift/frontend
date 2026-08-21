@@ -213,6 +213,7 @@ export default function SignupPage() {
                                         type="text" 
                                         className={`auth-input ${errors.name ? 'error' : ''}`}
                                         placeholder="Full name" 
+                                        aria-label="Full name"
                                         autoComplete="name"
                                         value={name}
                                         onChange={(e) => { setName(e.target.value); if(errors.name) setErrors({...errors, name: undefined}); }}
@@ -228,6 +229,7 @@ export default function SignupPage() {
                                         type="email" 
                                         className={`auth-input ${errors.email ? 'error' : ''}`}
                                         placeholder="Work email" 
+                                        aria-label="Work email"
                                         autoComplete="email"
                                         value={email}
                                         onChange={(e) => { setEmail(e.target.value); if(errors.email) setErrors({...errors, email: undefined}); }}
@@ -243,6 +245,7 @@ export default function SignupPage() {
                                         type="text" 
                                         className={`auth-input ${errors.role ? 'error' : ''}`}
                                         placeholder="Role in company" 
+                                        aria-label="Role in company"
                                         value={roleSearch}
                                         onChange={(e) => {
                                             setRoleSearch(e.target.value);
@@ -285,6 +288,7 @@ export default function SignupPage() {
                                             type="text" 
                                             className={`auth-input ${errors.customRole ? 'error' : ''}`}
                                             placeholder="Please specify your role" 
+                                            aria-label="Please specify your role"
                                             style={{ paddingLeft: '1.2rem' }}
                                             value={customRole}
                                             onChange={(e) => { setCustomRole(e.target.value); if(errors.customRole) setErrors({...errors, customRole: undefined}); }}
@@ -301,6 +305,7 @@ export default function SignupPage() {
                                         type={showPassword ? 'text' : 'password'}
                                         className={`auth-input ${errors.password ? 'error' : ''}`}
                                         placeholder="Password (min. 8 characters)" 
+                                        aria-label="Password (min. 8 characters)"
                                         autoComplete="new-password"
                                         value={password}
                                         onChange={(e) => { setPassword(e.target.value); if(errors.password) setErrors({...errors, password: undefined}); }}

@@ -1,8 +1,10 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Check, ChevronsUpDown, LayoutGrid, X } from 'lucide-react';
+import oshiftLogo from '../../public/orange logo.png';
 import { useTheme } from './ThemeProvider';
 import { usePinned } from '@/context/PinnedContext';
 import { useCurrentUser } from '@/hooks/use-current-user';
@@ -135,8 +137,8 @@ export default function Sidebar({ mobileNavOpen = false, onMobileClose }: Sideba
         <div className={`sidebar ${effectiveCollapsed ? 'collapsed' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`} id="appSidebar">
             <div className="sidebar-header">
                 <div className="logo-area">
-                    <img
-                        src="/orange logo.png"
+                    <Image
+                        src={oshiftLogo}
                         alt="OShift"
                         className="sidebar-logo"
                     />

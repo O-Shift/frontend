@@ -157,8 +157,8 @@ function LoginForm() {
                         </div>
 
                         <div className="auth-options">
-                            <label className="auth-checkbox">
-                                <input type="checkbox" defaultChecked />
+                            <label className="auth-checkbox" htmlFor="remember-me">
+                                <input type="checkbox" id="remember-me" defaultChecked />
                                 <span>Remember me</span>
                             </label>
                             <Link href="/forgot-password" className="auth-forgot">

@@ -641,8 +641,8 @@ export default function CampaignsPage() {
             </button>
             {isDropdownOpen && (
               <div className="view-dropdown show" id="viewDropdown">
-                <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); }}>Clusters</div>
-                <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); }}>Heatmap</div>
+                <div className="dropdown-item" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); } }}>Clusters</div>
+                <div className="dropdown-item" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); } }}>Heatmap</div>
               </div>
             )}
           </div>
