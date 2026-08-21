@@ -126,6 +126,21 @@
   --skeleton-shine: rgba(255, 255, 255, 0.7);
 }
 
+/* Onboarding sub-theme */
+:root {
+  --ob-accent: #ff9800;
+  --ob-accent-strong: #ff7043;
+  --ob-accent-deep: #d84315;
+  --ob-brown-muted: #8d6e63;
+  --ob-brown-dark: #3e2723;
+  --ob-border-warm: #ffcc80;
+  --ob-surface: #ffffff;
+  --ob-surface-warm: #fff3e0;
+  --ob-surface-warm-2: #fff8e1;
+  --ob-success: #4CAF50;
+  --ob-divider: #f5f5f5;
+}
+
 /* Moving gradient glow on the edges of the page content */
 :root {
   --glow-spread: 60px;

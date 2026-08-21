@@ -300,7 +300,7 @@ export default function IntelligenceBriefing() {
                 {isProcessing && (
                     <div className="ob-processing-overlay">
                         <div className="ob-spinner" />
-                        <div style={{ fontWeight: 600, color: '#d84315' }}>{processLabel}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--ob-accent-deep)' }}>{processLabel}</div>
                     </div>
                 )}
 
@@ -393,7 +393,7 @@ export default function IntelligenceBriefing() {
                 {competitors.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
                         {competitors.map(c => (
-                            <div key={c.domain} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: '1px solid #ffcc80', borderRadius: 16, padding: '10px 16px' }}>
+                            <div key={c.domain} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--ob-surface)', border: '1px solid var(--ob-border-warm)', borderRadius: 16, padding: '10px 16px' }}>
                                 <input
                                     className="ob-input"
                                     style={{ flex: 1, border: 'none', padding: 0, background: 'transparent', fontWeight: 600 }}
@@ -401,7 +401,7 @@ export default function IntelligenceBriefing() {
                                     aria-label={`Name for ${c.domain}`}
                                     onChange={e => renameCompetitor(c.domain, e.target.value)}
                                 />
-                                <span style={{ color: '#8d6e63', fontSize: 13 }}>{c.domain}</span>
+                                <span style={{ color: 'var(--ob-brown-muted)', fontSize: 13 }}>{c.domain}</span>
                                 <button className="ob-btn-text" style={{ padding: 0 }} aria-label={`Remove ${c.name}`} onClick={() => removeCompetitor(c.domain)}>
                                     <X />
                                 </button>
@@ -412,7 +412,7 @@ export default function IntelligenceBriefing() {
 
                 {competitors.length < 5 && (
                     <div className="ob-input-group" style={{ position: 'relative' }}>
-                        <Search style={{ position: 'absolute', left: 20, top: 20, color: '#8d6e63' }} />
+                        <Search style={{ position: 'absolute', left: 20, top: 20, color: 'var(--ob-brown-muted)' }} />
                         <input
                             className="ob-input"
                             style={{ paddingLeft: 50 }}
@@ -424,12 +424,12 @@ export default function IntelligenceBriefing() {
                             }}
                         />
                         {compInput && !typedHost && (
-                            <div style={{ marginTop: 8, fontSize: 13, color: '#d84315' }}>
+                            <div style={{ marginTop: 8, fontSize: 13, color: 'var(--ob-accent-deep)' }}>
                                 That is not a website yet — try something like acme.com
                             </div>
                         )}
                         {alreadyAdded && (
-                            <div style={{ marginTop: 8, fontSize: 13, color: '#8d6e63' }}>
+                            <div style={{ marginTop: 8, fontSize: 13, color: 'var(--ob-brown-muted)' }}>
                                 {typedHost} is already on the list
                             </div>
                         )}
@@ -503,13 +503,13 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div style={{ marginTop: 24 }}>
-                    <div style={{ fontSize: 13, color: '#8d6e63', marginBottom: 12, fontWeight: 600 }}>SUGGESTIONS</div>
+                    <div style={{ fontSize: 13, color: 'var(--ob-brown-muted)', marginBottom: 12, fontWeight: 600 }}>SUGGESTIONS</div>
                     <div className="ob-chips-container">
                         {['AI automation', 'Pricing changes', 'Social commerce'].map(s => (
                             <div
                                 key={s}
                                 className="ob-chip"
-                                style={{ background: '#fff3e0', border: 'none' }}
+                                style={{ background: 'var(--ob-surface-warm)', border: 'none' }}
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => addSuggestedKeyword(s)}
@@ -578,8 +578,8 @@ export default function IntelligenceBriefing() {
                     <h1 className="ob-title">Guided Agent Interview</h1>
                     <p className="ob-desc">Question {qIndex + 1} of {questions.length}</p>
 
-                    <div style={{ background: '#fff', padding: 24, borderRadius: 24, border: '1px solid #ffcc80', marginBottom: 24 }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, color: '#3e2723', marginBottom: 16 }}>{questions[qIndex]}</div>
+                    <div style={{ background: 'var(--ob-surface)', padding: 24, borderRadius: 24, border: '1px solid var(--ob-border-warm)', marginBottom: 24 }}>
+                        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--ob-brown-dark)', marginBottom: 16 }}>{questions[qIndex]}</div>
                         <textarea className="ob-input" style={{ width: '100%', height: 100, boxSizing: 'border-box' }} placeholder="Type your answer here..." />
                     </div>
 
@@ -624,10 +624,10 @@ export default function IntelligenceBriefing() {
                             simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
                         }}
                     >
-                        <UploadCloud size={32} color="#ff7043" style={{ marginBottom: 12 }} />
+                        <UploadCloud size={32} color="var(--ob-accent-strong)" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Upload a business document</div>
                         <div className="ob-card-desc">Upload an existing Business Model Canvas, company profile, strategy document, pitch deck, or business plan.</div>
-                        <div style={{ marginTop: 16, fontSize: 13, color: '#ff9800', fontWeight: 600 }}>Click to simulate upload</div>
+                        <div style={{ marginTop: 16, fontSize: 13, color: 'var(--ob-accent)', fontWeight: 600 }}>Click to simulate upload</div>
                     </div>
                     <div
                         className="ob-card"
@@ -646,8 +646,8 @@ export default function IntelligenceBriefing() {
                             setMethod('interview');
                         }}
                     >
-                        <div style={{ position: 'absolute', top: -12, right: 20, background: '#4CAF50', color: '#fff', fontSize: 11, padding: '4px 12px', borderRadius: 12, fontWeight: 700 }}>RECOMMENDED</div>
-                        <MessageSquare size={32} color="#ff7043" style={{ marginBottom: 12 }} />
+                        <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--ob-success)', color: 'var(--ob-surface)', fontSize: 11, padding: '4px 12px', borderRadius: 12, fontWeight: 700 }}>RECOMMENDED</div>
+                        <MessageSquare size={32} color="var(--ob-accent-strong)" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Let Oshift interview you</div>
                         <div className="ob-card-desc">Answer a few simple questions and the agent will create your company profile and Business Model Canvas.</div>
                     </div>
@@ -679,7 +679,7 @@ export default function IntelligenceBriefing() {
                             <div
                                 key={p}
                                 className="ob-chip"
-                                style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }}
+                                style={{ background: sources.platforms.includes(p) ? 'var(--ob-accent)' : 'var(--ob-surface)', color: sources.platforms.includes(p) ? 'var(--ob-surface)' : 'var(--ob-accent-deep)' }}
                                 role="button"
                                 tabIndex={0}
                                 aria-pressed={sources.platforms.includes(p)}
@@ -699,7 +699,7 @@ export default function IntelligenceBriefing() {
                             <div
                                 key={p}
                                 className="ob-chip"
-                                style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }}
+                                style={{ background: sources.platforms.includes(p) ? 'var(--ob-accent)' : 'var(--ob-surface)', color: sources.platforms.includes(p) ? 'var(--ob-surface)' : 'var(--ob-accent-deep)' }}
                                 role="button"
                                 tabIndex={0}
                                 aria-pressed={sources.platforms.includes(p)}
@@ -747,24 +747,24 @@ export default function IntelligenceBriefing() {
                     Oshift will monitor {competitors.length} {competitors.length === 1 ? 'competitor' : 'competitors'}, follow {signalCount} strategic {signalCount === 1 ? 'signal' : 'signals'}, and focus on {mission || 'market intelligence'}.
                 </p>
 
-                <div style={{ background: '#ffffff', border: '1px solid #ffcc80', borderRadius: 24, padding: 24, marginBottom: 24, boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #f5f5f5', paddingBottom: 16 }}>
-                        <div><span style={{ color: '#8d6e63', fontSize: 13, display: 'block' }}>Company</span><strong>{company.name || 'Setup Pending'}</strong></div>
-                        <div><span style={{ color: '#8d6e63', fontSize: 13, display: 'block' }}>Briefing</span><strong>{sources.frequency}</strong></div>
+                <div style={{ background: 'var(--ob-surface)', border: '1px solid var(--ob-border-warm)', borderRadius: 24, padding: 24, marginBottom: 24, boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid var(--ob-divider)', paddingBottom: 16 }}>
+                        <div><span style={{ color: 'var(--ob-brown-muted)', fontSize: 13, display: 'block' }}>Company</span><strong>{company.name || 'Setup Pending'}</strong></div>
+                        <div><span style={{ color: 'var(--ob-brown-muted)', fontSize: 13, display: 'block' }}>Briefing</span><strong>{sources.frequency}</strong></div>
                     </div>
-                    <div style={{ color: '#d84315', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ color: 'var(--ob-accent-deep)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Check /> Ready to save
                     </div>
                 </div>
 
                 {saveError && (
-                    <div role="alert" style={{ background: '#fff3e0', border: '1px solid #d84315', borderRadius: 16, padding: 16, marginBottom: 24, color: '#d84315', fontSize: 14 }}>
+                    <div role="alert" style={{ background: 'var(--ob-surface-warm)', border: '1px solid var(--ob-accent-deep)', borderRadius: 16, padding: 16, marginBottom: 24, color: 'var(--ob-accent-deep)', fontSize: 14 }}>
                         {saveError}
                     </div>
                 )}
 
                 {skipped.length > 0 && (
-                    <div style={{ background: '#fff8e1', border: '1px solid #ffcc80', borderRadius: 16, padding: 16, marginBottom: 24, color: '#8d6e63', fontSize: 14 }}>
+                    <div style={{ background: 'var(--ob-surface-warm-2)', border: '1px solid var(--ob-border-warm)', borderRadius: 16, padding: 16, marginBottom: 24, color: 'var(--ob-brown-muted)', fontSize: 14 }}>
                         Already being tracked, so left as they are: {skipped.join(', ')}
                     </div>
                 )}
@@ -829,7 +829,7 @@ export default function IntelligenceBriefing() {
 
                 {/* Case File visual for Company steps only */}
                 <div className={`ob-case-file ${(step === 2) ? 'visible' : ''}`}>
-                    <div style={{ borderBottom: '2px solid #ffcc80', paddingBottom: 12, marginBottom: 16, fontWeight: 700, color: '#d84315' }}>
+                    <div style={{ borderBottom: '2px solid var(--ob-border-warm)', paddingBottom: 12, marginBottom: 16, fontWeight: 700, color: 'var(--ob-accent-deep)' }}>
                         INVESTIGATION CASE FILE
                     </div>
                     <div className="ob-case-row">
@@ -846,7 +846,7 @@ export default function IntelligenceBriefing() {
                     </div>
                     <div className="ob-case-row" style={{ border: 'none' }}>
                         <span className="ob-case-label">PROFILE STATUS</span>
-                        <span className="ob-case-value" style={{ color: step > 5 ? '#4CAF50' : '#ff9800' }}>
+                        <span className="ob-case-value" style={{ color: step > 5 ? 'var(--ob-success)' : 'var(--ob-accent)' }}>
                             {step > 5 ? 'Compiled' : 'Gathering Data...'}
                         </span>
                     </div>
