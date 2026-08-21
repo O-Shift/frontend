@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import oshiftLogo from '../../public/orange logo.png';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
@@ -100,8 +102,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         <Menu size={20} aria-hidden="true" />
                     </button>
                     <Link href="/" className="mobile-topbar-brand">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- same static logo asset as Sidebar */}
-                        <img src="/orange logo.png" alt="" className="mobile-topbar-logo" />
+                        <Image src={oshiftLogo} alt="" className="mobile-topbar-logo" />
                         <span>OShift</span>
                     </Link>
                 </header>
