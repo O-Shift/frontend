@@ -145,6 +145,7 @@ export default function OpportunitiesPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     loadData();
   }, []);
 
@@ -195,10 +196,12 @@ export default function OpportunitiesPage() {
     setIsRunningPipeline(false);
   };
 
-  // Close brief on slide change
-  useEffect(() => {
+  // Close brief on slide change — render-time reset per React's "adjusting state on prop change" pattern
+  const [prevSlideIndex, setPrevSlideIndex] = useState(slideIndex);
+  if (prevSlideIndex !== slideIndex) {
+    setPrevSlideIndex(slideIndex);
     setFoldState(0);
-  }, [slideIndex]);
+  }
 
   // Global thinking class toggle
   useEffect(() => {

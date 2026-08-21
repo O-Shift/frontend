@@ -56,6 +56,8 @@ export default function VideoAnalyzerInput({
         error.toLowerCase().includes('api key') ||
         error.toLowerCase().includes('key'))
     ) {
+      // Latch semantics (stays open after user hides/toggle, persists past error change) mean this is not derivable from `error` alone.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowApiKeyInput(true);
     }
   }, [error]);

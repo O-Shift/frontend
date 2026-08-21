@@ -809,7 +809,7 @@ export default function IntelligenceBriefing() {
 
                 {(() => {
                     // Mascot is perfectly centered, static and big
-                    let currentScale = 1.3;
+                    const currentScale = 1.3;
                     
                     return (
                         <Image

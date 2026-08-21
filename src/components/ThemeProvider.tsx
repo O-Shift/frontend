@@ -34,6 +34,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem('oshift-theme') as Theme | null;
     const preferred = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     const resolved = stored ?? preferred;
+    // Intentional hydration sync matching the inline pre-paint script pattern in layout.tsx:
+    // React state must re-read localStorage after mount so the toggle controls render the resolved theme.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(resolved);
     document.documentElement.setAttribute('data-theme', resolved);
   }, []);

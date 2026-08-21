@@ -98,6 +98,7 @@ export function useVideos() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     fetchData();
   }, [fetchData]);
 

@@ -243,6 +243,7 @@ export default function PromptField({
     if (selectedNode) {
       const item = nodeToContextItem(selectedNode);
       if (item) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- prop->state sync; attachedContext is user-mutable (remove/picker-add), so it cannot be derived from selectedNode alone
         setAttachedContext((prev) => {
           if (prev.some((c) => contextKey(c) === contextKey(item))) return prev;
           return [...prev, item];
@@ -284,6 +285,13 @@ export default function PromptField({
     }
   }, [commandActive]);
 
+  const closeAll = useCallback(() => {
+    setCommandActive(false);
+    if (setSidebarCollapsed) {
+      setSidebarCollapsed(true);
+    }
+  }, [setCommandActive, setSidebarCollapsed]);
+
   // Global ESC & click-outside handlers
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -309,14 +317,7 @@ export default function PromptField({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [commandActive, pickerOpen]);
-
-  const closeAll = () => {
-    setCommandActive(false);
-    if (setSidebarCollapsed) {
-      setSidebarCollapsed(true);
-    }
-  };
+  }, [commandActive, pickerOpen, closeAll]);
 
   const handleMascotClick = (e: React.MouseEvent) => {
     e.stopPropagation();

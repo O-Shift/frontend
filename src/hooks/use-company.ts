@@ -49,7 +49,7 @@ export function useCompany(domain: string) {
         const res = await apiFetch<Competitor[]>('/competitors');
         if (!res.ok) throw new Error(res.error);
         
-        let comp = res.data.find(c => c.website && c.website.toLowerCase().includes(domain.toLowerCase()));
+        const comp = res.data.find(c => c.website && c.website.toLowerCase().includes(domain.toLowerCase()));
         if (!comp) {
           setError('Not Found');
           setLoading(false);

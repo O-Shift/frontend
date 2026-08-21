@@ -68,6 +68,9 @@ export default function PartnershipsPage() {
   // Dynamic Company Brief Fetching
   useEffect(() => {
     if (!selectedNode) {
+      // Deselect-path reset of the async brief cache. Cannot fold into the deselect call sites:
+      // deselection is also triggered from inside usePartnershipsCanvas via the setSelectedNode prop.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEntityBrief(null);
       setBriefLoading(false);
       return;

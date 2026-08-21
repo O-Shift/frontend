@@ -44,6 +44,7 @@ export function useCompetitors() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     refetch();
   }, [refetch]);
 
@@ -160,6 +161,7 @@ export function useCompetitorDetail(competitorId: string): CompetitorDetail {
   }, [competitorId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     refetch();
   }, [refetch]);
 

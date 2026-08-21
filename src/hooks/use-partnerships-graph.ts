@@ -188,6 +188,7 @@ export function usePartnershipsGraph(activeCategory: EntityCategory, searchQuery
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     loadData();
   }, [loadData]);
 
