@@ -1418,6 +1418,10 @@ export default function PartnershipsPage() {
             borderRadius: '999px',
             flexWrap: 'nowrap',
             whiteSpace: 'nowrap',
+            maxWidth: '100%',
+            overflowX: 'auto',
+            scrollbarWidth: 'thin',
+            overscrollBehaviorX: 'contain',
           }}
         >
           {/* Segmented Mode Switcher */}

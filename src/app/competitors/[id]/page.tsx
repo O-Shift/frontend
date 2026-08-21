@@ -20,6 +20,7 @@ import {
   getSenseReviews,
   triggerCompetitorScrape,
 } from '@/lib/api';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 // Three charts on this page, one 340 KB dependency behind all of them, and all
 // three sit below the header and stat cards. One dynamic import covers them.
@@ -91,6 +92,9 @@ function CompetitorDetailPageContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
   const [activeChart, setActiveChart] = useState<string | null>(null);
+
+  // Charts grid and carousels collapse to a single stacked column below mobile
+  const isWide = useMediaQuery('(min-width: 640px)');
 
   useEffect(() => {
     document.body.classList.toggle('is-thinking-active', isThinking);
@@ -413,7 +417,7 @@ function CompetitorDetailPageContent() {
           {/* Time-Series Charts Section */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: activeChart ? '1fr 1fr' : '1fr 1fr 1fr',
+            gridTemplateColumns: isWide ? (activeChart ? '1fr 1fr' : '1fr 1fr 1fr') : '1fr',
             gap: 48,
             marginBottom: 80,
           }}>
@@ -552,8 +556,8 @@ function CompetitorDetailPageContent() {
           </div>
 
           {/* Strategic Gaps Carousel */}
-          <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: isWide ? 'row' : 'column', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ flexShrink: 0, width: isWide ? 220 : '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ marginBottom: 24, opacity: 0.8 }}>
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
@@ -643,8 +647,8 @@ function CompetitorDetailPageContent() {
           </div>
 
           {/* Customer Voice / Reviews Section */}
-          <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: isWide ? 'row' : 'column', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ flexShrink: 0, width: isWide ? 220 : '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: 80, color: '#3f3f46', lineHeight: 0.8, marginBottom: 24, fontFamily: 'serif' }}>“</div>
               <h3 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: 32, letterSpacing: '-0.02em' }}>What<br />customers are<br />saying</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

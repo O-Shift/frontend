@@ -5,6 +5,7 @@ import PromptField from '@/components/PromptField';
 import { fetchOpportunities, generateOpportunities, triggerPipeline, Opportunity } from '@/lib/api';
 import Link from 'next/link';
 import OpportunitiesSkeleton from '@/components/skeletons/OpportunitiesSkeleton';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 function CompanyPile({ companies }: { companies: string[] }) {
   const [hovered, setHovered] = useState(false);
@@ -105,6 +106,9 @@ export default function OpportunitiesPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<{ type: 'desc' | 'gap', id: number } | null>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Two-column layout collapses to a stacked single column below desktop
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   const [selectedNode, setSelectedNode] = useState(null);
   const [commandActive, setCommandActive] = useState(false);
@@ -527,7 +531,7 @@ export default function OpportunitiesPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ display: 'flex', flex: 1, width: '100%', maxWidth: 1200, margin: '0 auto', gap: 60 }}
+              style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column', flex: 1, width: '100%', maxWidth: 1200, margin: '0 auto', gap: 60 }}
             >
               {/* LEFT COLUMN: Main content */}
               <div style={{ flex: 1, position: 'relative', display: 'flex', zIndex: 15 }}>
@@ -713,7 +717,7 @@ export default function OpportunitiesPage() {
               </div>
 
               {/* RIGHT COLUMN: Data Report - 3D Vertical Accordion (Exact oshift-master implementation) */}
-              <div style={{ flexShrink: 0, width: 340, position: 'relative', zIndex: 10, perspective: 2500, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div style={{ flexShrink: 0, width: isDesktop ? 340 : '100%', position: 'relative', zIndex: 10, perspective: 2500, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
                 <motion.div
                   className="skeleton-target"
                   animate={{

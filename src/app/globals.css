@@ -3457,3 +3457,119 @@ body.is-thinking-active .app-window::after {
   box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
 }
 }
+
+/* ── Mobile Navigation Drawer (below 1024px) ── */
+.mobile-topbar {
+  display: none;
+}
+
+.mobile-nav-backdrop {
+  display: none;
+}
+
+.mobile-nav-close-btn {
+  display: none;
+}
+
+@media (width < 1024px) {
+  .app-window {
+    flex-direction: column;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+    height: 48px;
+    padding: 0 var(--space-md);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 100;
+  }
+
+  .mobile-topbar-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: calc(var(--space-xs) * -1);
+    padding: var(--space-xs);
+    border: none;
+    border-radius: var(--card-radius-sm);
+    background: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-topbar-menu-btn:hover {
+    background: var(--item-hover);
+  }
+
+  .mobile-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    text-decoration: none;
+  }
+
+  .mobile-topbar-logo {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+
+  .mobile-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 0.4);
+    z-index: 990;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .mobile-nav-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(270px, 85vw);
+    background: var(--card-bg);
+    box-shadow: 20px 0 55px var(--shadow-color);
+    z-index: 1000;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+      visibility 0s linear 0.3s;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    visibility: visible;
+    transition:
+      transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+      visibility 0s;
+  }
+
+  /* The drawer is always expanded; collapse is a desktop-only affordance. */
+  .sidebar .collapse-toggle {
+    display: none;
+  }
+
+  .mobile-nav-close-btn {
+    display: flex;
+  }
+}

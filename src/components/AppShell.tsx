@@ -1,7 +1,9 @@
 'use client';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Menu } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { PromptFieldProvider } from '@/components/PromptFieldContext';
 import { getActiveWorkspaceId } from '@/lib/api';
@@ -32,6 +34,36 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         () => null,
     );
     const workspaceReady = Boolean(workspaceId);
+    // The drawer stores the pathname it was opened at, so it derives closed
+    // on route change instead of syncing state in an effect.
+    const [mobileNavPath, setMobileNavPath] = useState<string | null>(null);
+    const mobileNavOpen = mobileNavPath !== null && mobileNavPath === pathname;
+
+    // Escape closes the mobile drawer.
+    useEffect(() => {
+        if (!mobileNavOpen) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setMobileNavPath(null);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [mobileNavOpen]);
+
+    // Lock body scroll while the mobile drawer is open.
+    useEffect(() => {
+        if (!mobileNavOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [mobileNavOpen]);
+
+    const closeMobileNav = () => setMobileNavPath(null);
 
     useEffect(() => {
         if (!isShellExcluded && !workspaceReady) {
@@ -57,7 +89,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <PromptFieldProvider key={workspaceId}>
             <div className="app-window">
-                <Sidebar />
+                <header className="mobile-topbar">
+                    <button
+                        type="button"
+                        className="mobile-topbar-menu-btn"
+                        aria-label="Open navigation menu"
+                        aria-expanded={mobileNavOpen}
+                        onClick={() => setMobileNavPath(pathname)}
+                    >
+                        <Menu size={20} aria-hidden="true" />
+                    </button>
+                    <Link href="/" className="mobile-topbar-brand">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- same static logo asset as Sidebar */}
+                        <img src="/orange logo.png" alt="" className="mobile-topbar-logo" />
+                        <span>OShift</span>
+                    </Link>
+                </header>
+                <Sidebar mobileNavOpen={mobileNavOpen} onMobileClose={closeMobileNav} />
+                <div
+                    className={`mobile-nav-backdrop ${mobileNavOpen ? 'open' : ''}`}
+                    onClick={closeMobileNav}
+                    aria-hidden="true"
+                />
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={pathname}

@@ -7,6 +7,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { EVENTS, track } from '@/lib/analytics';
 import { createClient } from '@/utils/supabase/client';
 import { useSettings } from '@/hooks/use-settings';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 
 const SampleBadge = () => (
@@ -25,6 +26,10 @@ export default function SettingsPage() {
   const [commandActive, setCommandActive] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [, setSidebarCollapsed] = useState(false);
+
+  // Responsive container padding: 60px desktop, 24px tablet, 16px mobile
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isTablet = useMediaQuery('(min-width: 768px)');
 
   // Global thinking class toggle
   useEffect(() => {
@@ -274,7 +279,8 @@ export default function SettingsPage() {
               ) : users.error ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444' }}>{users.error}</div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg-alt)' }}>
                       <th style={{ padding: '16px 24px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>User</th>
@@ -308,7 +314,8 @@ export default function SettingsPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               )}
             </div>
           </motion.div>
@@ -363,7 +370,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="main-content" style={{ overflowY: 'auto', padding: '60px', display: 'flex', justifyContent: 'center' }}>
+      <div className="main-content" style={{ overflowY: 'auto', padding: isDesktop ? 60 : isTablet ? 24 : 16, display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: 768 }}>
           <AnimatePresence mode="wait">
             {renderContent()}

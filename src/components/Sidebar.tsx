@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Check, ChevronsUpDown, LayoutGrid } from 'lucide-react';
+import { Check, ChevronsUpDown, LayoutGrid, X } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { usePinned } from '@/context/PinnedContext';
 import { useCurrentUser } from '@/hooks/use-current-user';
@@ -10,7 +10,12 @@ import { apiFetch, fetchCompany, getActiveWorkspaceId, setActiveWorkspaceId, typ
 import { EVENTS, setWorkspaceContext, track } from '@/lib/analytics';
 import { logoUrl, sigilStyle, sigilInitials } from '@/lib/logos';
 
-export default function Sidebar() {
+interface SidebarProps {
+    mobileNavOpen?: boolean;
+    onMobileClose?: () => void;
+}
+
+export default function Sidebar({ mobileNavOpen = false, onMobileClose }: SidebarProps) {
     const [collapsed, setCollapsed] = useState(false);
     const [competitorsExpanded, setCompetitorsExpanded] = useState(true);
     const pathname = usePathname();
@@ -26,6 +31,16 @@ export default function Sidebar() {
     const [logoLoadFailed, setLogoLoadFailed] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    // The drawer is always expanded; collapse stays a desktop-only affordance.
+    const [isDesktop, setIsDesktop] = useState(true);
+
+    useEffect(() => {
+        const desktopQuery = window.matchMedia('(width >= 1024px)');
+        const updateIsDesktop = () => setIsDesktop(desktopQuery.matches);
+        updateIsDesktop();
+        desktopQuery.addEventListener('change', updateIsDesktop);
+        return () => desktopQuery.removeEventListener('change', updateIsDesktop);
+    }, []);
 
     useEffect(() => {
         let active = true;
@@ -114,9 +129,10 @@ export default function Sidebar() {
     const displayName = workspaceName || 'Workspace';
     const displayInitials = sigilInitials(companyName || displayName);
     const hasValidLogo = Boolean(companyLogoUrl && !logoLoadFailed);
+    const effectiveCollapsed = collapsed && isDesktop;
 
     return (
-        <div className={`sidebar ${collapsed ? 'collapsed' : ''}`} id="appSidebar">
+        <div className={`sidebar ${effectiveCollapsed ? 'collapsed' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`} id="appSidebar">
             <div className="sidebar-header">
                 <div className="logo-area">
                     <img
@@ -126,6 +142,18 @@ export default function Sidebar() {
                     />
                 </div>
                 <div className="sidebar-header-actions">
+                    {/* Mobile drawer close (rendered only while the drawer is open) */}
+                    {mobileNavOpen && (
+                        <button
+                            type="button"
+                            className="collapse-btn mobile-nav-close-btn"
+                            onClick={onMobileClose}
+                            title="Close menu"
+                            aria-label="Close navigation menu"
+                        >
+                            <X size={14} aria-hidden="true" />
+                        </button>
+                    )}
                     {/* Theme toggle */}
                     <button
                         className="collapse-btn theme-toggle-btn"
@@ -155,7 +183,8 @@ export default function Sidebar() {
                     </button>
                     {/* Collapse toggle */}
                     <button
-                        className="collapse-btn"
+                        type="button"
+                        className="collapse-btn collapse-toggle"
                         onClick={() => setCollapsed(!collapsed)}
                         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
