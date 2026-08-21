@@ -501,7 +501,7 @@ export default function DashboardPage() {
                                         <div className="flex justify-between items-start mb-1 mt-1">
                                             <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Opportunity</span>
                                             {opp.status === 'new' && (
-                                                <span className="text-[10px] text-[#FF5A00] font-bold border border-[#FF5A00]/30 px-2 py-0.5 rounded uppercase tracking-wider">New</span>
+                                                <span className="text-[10px] text-[var(--accent)] font-bold border border-[var(--accent)]/30 px-2 py-0.5 rounded uppercase tracking-wider">New</span>
                                             )}
                                         </div>
                                         <span className="text-sm font-semibold text-[var(--text-primary)] mb-3 leading-tight truncate">{opp.title}</span>

@@ -194,10 +194,10 @@ export default function SettingsPage() {
                 <div className="skeleton-target" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '16px 24px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ background: 'var(--item-hover)', width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     </div>
                     <div>
-                      <h3 style={{ fontSize: 16, fontWeight: 500, color: '#ef4444', marginBottom: 4 }}>Logout</h3>
+                      <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-danger)', marginBottom: 4 }}>Logout</h3>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Securely sign out of your account on this device.</p>
                     </div>
                   </div>
@@ -206,7 +206,7 @@ export default function SettingsPage() {
                     onClick={handleLogout}
                     disabled={loggingOut}
                     className="rounded-md"
-                    style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: loggingOut ? 'wait' : 'pointer', opacity: loggingOut ? 0.7 : 1 }}
+                    style={{ background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)', padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: loggingOut ? 'wait' : 'pointer', opacity: loggingOut ? 0.7 : 1 }}
                   >
                     {loggingOut ? 'Signing out…' : 'Logout'}
                   </button>
@@ -239,7 +239,7 @@ export default function SettingsPage() {
               {featureFlags.loading ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading flags...</div>
               ) : featureFlags.error ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444' }}>{featureFlags.error}</div>
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-danger)' }}>{featureFlags.error}</div>
               ) : featureFlags.items.length === 0 ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>No feature flags found.</div>
               ) : (
@@ -277,7 +277,7 @@ export default function SettingsPage() {
               {users.loading ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading users...</div>
               ) : users.error ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444' }}>{users.error}</div>
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-danger)' }}>{users.error}</div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -307,7 +307,7 @@ export default function SettingsPage() {
                         <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: 14 }}>{user.access}</td>
                         <td style={{ padding: '16px 24px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: user.status === 'Active' ? '#4ade80' : '#FF6700' }} />
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: user.status === 'Active' ? 'var(--color-success)' : '#FF6700' }} />
                             {user.status}
                           </div>
                         </td>
