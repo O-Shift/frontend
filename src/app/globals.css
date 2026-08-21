@@ -122,6 +122,13 @@
   --skeleton-shine: rgba(255, 255, 255, 0.7);
 }
 
+/* Moving gradient glow on the edges of the page content */
+:root {
+  --glow-spread: 60px;
+  --glow-smoothness: 20px;
+}
+
+@layer components {
 /* Smooth theme transition for all elements */
 *,
 *::before,
@@ -481,7 +488,7 @@ body {
   border-color: var(--accent);
 }
 
-@media (max-width: 900px) {
+@media ( max-width: 1024px ) {
   .chat-history { position: absolute; inset: 0 0 0 auto; width: min(310px, 88vw) !important; box-shadow: -20px 0 55px rgba(0,0,0,.28); }
   .chat-empty { justify-content: flex-start; padding-top: 44px; }
 }
@@ -2625,12 +2632,6 @@ canvas {
   50% { opacity: 0.6; }
 }
 
-/* Moving gradient glow on the edges of the page content */
-:root {
-  --glow-spread: 60px;
-  --glow-smoothness: 20px;
-}
-
 body.is-thinking-active .app-window::after {
   content: '';
   position: absolute;
@@ -2705,7 +2706,7 @@ body.is-thinking-active .app-window::after {
   position: relative;
   overflow: hidden;
 }
-@media (max-width: 700px) {
+@media ( max-width: 768px ) {
   .company-hero { padding: 24px; }
 }
 .company-hero .hero-stat {
@@ -3454,4 +3455,5 @@ body.is-thinking-active .app-window::after {
 [data-theme='light'] .partnership-drawer {
   background: rgba(255, 255, 255, 0.88) !important;
   box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
+}
 }

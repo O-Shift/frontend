@@ -1,3 +1,4 @@
+@layer components {
 /* ===== WORKSPACE CHOOSER =====
    The doorway between auth and the product. It renders outside AppShell (no
    sidebar), so it owns its own scroll container and page padding.
@@ -429,7 +430,7 @@
 
 /* ── Quality floor ────────────────────────────────────────────────────── */
 
-@media (max-width: 560px) {
+@media ( max-width: 640px ) {
   .ws-root {
     padding: var(--space-xl) var(--space-md);
   }
@@ -476,4 +477,5 @@
   .ws-row:hover .ws-row-arrow {
     transform: none;
   }
+}
 }

@@ -1,3 +1,4 @@
+@layer components {
 .onboarding-wrapper {
     display: flex;
     width: 100vw;
@@ -536,4 +537,5 @@
     .onboarding-right {
         display: none; /* Hide for mobile initially, can be a collapsible card if needed */
     }
+}
 }
