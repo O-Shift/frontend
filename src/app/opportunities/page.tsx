@@ -1,98 +1,53 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
-import { fetchOpportunities, generateOpportunities, triggerPipeline, Opportunity } from '@/lib/api';
+import {
+  fetchOpportunities,
+  generateOpportunities,
+  triggerPipeline,
+  Opportunity,
+  type OpportunityHighlight,
+  type OpportunityGapBullet,
+} from '@/lib/api';
 import Link from 'next/link';
 import OpportunitiesSkeleton from '@/components/skeletons/OpportunitiesSkeleton';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
-function CompanyPile({ companies }: { companies: string[] }) {
-  const [hovered, setHovered] = useState(false);
-  if (!companies || companies.length === 0) return null;
-  const visible = companies.slice(0, 3);
-  const extra = companies.length - 3;
-
-  return (
-    <span
-      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 12, verticalAlign: 'middle', cursor: 'pointer' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', background: 'var(--card-bg-alt)', padding: '2px', borderRadius: 999, border: '1px solid var(--border-color)', minWidth: 20 }}>
-        {visible.map((domain, i) => (
-          <span key={i} style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--card-bg-alt)', background: '#fff', overflow: 'hidden', marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`} alt={domain} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => e.currentTarget.style.display = 'none'} />
-          </span>
-        ))}
-        {extra > 0 && (
-          <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-secondary)', marginLeft: 4, marginRight: 4 }}>
-            +{extra}
-          </span>
-        )}
-      </span>
-
-      <AnimatePresence>
-        {hovered && (
-          <motion.div
-            initial={{ opacity: 0, y: 5, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 5, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            style={{
-              position: 'absolute',
-              bottom: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginBottom: 8,
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border-color)',
-              padding: '6px 10px',
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 4px 12px var(--shadow-color)',
-              zIndex: 50,
-              pointerEvents: 'none'
-            }}
-          >
-            {companies.map(d => d.split('.')[0].charAt(0).toUpperCase() + d.split('.')[0].slice(1)).join(', ')}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </span>
-  );
+/** One mapped opportunity as the board renders it. */
+interface OpportunitySlide {
+  id: string;
+  title: string;
+  description: string;
+  highlights: OpportunityHighlight[];
+  gapBullets: OpportunityGapBullet[];
+  effort: string | null;
+  impact: string | null;
+  topComplaint: string | null;
+  rootCause: string | null;
+  gapIdentified: string | null;
+  opportunityText: string | null;
+  priorityScore: number | null;
+  priorityReasoning: string | null;
+  earlyWarning: string | null;
+  quickWin: string | null;
 }
 
-function SeamlessBackground({ slideIndex, totalSlides }: { slideIndex: number, totalSlides: number }) {
-  return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-      <motion.div
-        animate={{ x: `-${slideIndex * (100 / totalSlides)}%` }}
-        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          height: '100%',
-          width: `${totalSlides * 100}vw`,
-          display: 'flex',
-          opacity: 'var(--bg-pattern-opacity)',
-        }}
-      >
-        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '-5%', top: '-30%', width: '220vh', transform: 'rotate(85deg)' }} />
-        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '25%', bottom: '-40%', width: '250vh', transform: 'rotate(-60deg)' }} />
-        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '55%', top: '-50%', width: '240vh', transform: 'rotate(115deg)' }} />
-        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '72%', bottom: '-20%', width: '280vh', transform: 'rotate(-25deg)' }} />
-        <img src="/logo.png" alt="" style={{ position: 'absolute', left: '90%', top: '-35%', width: '260vh', transform: 'rotate(145deg)' }} />
-      </motion.div>
-    </div>
-  );
+/** A citation is usually a URL string, but older rows carry labelled objects. */
+type Citation = string | { title?: unknown; name?: unknown; url?: unknown };
+
+function asText(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null;
 }
+
+function asGapBullets(value: unknown): OpportunityGapBullet[] {
+  return Array.isArray(value) ? (value as OpportunityGapBullet[]) : [];
+}
+
+import { CompanyPile, SeamlessBackground } from '@/components/opportunities/DeckVisuals';
 
 export default function OpportunitiesPage() {
-  const [opportunitiesList, setOpportunitiesList] = useState<any[]>([]);
+  const [opportunitiesList, setOpportunitiesList] = useState<OpportunitySlide[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -105,6 +60,9 @@ export default function OpportunitiesPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<{ type: 'desc' | 'gap', id: number } | null>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Two-column layout collapses to a stacked single column below desktop
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   const [selectedNode, setSelectedNode] = useState(null);
   const [commandActive, setCommandActive] = useState(false);
@@ -129,7 +87,7 @@ export default function OpportunitiesPage() {
         // rather than filled in.
         //
         // It used to be filled in: `topComplaint` fell back to "'Customer
-        // support response latency' — verified in signal logs.", `rootCause` to
+        // support response latency' â€” verified in signal logs.", `rootCause` to
         // "No live support channel; email verified response lag.",
         // `earlyWarning` to "Complaint volume for this category grew MoM." and
         // `quickWin` to "Deploy automated support line within 2 weeks.". Those
@@ -143,11 +101,10 @@ export default function OpportunitiesPage() {
         // keys older rows were written with, not substitutes for missing data.
         const highlights = Array.isArray(af.highlights) ? af.highlights : [];
 
-        const gapBullets = Array.isArray(af.gapBullets) && af.gapBullets.length > 0
-          ? af.gapBullets
-          : Array.isArray((af as any).gap_bullets) && (af as any).gap_bullets.length > 0
-            ? (af as any).gap_bullets
-            : [];
+        const gapBullets =
+          Array.isArray(af.gapBullets) && af.gapBullets.length > 0
+            ? af.gapBullets
+            : asGapBullets(af.gap_bullets);
 
         // priority_score is an integer 0-100. Stringifying it and comparing
         // against 'HIGH' meant the score never coloured anything, and the `?:`
@@ -169,14 +126,14 @@ export default function OpportunitiesPage() {
           gapBullets,
           effort: op.effort ? op.effort.charAt(0).toUpperCase() + op.effort.slice(1) : null,
           impact: op.impact ? op.impact.charAt(0).toUpperCase() + op.impact.slice(1) : null,
-          topComplaint: af.topComplaint || (af as any).top_complaint || null,
-          rootCause: af.rootCause || (af as any).root_cause || null,
-          gapIdentified: af.gapIdentified || (af as any).gap_identified || null,
-          opportunityText: af.opportunityText || (af as any).opportunity_text || null,
+          topComplaint: af.topComplaint || asText(af.top_complaint),
+          rootCause: af.rootCause || asText(af.root_cause),
+          gapIdentified: af.gapIdentified || asText(af.gap_identified),
+          opportunityText: af.opportunityText || asText(af.opportunity_text),
           priorityScore,
           priorityReasoning: op.priority_reasoning || null,
-          earlyWarning: af.earlyWarning || (af as any).early_warning || null,
-          quickWin: af.quickWin || (af as any).quick_win || null,
+          earlyWarning: af.earlyWarning || asText(af.early_warning),
+          quickWin: af.quickWin || asText(af.quick_win),
         };
       });
       setOpportunitiesList(mapped);
@@ -188,6 +145,7 @@ export default function OpportunitiesPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     loadData();
   }, []);
 
@@ -230,7 +188,7 @@ export default function OpportunitiesPage() {
     if (res.ok) {
       setGenerateNotice({
         kind: 'ok',
-        text: 'Pipeline started: crawl, then analyze, then report. Opportunities appear once the analyze stage finishes — reload in a few minutes.',
+        text: 'Pipeline started: crawl, then analyze, then report. Opportunities appear once the analyze stage finishes â€” reload in a few minutes.',
       });
     } else {
       setGenerateNotice({ kind: 'error', text: res.error || 'Pipeline trigger failed.' });
@@ -238,10 +196,12 @@ export default function OpportunitiesPage() {
     setIsRunningPipeline(false);
   };
 
-  // Close brief on slide change
-  useEffect(() => {
+  // Close brief on slide change — render-time reset per React's "adjusting state on prop change" pattern
+  const [prevSlideIndex, setPrevSlideIndex] = useState(slideIndex);
+  if (prevSlideIndex !== slideIndex) {
+    setPrevSlideIndex(slideIndex);
     setFoldState(0);
-  }, [slideIndex]);
+  }
 
   // Global thinking class toggle
   useEffect(() => {
@@ -292,7 +252,7 @@ export default function OpportunitiesPage() {
     const desc = slide.description;
     let parts: React.ReactNode[] = [desc];
 
-    (slide.highlights || []).forEach((highlight: any, idx: number) => {
+    (slide.highlights || []).forEach((highlight, idx) => {
       const newParts: React.ReactNode[] = [];
       parts.forEach(part => {
         if (typeof part === 'string') {
@@ -342,7 +302,7 @@ export default function OpportunitiesPage() {
     }
   };
 
-  const activeCitations: string[] = hoveredNode?.type === 'desc'
+  const activeCitations: Citation[] = hoveredNode?.type === 'desc'
     ? slide?.highlights[hoveredNode.id]?.citations || []
     : hoveredNode?.type === 'gap'
       ? slide?.gapBullets[hoveredNode.id]?.citations || []
@@ -441,7 +401,7 @@ export default function OpportunitiesPage() {
               aria-label="Dismiss"
               style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}
             >
-              ×
+              Ã—
             </button>
           </div>
         )}
@@ -478,7 +438,7 @@ export default function OpportunitiesPage() {
             <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>No Opportunities Yet</h2>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
               Opportunities are synthesized from the gaps and signals already collected for this
-              workspace — they are not generated from nothing. If no crawl has run yet, start with
+              workspace â€” they are not generated from nothing. If no crawl has run yet, start with
               the ingest pipeline; synthesis alone will report that the evidence is too thin.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
@@ -527,7 +487,7 @@ export default function OpportunitiesPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ display: 'flex', flex: 1, width: '100%', maxWidth: 1200, margin: '0 auto', gap: 60 }}
+              style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column', flex: 1, width: '100%', maxWidth: 1200, margin: '0 auto', gap: 60 }}
             >
               {/* LEFT COLUMN: Main content */}
               <div style={{ flex: 1, position: 'relative', display: 'flex', zIndex: 15 }}>
@@ -556,7 +516,7 @@ export default function OpportunitiesPage() {
                           </p>
                         ) : (
                         <ul className="skeleton-target" style={{ margin: 0, paddingLeft: 16, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
-                          {slide.gapBullets.map((bullet: any, i: number) => {
+                          {slide.gapBullets.map((bullet, i) => {
                             const isHovered = hoveredNode?.type === 'gap' && hoveredNode?.id === i;
                             return (
                               <li
@@ -590,11 +550,11 @@ export default function OpportunitiesPage() {
                       <div className="skeleton-target" style={{ display: 'flex', gap: 40 }}>
                         <div>
                           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Effort</div>
-                          <div style={{ fontSize: 16, fontWeight: 600, color: slide.effort ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{slide.effort ?? '—'}</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: slide.effort ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{slide.effort ?? 'â€”'}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Impact</div>
-                          <div style={{ fontSize: 16, fontWeight: 600, color: slide.impact ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{slide.impact ?? '—'}</div>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: slide.impact ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{slide.impact ?? 'â€”'}</div>
                         </div>
                       </div>
 
@@ -640,15 +600,17 @@ export default function OpportunitiesPage() {
                                   No source recorded for this item. Run Generate to rebuild it from collected signals.
                                 </p>
                               )}
-                              {activeCitations.map((cit: any, i: number) => {
-                                const title = typeof cit === 'string' ? cit : cit.title || cit.name || 'Source Citation';
+                              {activeCitations.map((cit, i) => {
+                                const title = typeof cit === 'string'
+                                  ? cit
+                                  : asText(cit.title) || asText(cit.name) || 'Source Citation';
                                 const rawUrl = typeof cit === 'object' && cit.url
                                   ? String(cit.url)
                                   : (typeof cit === 'string' && cit.startsWith('http') ? cit : '');
 
                                 // Only a real http(s) source becomes a link. A
                                 // `partnerships://<uuid>` signal is internal and a bare
-                                // label has no source at all — neither is worth
+                                // label has no source at all â€” neither is worth
                                 // laundering into a web search that we then present as
                                 // provenance.
                                 const isWebSource = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
@@ -713,7 +675,7 @@ export default function OpportunitiesPage() {
               </div>
 
               {/* RIGHT COLUMN: Data Report - 3D Vertical Accordion (Exact oshift-master implementation) */}
-              <div style={{ flexShrink: 0, width: 340, position: 'relative', zIndex: 10, perspective: 2500, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div style={{ flexShrink: 0, width: isDesktop ? 340 : '100%', position: 'relative', zIndex: 10, perspective: 2500, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
                 <motion.div
                   className="skeleton-target"
                   animate={{

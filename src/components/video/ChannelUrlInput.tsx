@@ -10,12 +10,17 @@ import {
   X,
   ArrowRight,
 } from 'lucide-react';
-import type { SocialPlatform, SocialAccountCreate } from '@/types/entities';
+import type {
+  SocialPlatform,
+  SocialAccountCreate,
+  SocialAccount,
+  CollectTriggerResponse,
+} from '@/types/entities';
 
 interface ChannelUrlInputProps {
-  onAddAccount: (payload: SocialAccountCreate) => Promise<any>;
+  onAddAccount: (payload: SocialAccountCreate) => Promise<SocialAccount | null>;
   isCollecting?: boolean;
-  onCollectAll?: () => Promise<any>;
+  onCollectAll?: () => Promise<CollectTriggerResponse | null>;
 }
 
 function parseChannelInput(input: string): {
@@ -130,8 +135,10 @@ export default function ChannelUrlInput({
         setSuccessMsg(`Tracked @${handle} on ${platformToUse.toUpperCase()}`);
         setChannelInput('');
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to track channel.');
+    } catch (err) {
+      setErrorMsg(
+        err instanceof Error && err.message ? err.message : 'Failed to track channel.'
+      );
     } finally {
       setIsSubmitting(false);
     }

@@ -1,8 +1,8 @@
 'use client';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { useState, useRef, useEffect, Suspense, useMemo } from 'react';
+import { useState, useRef, useEffect, Suspense, useMemo, type CSSProperties } from 'react';
 import dynamic from 'next/dynamic';
-import PromptField from '@/components/PromptField';
+import PromptField, { type AttachedContextNode } from '@/components/PromptField';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
 import CompanyDetailSkeleton from '@/components/skeletons/CompanyDetailSkeleton';
@@ -13,6 +13,8 @@ import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
 import { campaignThumbnails } from '@/lib/api';
 import { getDeckArtwork, getDeckCardStyle } from '@/lib/campaign-artwork';
+import { stringToHue } from '@/lib/colors';
+import { useDragScroll } from '@/hooks/use-drag-scroll';
 
 // recharts is 340 KB and the trend card is below the fold on this page. Loading
 // it on its own chunk keeps it off the route's initial download.
@@ -40,34 +42,8 @@ function getBrandColors(domain: string) {
     const key = domain.toLowerCase();
     if (knownBrands[key]) return knownBrands[key];
 
-    let hash = 0;
-    for (let i = 0; i < domain.length; i++) {
-        hash = domain.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = Math.abs(hash % 360);
+    const hue = stringToHue(domain);
     return [`hsl(${hue}, 80%, 50%)`, `hsl(${(hue + 40) % 360}, 80%, 40%)`];
-}
-
-function hashString(s: string): number {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-    return Math.abs(h);
-}
-
-function deckGradient(seed: string, layer: number): string {
-    const h = (hashString(seed) + layer * 43) % 360;
-    return `linear-gradient(145deg, hsl(${h} 42% 24%), hsl(${(h + 45) % 360} 48% 13%))`;
-}
-
-function deckCardBg(thumbnailUrl: string | undefined | null, seed: string, layer: number, darkOverlay = false): string {
-    const fallback = deckGradient(seed, layer);
-    if (!thumbnailUrl) {
-        return darkOverlay ? `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), ${fallback}` : fallback;
-    }
-    if (darkOverlay) {
-        return `linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
-    }
-    return `linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 100%), url('${thumbnailUrl}'), ${fallback}`;
 }
 
 const SampleBadge = ({ title }: { title: string }) => (
@@ -84,7 +60,7 @@ function CompanyPageContent() {
     const domain = typeof params.domain === 'string' ? params.domain : 'example.com';
     const { competitor, loading, error, metrics, gaps: backendGaps, reviews: backendReviews, campaigns: backendCampaigns } = useCompany(domain);
 
-    const [selectedNode, setSelectedNode] = useState<any>(null);
+    const [selectedNode, setSelectedNode] = useState<AttachedContextNode | null>(null);
     const [commandActive, setCommandActive] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     const [isThinking, setIsThinking] = useState(false);
@@ -106,33 +82,7 @@ function CompanyPageContent() {
     }, []);
 
     const reviewsScrollRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStartX, setDragStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
-
-    const scrollList = (dir: 'left' | 'right') => {
-        if (reviewsScrollRef.current) {
-            reviewsScrollRef.current.scrollBy({ left: dir === 'left' ? -344 : 344, behavior: 'smooth' });
-        }
-    };
-
-    const handlePointerDown = (e: React.PointerEvent) => {
-        if (!reviewsScrollRef.current) return;
-        setIsDragging(true);
-        setDragStartX(e.pageX - reviewsScrollRef.current.offsetLeft);
-        setScrollLeft(reviewsScrollRef.current.scrollLeft);
-        reviewsScrollRef.current.style.cursor = 'grabbing';
-    };
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isDragging || !reviewsScrollRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - reviewsScrollRef.current.offsetLeft;
-        reviewsScrollRef.current.scrollLeft = scrollLeft - (x - dragStartX) * 2;
-    };
-    const handlePointerUp = () => {
-        setIsDragging(false);
-        if (reviewsScrollRef.current) reviewsScrollRef.current.style.cursor = 'grab';
-    };
+    const { handlers: reviewDragHandlers, scrollBy: scrollList } = useDragScroll(reviewsScrollRef);
 
     const companyName = competitor?.name || (domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1));
     const [brandColor1, brandColor2] = getBrandColors(domain);
@@ -172,7 +122,7 @@ function CompanyPageContent() {
     const isRound = searchParams.get('round') === 'true';
     const [isMorphing, setIsMorphing] = useState(!!startX);
     const logoRef = useRef<HTMLDivElement>(null);
-    const [morphStyle, setMorphStyle] = useState<any>({
+    const [morphStyle, setMorphStyle] = useState<CSSProperties>({
         position: 'fixed',
         left: startX ? `${startX}px` : '0px',
         top: startY ? `${startY}px` : '0px',
@@ -186,10 +136,6 @@ function CompanyPageContent() {
 
     useEffect(() => {
         if (startX && startY && startW) {
-            const sx = parseFloat(startX);
-            const sy = parseFloat(startY);
-            const sw = parseFloat(startW);
-            setMorphStyle({ position: 'fixed', left: sx, top: sy, width: sw, height: sw, borderRadius: '6px', transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: 9999 });
             const raf = requestAnimationFrame(() => {
                 if (logoRef.current) {
                     const rect = logoRef.current.getBoundingClientRect();
@@ -286,7 +232,7 @@ function CompanyPageContent() {
             <div className="page-container px-4 md:px-8 pt-8 pb-24 relative flex items-center justify-center min-h-[50vh]">
                 <div className="text-center bg-[var(--card-bg)] border border-[var(--border-color)] p-8 rounded-xl">
                     <h2 className="text-2xl font-bold mb-4 text-[var(--text-primary)]">Company Not Found</h2>
-                    <p className="text-[var(--text-secondary)]">We couldn't find data for {domain}.</p>
+                    <p className="text-[var(--text-secondary)]">We couldn&apos;t find data for {domain}.</p>
                 </div>
             </div>
         );
@@ -596,12 +542,9 @@ function CompanyPageContent() {
 
                     <div
                         ref={reviewsScrollRef}
-                        className="flex gap-10 overflow-x-auto flex-1 snap-x snap-mandatory hide-scrollbar scroll-smooth px-2 pb-4"
+                        className="flex gap-10 overflow-x-auto flex-1 snap-x snap-mandatory hide-scrollbar scroll-smooth px-2 pb-4 cursor-grab"
                         style={{ scrollbarWidth: 'none' }}
-                        onPointerDown={handlePointerDown}
-                        onPointerMove={handlePointerMove}
-                        onPointerUp={handlePointerUp}
-                        onPointerLeave={handlePointerUp}
+                        {...reviewDragHandlers}
                     >
                         {displayReviews.length === 0 && <div className="text-sm text-[var(--text-secondary)]">No reviews captured yet.</div>}
                         {displayReviews.map((rev) => (

@@ -12,6 +12,14 @@ const posthogAssetsHost = posthogHost.replace(
 );
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      // Google favicon service used for entity logos.
+      { protocol: 'https', hostname: 't3.gstatic.com' },
+      // User-supplied logos can point at any https host.
+      { protocol: 'https', hostname: '**' },
+    ],
+  },
   allowedDevOrigins: [
     '192.168.1.2',
     '192.168.1.3',

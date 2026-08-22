@@ -3,7 +3,8 @@
  */
 
 import { feature } from 'topojson-client';
-import countriesTopo from 'world-atlas/countries-110m.json';
+import type { Topology } from 'topojson-specification';
+import countriesTopoJson from 'world-atlas/countries-110m.json';
 import type { LngLat } from './world-map-types';
 
 export type { LngLat } from './world-map-types';
@@ -18,9 +19,11 @@ type GeoFeature = {
   geometry: GeoPolygon | GeoMultiPolygon;
 };
 
+const countriesTopo = countriesTopoJson as unknown as Topology;
+
 const countriesFC = feature(
-  countriesTopo as any,
-  (countriesTopo as any).objects.countries
+  countriesTopo,
+  countriesTopo.objects.countries
 ) as unknown as { type: 'FeatureCollection'; features: GeoFeature[] };
 
 const LAND_FEATURES = countriesFC.features;

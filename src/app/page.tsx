@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
 import { TOKEN_PALETTE } from '@/components/charts/palette';
 import { useDashboard, type Rail } from '@/hooks/use-dashboard';
@@ -234,13 +234,13 @@ export default function DashboardPage() {
         setCampaignIdx((prev) => (prev - 1 + campaigns.items.length) % campaigns.items.length);
     };
 
-    const containerVariants: any = {
+    const containerVariants: Variants = {
         hidden: (dir: number) => ({}),
         visible: { transition: { staggerChildren: 0.1 } },
         exit: (dir: number) => ({ transition: { staggerChildren: 0.05, staggerDirection: -1 } })
     };
 
-    const childVariants: any = {
+    const childVariants: Variants = {
         hidden: (dir: number) => ({ opacity: 0, x: dir > 0 ? 30 : -30 }),
         visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
         exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -30 : 30, transition: { duration: 0.2 } })
@@ -501,7 +501,7 @@ export default function DashboardPage() {
                                         <div className="flex justify-between items-start mb-1 mt-1">
                                             <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Opportunity</span>
                                             {opp.status === 'new' && (
-                                                <span className="text-[10px] text-[#FF5A00] font-bold border border-[#FF5A00]/30 px-2 py-0.5 rounded uppercase tracking-wider">New</span>
+                                                <span className="text-[10px] text-[var(--accent)] font-bold border border-[var(--accent)]/30 px-2 py-0.5 rounded uppercase tracking-wider">New</span>
                                             )}
                                         </div>
                                         <span className="text-sm font-semibold text-[var(--text-primary)] mb-3 leading-tight truncate">{opp.title}</span>
@@ -607,7 +607,7 @@ export default function DashboardPage() {
                         ) : campaigns.items.length === 0 ? (
                             <div className="text-sm text-[var(--text-secondary)]">No active campaigns.</div>
                         ) : campaigns.items.map((camp) => (
-                            <div key={camp.id} className="min-w-[280px] p-5 rounded-lg border border-[var(--border-color)] flex flex-col cursor-pointer hover:border-[var(--text-primary)] transition-colors" onClick={() => router.push(`/campaigns/${camp.id}`)}>
+                            <div key={camp.id} className="min-w-[280px] p-5 rounded-lg border border-[var(--border-color)] flex flex-col cursor-pointer hover:border-[var(--text-primary)] transition-colors" role="button" tabIndex={0} onClick={() => router.push(`/campaigns/${camp.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/campaigns/${camp.id}`); } }}>
                                 <span className="text-sm font-semibold text-[var(--text-primary)] mb-2 truncate">{camp.title}</span>
                                 <div className="text-xs text-[var(--text-secondary)] mb-4">{campaignDate(camp)}</div>
                                 <div className="flex items-center justify-between mt-auto">

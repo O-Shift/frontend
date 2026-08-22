@@ -115,7 +115,7 @@ export function useSocialAccounts() {
 
   // Initial load
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     fetchAccounts();
   }, [fetchAccounts]);
 

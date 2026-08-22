@@ -41,6 +41,8 @@ export interface VideoStats {
   topDropoffRisk: string | null;
 }
 
+export type VideoSortKey = 'newest' | 'hook_score' | 'retention_score' | 'viral_score' | 'duration';
+
 export function useVideos() {
   const [assets, setAssets] = useState<VideoAsset[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
@@ -58,9 +60,7 @@ export function useVideos() {
   const [competitorFilter, setCompetitorFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [minHookScore, setMinHookScore] = useState<number>(0);
-  const [sortBy, setSortBy] = useState<
-    'newest' | 'hook_score' | 'retention_score' | 'viral_score' | 'duration'
-  >('newest');
+  const [sortBy, setSortBy] = useState<VideoSortKey>('newest');
 
   // Load all assets and competitors
   const fetchData = useCallback(async () => {
@@ -98,6 +98,7 @@ export function useVideos() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loader after awaits
     fetchData();
   }, [fetchData]);
 

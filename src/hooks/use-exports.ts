@@ -103,7 +103,7 @@ export function useExports(initialMonth?: string) {
   );
 
   // Test destination payload connection
-  const testDestination = useCallback(async (destinationType: string, config: Record<string, any>) => {
+  const testDestination = useCallback(async (destinationType: string, config: Record<string, unknown>) => {
     setIsTestingDest(true);
     setError(null);
     const res = await apiFetch<TestDestinationResponse>('/exports/test-destination', {
@@ -146,7 +146,7 @@ export function useExports(initialMonth?: string) {
 
   // Initial load
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loaders after awaits
     fetchDestinations();
     fetchJobs();
     fetchLogs(selectedMonth);

@@ -6,20 +6,12 @@ import dynamic from 'next/dynamic';
 import ChartSkeleton from '@/components/charts/ChartSkeleton';
 import CompetitorDetailSkeleton from '@/components/skeletons/CompetitorDetailSkeleton';
 import { ZINC_PALETTE } from '@/components/charts/palette';
-import PromptField from '@/components/PromptField';
-import {
-  Competitor,
-  AggregatedMetricPoint,
-  InsightGap,
-  Campaign,
-  SenseReview,
-  getCompetitor,
-  getCompetitorAggregatedMetrics,
-  getInsightsGaps,
-  getCompetitorCampaigns,
-  getSenseReviews,
-  triggerCompetitorScrape,
-} from '@/lib/api';
+import PromptField, { type AttachedContextNode } from '@/components/PromptField';
+import { triggerCompetitorScrape, type SenseReview } from '@/lib/api';
+import { stringToHue } from '@/lib/colors';
+import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { useCompetitorDetail } from '@/hooks/use-competitors';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 // Three charts on this page, one 340 KB dependency behind all of them, and all
 // three sit below the header and stat cards. One dynamic import covers them.
@@ -47,11 +39,7 @@ function getBrandColors(domain: string) {
     return knownBrands[key];
   }
 
-  let hash = 0;
-  for (let i = 0; i < domain.length; i++) {
-    hash = domain.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
+  const hue = stringToHue(domain);
   return [`hsl(${hue}, 80%, 50%)`, `hsl(${(hue + 40) % 360}, 80%, 40%)`];
 }
 
@@ -62,35 +50,44 @@ function formatValuation(val?: number | null): string {
   return `$${val.toLocaleString()}`;
 }
 
+function metaString(metadata: SenseReview['metadata'], key: string): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
 function CompetitorDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const competitorId = typeof params.id === 'string' ? params.id : '';
 
-  const [competitor, setCompetitor] = useState<Competitor | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Time-series metric points
-  const [scoreData, setScoreData] = useState<AggregatedMetricPoint[]>([]);
-  const [volumeData, setVolumeData] = useState<AggregatedMetricPoint[]>([]);
-  const [engagementData, setEngagementData] = useState<AggregatedMetricPoint[]>([]);
-
-  // Domain intelligence data
-  const [gaps, setGaps] = useState<InsightGap[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [reviews, setReviews] = useState<SenseReview[]>([]);
+  // Fetch all competitor details & data feeds
+  const {
+    competitor,
+    isLoading: loading,
+    error,
+    metrics,
+    gaps,
+    campaigns,
+    reviews,
+    refetch: loadData,
+  } = useCompetitorDetail(competitorId);
+  const scoreData = metrics.share;
+  const volumeData = metrics.engagement;
+  const engagementData = metrics.sentiment;
 
   // Scrape trigger state
   const [scraping, setScraping] = useState(false);
   const [scrapeMessage, setScrapeMessage] = useState<string | null>(null);
 
   // PromptField & UI state
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<AttachedContextNode | null>(null);
   const [commandActive, setCommandActive] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
   const [activeChart, setActiveChart] = useState<string | null>(null);
+
+  // Charts grid and carousels collapse to a single stacked column below mobile
+  const isWide = useMediaQuery('(min-width: 640px)');
 
   useEffect(() => {
     document.body.classList.toggle('is-thinking-active', isThinking);
@@ -107,46 +104,6 @@ function CompetitorDetailPageContent() {
     window.addEventListener('keydown', onEsc);
     return () => window.removeEventListener('keydown', onEsc);
   }, []);
-
-  // Fetch all competitor details & data feeds
-  const loadData = async () => {
-    if (!competitorId) return;
-    setLoading(true);
-    setError(null);
-
-    const [compRes, msRes, engRes, sentRes, gapsRes, campRes, revRes] = await Promise.all([
-      getCompetitor(competitorId),
-      getCompetitorAggregatedMetrics(competitorId, 'market_share', '6m', 'month'),
-      getCompetitorAggregatedMetrics(competitorId, 'engagement', '6m', 'month'),
-      getCompetitorAggregatedMetrics(competitorId, 'sentiment', '6m', 'month'),
-      getInsightsGaps(competitorId),
-      getCompetitorCampaigns(competitorId),
-      getSenseReviews(competitorId),
-    ]);
-
-    if (!compRes.ok) {
-      setError(compRes.error || 'Failed to load competitor');
-      setLoading(false);
-      return;
-    }
-
-    setCompetitor(compRes.data);
-
-    if (msRes.ok) setScoreData(msRes.data.points || []);
-    if (engRes.ok) setVolumeData(engRes.data.points || []);
-    if (sentRes.ok) setEngagementData(sentRes.data.points || []);
-
-    if (gapsRes.ok) setGaps(Array.isArray(gapsRes.data) ? gapsRes.data : (gapsRes.data as any)?.gaps || []);
-    if (campRes.ok) setCampaigns(Array.isArray(campRes.data) ? campRes.data : (campRes.data as any)?.campaigns || []);
-    if (revRes.ok) setReviews(Array.isArray(revRes.data) ? revRes.data : (revRes.data as any)?.reviews || []);
-
-
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [competitorId]);
 
   const handleTriggerScrape = async () => {
     if (!competitorId || scraping) return;
@@ -178,72 +135,14 @@ function CompetitorDetailPageContent() {
 
 
 
-  // Drag-scroll refs
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-
-  const scrollList = (dir: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const amount = 344;
-      scrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-    }
-  };
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!scrollRef.current) return;
-    setIsDragging(true);
-    setDragStartX(e.pageX - scrollRef.current.offsetLeft);
-    setScrollLeft(scrollRef.current.scrollLeft);
-    scrollRef.current.style.cursor = 'grabbing';
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging || !scrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - scrollRef.current.offsetLeft;
-    const walk = (x - dragStartX) * 2;
-    scrollRef.current.scrollLeft = scrollLeft - walk;
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
-  };
-
+  // Drag-scroll carousels: reviews list and strategic gaps
+  const reviewsScrollRef = useRef<HTMLDivElement>(null);
   const gapsScrollRef = useRef<HTMLDivElement>(null);
-  const [isGapsDragging, setIsGapsDragging] = useState(false);
-  const [gapsDragStartX, setGapsDragStartX] = useState(0);
-  const [gapsScrollLeft, setGapsScrollLeft] = useState(0);
+  const reviewsScroll = useDragScroll(reviewsScrollRef);
+  const gapsScroll = useDragScroll(gapsScrollRef);
 
-  const scrollGaps = (dir: 'left' | 'right') => {
-    if (gapsScrollRef.current) {
-      const amount = 344;
-      gapsScrollRef.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-    }
-  };
-
-  const handleGapsPointerDown = (e: React.PointerEvent) => {
-    if (!gapsScrollRef.current) return;
-    setIsGapsDragging(true);
-    setGapsDragStartX(e.pageX - gapsScrollRef.current.offsetLeft);
-    setGapsScrollLeft(gapsScrollRef.current.scrollLeft);
-    gapsScrollRef.current.style.cursor = 'grabbing';
-  };
-
-  const handleGapsPointerMove = (e: React.PointerEvent) => {
-    if (!isGapsDragging || !gapsScrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - gapsScrollRef.current.offsetLeft;
-    const walk = (x - gapsDragStartX) * 2;
-    gapsScrollRef.current.scrollLeft = gapsScrollLeft - walk;
-  };
-
-  const handleGapsPointerUp = () => {
-    setIsGapsDragging(false);
-    if (gapsScrollRef.current) gapsScrollRef.current.style.cursor = 'grab';
-  };
+  const scrollList = reviewsScroll.scrollBy;
+  const scrollGaps = gapsScroll.scrollBy;
 
   const domain = competitor?.website
     ? competitor.website.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
@@ -413,7 +312,7 @@ function CompetitorDetailPageContent() {
           {/* Time-Series Charts Section */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: activeChart ? '1fr 1fr' : '1fr 1fr 1fr',
+            gridTemplateColumns: isWide ? (activeChart ? '1fr 1fr' : '1fr 1fr 1fr') : '1fr',
             gap: 48,
             marginBottom: 80,
           }}>
@@ -552,8 +451,8 @@ function CompetitorDetailPageContent() {
           </div>
 
           {/* Strategic Gaps Carousel */}
-          <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: isWide ? 'row' : 'column', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ flexShrink: 0, width: isWide ? 220 : '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ marginBottom: 24, opacity: 0.8 }}>
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
@@ -573,10 +472,7 @@ function CompetitorDetailPageContent() {
 
             <div
               ref={gapsScrollRef}
-              onPointerDown={handleGapsPointerDown}
-              onPointerMove={handleGapsPointerMove}
-              onPointerUp={handleGapsPointerUp}
-              onPointerLeave={handleGapsPointerUp}
+              {...gapsScroll.handlers}
               style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', flex: 1, cursor: 'grab', alignItems: 'center' }}
             >
               {gaps.length > 0 ? (
@@ -643,8 +539,8 @@ function CompetitorDetailPageContent() {
           </div>
 
           {/* Customer Voice / Reviews Section */}
-          <div style={{ display: 'flex', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: isWide ? 'row' : 'column', gap: 60, width: '100%', overflow: 'hidden', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ flexShrink: 0, width: isWide ? 220 : '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: 80, color: '#3f3f46', lineHeight: 0.8, marginBottom: 24, fontFamily: 'serif' }}>“</div>
               <h3 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: 32, letterSpacing: '-0.02em' }}>What<br />customers are<br />saying</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -657,11 +553,8 @@ function CompetitorDetailPageContent() {
             </div>
 
             <div
-              ref={scrollRef}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
+              ref={reviewsScrollRef}
+              {...reviewsScroll.handlers}
               style={{ display: 'flex', gap: 24, overflowX: 'auto', paddingBottom: 24, scrollbarWidth: 'none', flex: 1, cursor: 'grab' }}
             >
               {reviews.length > 0 ? (
@@ -683,12 +576,12 @@ function CompetitorDetailPageContent() {
                       }} />
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          {(rev.metadata as any)?.avatar_url && (
-                            <img src={(rev.metadata as any).avatar_url} alt="Avatar" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                          {metaString(rev.metadata, 'avatar_url') && (
+                            <img src={metaString(rev.metadata, 'avatar_url')} alt="Avatar" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
                           )}
                           <div>
                             <div className="review-author" style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700 }}>
-                              {(rev.metadata as any)?.author_name || (rev.platform ? rev.platform.toUpperCase() : 'Review')}
+                              {metaString(rev.metadata, 'author_name') || (rev.platform ? rev.platform.toUpperCase() : 'Review')}
                             </div>
                             <div className="review-date" style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
                               {rev.reviewed_at ? new Date(rev.reviewed_at).toLocaleDateString() : 'Recent'}
@@ -704,7 +597,7 @@ function CompetitorDetailPageContent() {
                         </div>
                       </div>
                       <div className="company-review-text" style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.6 }}>
-                        "{rev.body || rev.title || 'No review body'}"
+                        &ldquo;{rev.body || rev.title || 'No review body'}&rdquo;
                       </div>
                       {rev.url && (
                         <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>

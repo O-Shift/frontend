@@ -3,9 +3,8 @@
 import { useMemo, useState, useEffect, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiArrowRight, FiPlus, FiSearch, FiX } from 'react-icons/fi';
+import { AlertCircle, ArrowRight, Plus, Search, X } from 'lucide-react';
 import {
-  apiFetch,
   getActiveWorkspaceId,
   setActiveWorkspaceId,
   clearActiveWorkspaceId,
@@ -13,15 +12,7 @@ import {
 import { sigilStyle, sigilInitials } from '@/lib/logos';
 import { EVENTS, setWorkspaceContext, track } from '@/lib/analytics';
 import { createClient } from '@/utils/supabase/client';
-
-type Workspace = {
-  id: string;
-  name: string;
-  timezone: string;
-  locale: string;
-  plan: string;
-  created_at: string;
-};
+import { useWorkspaces } from '@/hooks/use-workspaces';
 
 function destinationAfterSelection(): string {
   if (typeof window === 'undefined') return '/';
@@ -71,36 +62,35 @@ function useActiveWorkspaceId(): string | null {
 
 export default function WorkspacesPage() {
   const router = useRouter();
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    workspaces,
+    isLoading,
+    error,
+    setError,
+    refetch,
+    createWorkspace: createWorkspaceApi,
+  } = useWorkspaces();
   const [creating, setCreating] = useState(false);
+  // A single-workspace auto-enter keeps the skeleton up through navigation
+  // rather than flashing the picker for the workspace we are already leaving.
+  const [enteringAuto, setEnteringAuto] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [query, setQuery] = useState('');
   const [entering, setEntering] = useState<string | null>(null);
   const currentId = useActiveWorkspaceId();
+  const ready = !isLoading && !enteringAuto;
 
-  // Loads once on mount. `loading` and `error` already start in the right
+  // Loads once on mount. `isLoading` and `error` already start in the right
   // state, so nothing is set before the first await — an effect that sets
   // state synchronously would render twice before the request even leaves.
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
-      const res = await apiFetch<Workspace[]>('/core/workspaces', {
-        skipWorkspace: true,
-      });
-      if (cancelled) return;
+      const res = await refetch();
+      if (cancelled || !res.ok) return;
 
-      if (!res.ok) {
-        setError(res.error);
-        setWorkspaces([]);
-        setLoading(false);
-        return;
-      }
-
-      setWorkspaces(res.data);
       track(EVENTS.WORKSPACES_LOADED, { count: res.data.length });
       // One workspace means there is nothing to choose. Skip the page rather
       // than asking a question with a single answer — this also matches the
@@ -109,16 +99,15 @@ export default function WorkspacesPage() {
         setActiveWorkspaceId(res.data[0].id);
         setWorkspaceContext(res.data[0].id);
         track(EVENTS.WORKSPACE_SELECTED, { workspace_id: res.data[0].id, automatic: true });
+        setEnteringAuto(true);
         router.replace(destinationAfterSelection());
-        return;
       }
-      setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [refetch, router]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -141,11 +130,7 @@ export default function WorkspacesPage() {
     if (!name || creating) return;
     setCreating(true);
     setError(null);
-    const res = await apiFetch<Workspace>('/core/workspaces', {
-      method: 'POST',
-      skipWorkspace: true,
-      body: JSON.stringify({ name }),
-    });
+    const res = await createWorkspaceApi(name);
     setCreating(false);
     if (!res.ok) {
       setError(res.error);
@@ -193,12 +178,12 @@ export default function WorkspacesPage() {
 
         {error && (
           <div className="ws-error" role="alert">
-            <FiAlertCircle size={16} />
+            <AlertCircle size={16} />
             <span>{error}</span>
           </div>
         )}
 
-        {loading && (
+        {!ready && (
           <ul className="ws-list">
             {[0, 1, 2].map((i) => (
               <li key={i}>
@@ -215,10 +200,10 @@ export default function WorkspacesPage() {
         )}
 
         {/* The filter earns its place only once scanning the list is work. */}
-        {!loading && workspaces.length > 7 && (
+        {ready && workspaces.length > 7 && (
           <div className="ws-filter">
             <span className="ws-filter-icon">
-              <FiSearch size={15} />
+              <Search size={15} />
             </span>
             <input
               type="text"
@@ -230,7 +215,7 @@ export default function WorkspacesPage() {
           </div>
         )}
 
-        {!loading && filtered.length > 0 && (
+        {ready && filtered.length > 0 && (
           <ul className="ws-list">
             {filtered.map((ws, i) => (
               <li key={ws.id}>
@@ -262,7 +247,7 @@ export default function WorkspacesPage() {
                     </span>
                   </span>
                   <span className="ws-row-arrow" aria-hidden="true">
-                    {entering === ws.id ? <span>…</span> : <FiArrowRight size={17} />}
+                    {entering === ws.id ? <span>…</span> : <ArrowRight size={17} />}
                   </span>
                 </button>
               </li>
@@ -270,21 +255,21 @@ export default function WorkspacesPage() {
           </ul>
         )}
 
-        {!loading && workspaces.length === 0 && !error && (
+        {ready && workspaces.length === 0 && !error && (
           <div className="ws-empty">
             <strong>No workspaces yet</strong>
             Create one to start tracking competitors.
           </div>
         )}
 
-        {!loading && workspaces.length > 0 && filtered.length === 0 && (
+        {ready && workspaces.length > 0 && filtered.length === 0 && (
           <div className="ws-empty">
             <strong>No workspace matches “{query.trim()}”</strong>
             Check the spelling, or create a new workspace below.
           </div>
         )}
 
-        {!loading &&
+        {!ready &&
           (createOpen || workspaces.length === 0 ? (
             <form className="ws-create-form" onSubmit={createWorkspace}>
               <input
@@ -310,7 +295,7 @@ export default function WorkspacesPage() {
                   }}
                   aria-label="Cancel creating a workspace"
                 >
-                  <FiX size={15} />
+                  <X size={15} />
                 </button>
               )}
             </form>
@@ -320,7 +305,7 @@ export default function WorkspacesPage() {
               className="ws-create-toggle"
               onClick={() => setCreateOpen(true)}
             >
-              <FiPlus size={15} />
+              <Plus size={15} />
               New workspace
             </button>
           ))}

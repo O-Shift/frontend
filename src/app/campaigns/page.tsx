@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import InfiniteCanvas, { InfiniteCanvasHandle } from '@/components/InfiniteCanvas';
@@ -199,7 +199,7 @@ export default function CampaignsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await fetchCampaigns({ limit: 200 });
+      const res = await fetchCampaigns({ limit: 100 });
       if (cancelled) return;
       if (res.ok) {
         setCampaigns(res.data);
@@ -272,7 +272,7 @@ export default function CampaignsPage() {
     }
   }, [animState]);
 
-  const handleSetSelectedNode = (node: any) => {
+  const handleSetSelectedNode = (node: CampaignNode | null) => {
     if (leaveTimeoutRef.current) {
       clearTimeout(leaveTimeoutRef.current);
       leaveTimeoutRef.current = null;
@@ -460,7 +460,7 @@ export default function CampaignsPage() {
                 onMouseEnter={() => setHoveredFolderId(camp.id)}
                 onMouseLeave={() => setHoveredFolderId(null)}
               >
-                <div className="deck-wrapper skeleton-target" title={`${camp.title} — ${camp.clusterName}`} style={{ ['--cord-color' as any]: activeColor }}>
+                <div className="deck-wrapper skeleton-target" title={`${camp.title} — ${camp.clusterName}`} style={{ '--cord-color': activeColor } as CSSProperties}>
                   {(() => {
                     const [leftImg, rightImg, frontImg] = getDeckArtwork(camp.campaign);
                     return (
@@ -538,14 +538,14 @@ export default function CampaignsPage() {
                   <div key={post.id} style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
                     minWidth: 180,
-                    ['--sx' as any]: `${startX}px`,
-                    ['--sy' as any]: `${startY}px`,
-                    ['--jx' as any]: `${jx}px`,
-                    ['--rot' as any]: `${rot}deg`,
+                    '--sx': `${startX}px`,
+                    '--sy': `${startY}px`,
+                    '--jx': `${jx}px`,
+                    '--rot': `${rot}deg`,
                     animation: animState === 'leaving'
                       ? `pop-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) ${(selectedPosts.length - 1 - i) * 0.08}s both`
                       : animState !== 'idle' ? `pop-out 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.12}s both` : 'none',
-                  }}>
+                  } as CSSProperties}>
                     <a
                       href={post.url || undefined}
                       target={post.url ? '_blank' : undefined}
@@ -641,8 +641,8 @@ export default function CampaignsPage() {
             </button>
             {isDropdownOpen && (
               <div className="view-dropdown show" id="viewDropdown">
-                <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); }}>Clusters</div>
-                <div className="dropdown-item" onClick={(e) => { e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); }}>Heatmap</div>
+                <div className="dropdown-item" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCurrentView('Clusters'); setIsDropdownOpen(false); } }}>Clusters</div>
+                <div className="dropdown-item" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setCurrentView('Heatmap'); setIsDropdownOpen(false); } }}>Heatmap</div>
               </div>
             )}
           </div>

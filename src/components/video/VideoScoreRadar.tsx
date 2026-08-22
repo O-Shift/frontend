@@ -48,10 +48,10 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
     );
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return '#10B981'; // Emerald
-    if (score >= 60) return '#FF5A00'; // Accent Orange
-    if (score >= 40) return '#F59E0B'; // Amber
-    return '#EF4444'; // Rose
+    if (score >= 80) return 'var(--color-success)';
+    if (score >= 60) return 'var(--accent)';
+    if (score >= 40) return 'var(--color-warning)';
+    return 'var(--color-danger)';
   };
 
   return (
@@ -99,20 +99,20 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'var(--dropdown-bg)',
+                backgroundColor: 'var(--surface-raised)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '8px',
                 color: 'var(--text-primary)',
                 fontSize: '12px',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
               }}
-              formatter={(value: any) => [`${value}/100`, 'Score']}
+              formatter={(value) => [`${value}/100`, 'Score']}
             />
             <Radar
               name="Viral Score"
               dataKey="score"
-              stroke="#FF5A00"
-              fill="#FF5A00"
+              stroke="var(--accent)"
+              fill="var(--accent)"
               fillOpacity={0.35}
               strokeWidth={2}
             />

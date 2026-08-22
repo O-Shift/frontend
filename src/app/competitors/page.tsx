@@ -1,23 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import PromptField from '@/components/PromptField';
+import PromptField, { type AttachedContextNode } from '@/components/PromptField';
 import Skeleton from '@/components/Skeleton';
-import { apiFetch } from '@/lib/api';
+import type { Competitor } from '@/lib/api';
 import { usePinned } from '@/context/PinnedContext';
 import { extractDomain } from '@/lib/utils/domain';
 import { logoUrl } from '@/lib/logos';
-
-interface Competitor {
-  id: string;
-  workspace_id?: string;
-  name: string;
-  website: string;
-  description?: string | null;
-  created_at?: string;
-}
+import { stringToHue } from '@/lib/colors';
+import { useCompetitors } from '@/hooks/use-competitors';
 
 function getBrandColors(domain: string) {
   const knownBrands: Record<string, [string, string]> = {
@@ -38,9 +31,7 @@ function getBrandColors(domain: string) {
   const key = domain.toLowerCase();
   if (knownBrands[key]) return knownBrands[key];
 
-  let hash = 0;
-  for (let i = 0; i < domain.length; i++) hash = domain.charCodeAt(i) + ((hash << 5) - hash);
-  const hue = Math.abs(hash % 360);
+  const hue = stringToHue(domain);
   return [`hsl(${hue}, 80%, 50%)`, `hsl(${(hue + 40) % 360}, 80%, 40%)`];
 }
 
@@ -67,9 +58,14 @@ const SampleBadge = ({ title }: { title: string }) => (
 
 
 export default function CompetitorsPage() {
-  const [competitors, setCompetitors] = useState<Competitor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    competitors,
+    isLoading: loading,
+    error,
+    refetch: loadCompetitors,
+    createCompetitor,
+    removeCompetitor,
+  } = useCompetitors();
 
   const [query, setQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -90,7 +86,7 @@ export default function CompetitorsPage() {
   // fire the opposite write against a state the server has not acknowledged yet.
   const [pinPending, setPinPending] = useState<ReadonlySet<string>>(() => new Set());
 
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<AttachedContextNode | null>(null);
   const [commandActive, setCommandActive] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
@@ -102,22 +98,6 @@ export default function CompetitorsPage() {
   const [newCompDesc, setNewCompDesc] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-
-  const loadCompetitors = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const res = await apiFetch<Competitor[]>('/competitors');
-    if (res.ok) {
-      setCompetitors(res.data);
-    } else {
-      setError(res.error || 'Failed to fetch competitors');
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadCompetitors();
-  }, [loadCompetitors]);
 
   useEffect(() => {
     document.body.classList.toggle('is-thinking-active', isThinking);
@@ -147,13 +127,10 @@ export default function CompetitorsPage() {
       formattedWebsite = `https://${formattedWebsite}`;
     }
 
-    const res = await apiFetch<Competitor>('/competitors', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: newCompName.trim(),
-        website: formattedWebsite,
-        description: newCompDesc.trim() || undefined,
-      }),
+    const res = await createCompetitor({
+      name: newCompName.trim(),
+      website: formattedWebsite,
+      description: newCompDesc.trim() || undefined,
     });
 
     setIsSubmitting(false);
@@ -172,10 +149,10 @@ export default function CompetitorsPage() {
   const handleDeleteCompetitor = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to remove this competitor?')) return;
-    const res = await apiFetch(`/competitors/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      setCompetitors((prev) => prev.filter((c) => c.id !== id));
-    } else {
+    // The hook filters its own list on success; a failure is surfaced here so
+    // the user still gets the same alert as before.
+    const res = await removeCompetitor(id);
+    if (!res.ok) {
       alert(res.error || 'Failed to delete competitor');
     }
   };

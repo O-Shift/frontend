@@ -1,9 +1,10 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import type { GraphNode } from '@/components/partnerships/types';
 
 interface PromptFieldContextValue {
-    selectedNode: any;
-    setSelectedNode: (node: any) => void;
+    selectedNode: GraphNode | null;
+    setSelectedNode: (node: GraphNode | null) => void;
     commandActive: boolean;
     setCommandActive: (v: boolean) => void;
     sidebarCollapsed: boolean;
@@ -24,7 +25,7 @@ const PromptFieldContext = createContext<PromptFieldContextValue>({
 });
 
 export function PromptFieldProvider({ children }: { children: ReactNode }) {
-    const [selectedNode, setSelectedNode] = useState<any>(null);
+    const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
     const [commandActive, setCommandActive] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     const [isThinking, setIsThinking] = useState(false);

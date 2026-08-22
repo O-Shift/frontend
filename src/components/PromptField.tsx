@@ -18,11 +18,13 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import Image from 'next/image';
 import { useAgentChat } from '@/hooks/use-agent-chat';
 import AgentProgress from '@/components/chat/AgentProgress';
 import ChatMarkdown from '@/components/ui/ChatMarkdown';
 import type { ChatContextItem, ChatContextKind } from '@/lib/utils/chat-context';
 import { apiFetch, fetchCompany, fetchCampaigns, fetchGaps, fetchOpportunities, type Campaign } from '@/lib/api';
+import { extractDomain as extractDomainRaw } from '@/lib/utils/domain';
 import { logoUrl } from '@/lib/logos';
 import MentionPicker, { type MentionEntity } from '@/components/chat/MentionPicker';
 
@@ -55,7 +57,31 @@ function contextKey(item: ChatContextItem): string {
   return `${item.kind}:${item.id}`;
 }
 
-function nodeToContextItem(node: any): ChatContextItem | null {
+/**
+ * Structural shape nodeToContextItem actually reads. Producers across the app
+ * hand this chain different concrete nodes — partnerships GraphNode, the
+ * campaigns deck node, or a bare string — so the chain is typed by the fields
+ * it consumes, which every producer satisfies structurally.
+ */
+export interface AttachedContextNode {
+  id?: string | number;
+  name?: string;
+  label?: string;
+  title?: string;
+  domain?: string;
+  website?: string;
+  type?: string;
+  entity_type?: string;
+  category?: string;
+  impact?: string;
+  competitor_id?: string;
+  status?: string;
+  description?: string;
+  summary?: string;
+  desc?: string;
+}
+
+function nodeToContextItem(node: AttachedContextNode | string | null): ChatContextItem | null {
   if (!node) return null;
   if (typeof node === 'string') {
     return {
@@ -108,13 +134,15 @@ function ContextItemLogo({ item }: { item: ChatContextItem }) {
   if (item.logo && !error) {
     return (
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)] overflow-hidden p-1">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={item.logo}
           alt=""
+          width={32}
+          height={32}
           className="h-full w-full object-contain rounded"
           onError={() => setError(true)}
           loading="lazy"
+          unoptimized
         />
       </span>
     );
@@ -134,12 +162,14 @@ function MessageContextItem({ item }: { item: ChatContextItem }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--context-chip-border)] bg-[var(--context-chip-bg)] px-2.5 py-0.5 text-[11px] text-[var(--text-primary)]">
       {item.logo && !imgErr ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={item.logo}
           alt=""
+          width={12}
+          height={12}
           className="h-3 w-3 rounded object-contain shrink-0"
           onError={() => setImgErr(true)}
+          unoptimized
         />
       ) : (
         <Icon className="h-3 w-3 text-[var(--accent)] shrink-0" />
@@ -161,8 +191,8 @@ function MessageContext({ items }: { items: ChatContextItem[] }) {
 }
 
 export interface PromptFieldProps {
-  selectedNode?: any;
-  setSelectedNode?: (node: any) => void;
+  selectedNode?: AttachedContextNode | string | null;
+  setSelectedNode?(node: unknown): void;
   commandActive: boolean;
   setCommandActive: (active: boolean) => void;
   setSidebarCollapsed?: (collapsed: boolean) => void;
@@ -213,6 +243,7 @@ export default function PromptField({
     if (selectedNode) {
       const item = nodeToContextItem(selectedNode);
       if (item) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- prop->state sync; attachedContext is user-mutable (remove/picker-add), so it cannot be derived from selectedNode alone
         setAttachedContext((prev) => {
           if (prev.some((c) => contextKey(c) === contextKey(item))) return prev;
           return [...prev, item];
@@ -254,6 +285,13 @@ export default function PromptField({
     }
   }, [commandActive]);
 
+  const closeAll = useCallback(() => {
+    setCommandActive(false);
+    if (setSidebarCollapsed) {
+      setSidebarCollapsed(true);
+    }
+  }, [setCommandActive, setSidebarCollapsed]);
+
   // Global ESC & click-outside handlers
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -279,14 +317,7 @@ export default function PromptField({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [commandActive, pickerOpen]);
-
-  const closeAll = () => {
-    setCommandActive(false);
-    if (setSidebarCollapsed) {
-      setSidebarCollapsed(true);
-    }
-  };
+  }, [commandActive, pickerOpen, closeAll]);
 
   const handleMascotClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -324,7 +355,7 @@ export default function PromptField({
         fetchCompany(),
         apiFetch<CompetitorRecord[]>('/competitors'),
         fetchCampaigns({ limit: 100 }),
-        fetchGaps({ limit: 200 }),
+        fetchGaps({ limit: 100 }),
         fetchOpportunities({ limit: 100 }),
         apiFetch<PartnershipResponse>('/graph/partnerships'),
       ]);
@@ -337,18 +368,13 @@ export default function PromptField({
 
       // Helper to check if a competitor row in DB is actually the user's company
       const normalizeStr = (s?: string | null) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const extractDomain = (url?: string | null) => {
-        if (!url) return '';
-        try {
-          const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-          return parsed.hostname.replace(/^www\./, '').toLowerCase();
-        } catch {
-          return url.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
-        }
-      };
+
+      // URL-parsed hostnames are already lowercase; toLowerCase() only matters
+      // on the fallback path where a mixed-case string failed URL parsing.
+      const extractDomain = (input?: string | null): string => extractDomainRaw(input ?? '').toLowerCase();
 
       const selfNameNorm = normalizeStr(selfCompany?.name);
-      const selfDomain = extractDomain(selfCompany?.website || selfCompany?.name);
+      const selfDomain = extractDomain(selfCompany?.website || selfCompany?.name || '');
 
       const isSelfCompetitor = (comp: { id: string; name: string; website?: string; domain?: string }) => {
         if (!selfCompany) return false;
@@ -357,7 +383,7 @@ export default function PromptField({
         if (selfNameNorm && cNameNorm && (selfNameNorm === cNameNorm || cNameNorm.includes(selfNameNorm) || selfNameNorm.includes(cNameNorm))) {
           return true;
         }
-        const cDomain = extractDomain(comp.website || comp.domain);
+        const cDomain = extractDomain(comp.website || comp.domain || '');
         if (selfDomain && cDomain && (selfDomain === cDomain || cDomain.includes(selfDomain) || selfDomain.includes(cDomain))) {
           return true;
         }
@@ -810,11 +836,13 @@ export default function PromptField({
                       className="context-chip"
                     >
                       {item.logo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={item.logo}
                           alt=""
+                          width={12}
+                          height={12}
                           className="h-3 w-3 rounded object-contain shrink-0"
+                          unoptimized
                         />
                       ) : (
                         <Icon className="h-3 w-3 text-[var(--accent)] shrink-0" />

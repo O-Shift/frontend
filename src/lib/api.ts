@@ -121,6 +121,24 @@ export async function resolveWorkspaceId(): Promise<string | null> {
   return inFlightWorkspaceId;
 }
 
+/** One item of a FastAPI validation-error `detail` array (422 responses). */
+export interface ValidationDetail {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+}
+
+function isValidationDetail(d: unknown): d is ValidationDetail {
+  return (
+    typeof d === "object" &&
+    d !== null &&
+    "msg" in d &&
+    typeof (d as { msg: unknown }).msg === "string" &&
+    "loc" in d &&
+    Array.isArray((d as { loc: unknown }).loc)
+  );
+}
+
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { skipWorkspace?: boolean },
@@ -171,13 +189,11 @@ export async function apiFetch<T>(
           if (typeof detail === "string") {
             errMsg = detail;
           } else if (Array.isArray(detail)) {
-            errMsg = detail
-              .map((d: any) => {
+            errMsg = (detail as (string | ValidationDetail)[])
+              .map((d) => {
                 if (typeof d === "string") return d;
-                if (d && typeof d === "object" && d.msg) {
-                  const loc = Array.isArray(d.loc)
-                    ? d.loc.filter((l: any) => l !== "body").join(".")
-                    : "";
+                if (isValidationDetail(d)) {
+                  const loc = d.loc.filter((l) => l !== "body").join(".");
                   return loc ? `${loc}: ${d.msg}` : d.msg;
                 }
                 return JSON.stringify(d);
@@ -836,7 +852,7 @@ export interface Competitor {
   founding_year?: number | null;
   market_valuation_usd?: number | null;
   market_share_percent?: number | null;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string;
 }
 
@@ -877,7 +893,7 @@ export interface ScrapeTriggerResponse {
     pages_ok: number;
     pages_failed: number;
   };
-  counts: Record<string, any>;
+  counts: Record<string, number>;
 }
 
 export async function getCompetitors(): Promise<ApiResult<Competitor[]>> {

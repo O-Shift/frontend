@@ -16,6 +16,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import type { ChatContextItem, ChatContextKind } from '@/lib/utils/chat-context';
 
 export interface MentionEntity {
@@ -68,13 +69,15 @@ export function EntityLogo({
   if (logo && !error) {
     return (
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] overflow-hidden p-1 shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={logo}
           alt=""
+          width={36}
+          height={36}
           className="h-full w-full object-contain rounded-lg"
           onError={() => setError(true)}
           loading="lazy"
+          unoptimized
         />
       </span>
     );
@@ -97,13 +100,15 @@ export function SubItemIcon({ item }: { item: ChatContextItem }) {
   if (item.logo && !error) {
     return (
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] overflow-hidden p-0.5 shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={item.logo}
           alt=""
+          width={32}
+          height={32}
           className="h-full w-full object-contain rounded-md"
           onError={() => setError(true)}
           loading="lazy"
+          unoptimized
         />
       </span>
     );

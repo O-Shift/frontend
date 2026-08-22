@@ -1,9 +1,11 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiChevronLeft, FiChevronRight, FiSearch, FiX, FiCheck, FiUploadCloud, FiMessageSquare } from 'react-icons/fi';
+import Image from 'next/image';
+import { ChevronLeft, ChevronRight, Search, X, Check, UploadCloud, MessageSquare } from 'lucide-react';
 import { EVENTS, track } from '@/lib/analytics';
 import { upsertCompany, createCompetitorsBatch } from '@/lib/api';
+import mascotImg from '../../../public/investigator_mascot.png';
 import './onboarding.css';
 
 // Type Definitions
@@ -33,6 +35,12 @@ const stepProps = (step: number, extra?: Record<string, unknown>) => ({
     step_name: STEP_NAMES[step],
     ...extra
 });
+
+const onActivateKey = (action: () => void) => (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    action();
+};
 
 /** Strip a bare domain down to its host. Returns '' when there is nothing usable. */
 const toHost = (input: string): string => {
@@ -219,19 +227,43 @@ export default function IntelligenceBriefing() {
             <p className="ob-desc">Choose what matters most right now. You can activate additional intelligence modules later.</p>
 
             <div className="ob-cards-grid">
-                <div className={`ob-card ${mission === 'campaigns' ? 'selected' : ''}`} onClick={() => setMission('campaigns')}>
+                <div
+                    className={`ob-card ${mission === 'campaigns' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('campaigns')}
+                    onKeyDown={onActivateKey(() => setMission('campaigns'))}
+                >
                     <div className="ob-card-title">Decode competitor campaigns</div>
                     <div className="ob-card-desc">Discover which campaigns succeeded, why they worked, and how your company can adapt the winning strategy.</div>
                 </div>
-                <div className={`ob-card ${mission === 'gaps' ? 'selected' : ''}`} onClick={() => setMission('gaps')}>
+                <div
+                    className={`ob-card ${mission === 'gaps' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('gaps')}
+                    onKeyDown={onActivateKey(() => setMission('gaps'))}
+                >
                     <div className="ob-card-title">Find market gaps</div>
                     <div className="ob-card-desc">Identify competitor weaknesses, customer complaints, unmet needs, and opportunities your company can own.</div>
                 </div>
-                <div className={`ob-card ${mission === 'moves' ? 'selected' : ''}`} onClick={() => setMission('moves')}>
+                <div
+                    className={`ob-card ${mission === 'moves' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('moves')}
+                    onKeyDown={onActivateKey(() => setMission('moves'))}
+                >
                     <div className="ob-card-title">Track strategic moves</div>
                     <div className="ob-card-desc">Monitor partnerships, expansions, acquisitions, sponsorships, product launches, and important market activity.</div>
                 </div>
-                <div className={`ob-card ${mission === 'complete' ? 'selected' : ''}`} onClick={() => setMission('complete')}>
+                <div
+                    className={`ob-card ${mission === 'complete' ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setMission('complete')}
+                    onKeyDown={onActivateKey(() => setMission('complete'))}
+                >
                     <div className="ob-card-title">Build a complete intelligence view</div>
                     <div className="ob-card-desc">Combine campaign analysis, opportunity discovery, and strategic-movement tracking.</div>
                 </div>
@@ -240,7 +272,7 @@ export default function IntelligenceBriefing() {
             <div className="ob-footer">
                 <div />
                 <button className="ob-btn-primary" onClick={() => nextStep({ mission })} disabled={!mission} style={{ opacity: mission ? 1 : 0.5 }}>
-                    Build my intelligence workspace <FiChevronRight />
+                    Build my intelligence workspace <ChevronRight />
                 </button>
             </div>
         </div>
@@ -268,14 +300,14 @@ export default function IntelligenceBriefing() {
                 {isProcessing && (
                     <div className="ob-processing-overlay">
                         <div className="ob-spinner" />
-                        <div style={{ fontWeight: 600, color: '#d84315' }}>{processLabel}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--ob-accent-deep)' }}>{processLabel}</div>
                     </div>
                 )}
 
                 <div className="ob-input-group" style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <label className="ob-label">Company Website</label>
-                        <input className="ob-input" placeholder="e.g. yourcompany.com" value={company.website} onChange={e => setCompany({ ...company, website: e.target.value })} />
+                        <label htmlFor="ob-company-website" className="ob-label">Company Website</label>
+                        <input id="ob-company-website" className="ob-input" placeholder="e.g. yourcompany.com" value={company.website} onChange={e => setCompany({ ...company, website: e.target.value })} />
                     </div>
                     <button className="ob-btn-secondary" onClick={fillNameFromDomain} disabled={!host}>
                         Use domain as name
@@ -283,24 +315,24 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-input-group">
-                    <label className="ob-label">Company Name</label>
-                    <input className="ob-input" value={company.name} onChange={e => setCompany({ ...company, name: e.target.value })} />
+                    <label htmlFor="ob-company-name" className="ob-label">Company Name</label>
+                    <input id="ob-company-name" className="ob-input" value={company.name} onChange={e => setCompany({ ...company, name: e.target.value })} />
                 </div>
 
                 <div style={{ display: 'flex', gap: 20 }}>
                     <div className="ob-input-group" style={{ flex: 1 }}>
-                        <label className="ob-label">Industry</label>
-                        <input className="ob-input" value={company.industry} onChange={e => setCompany({ ...company, industry: e.target.value })} />
+                        <label htmlFor="ob-company-industry" className="ob-label">Industry</label>
+                        <input id="ob-company-industry" className="ob-input" value={company.industry} onChange={e => setCompany({ ...company, industry: e.target.value })} />
                     </div>
                     <div className="ob-input-group" style={{ flex: 1 }}>
-                        <label className="ob-label">Main Market / Country</label>
-                        <input className="ob-input" value={company.market} onChange={e => setCompany({ ...company, market: e.target.value })} />
+                        <label htmlFor="ob-company-market" className="ob-label">Main Market / Country</label>
+                        <input id="ob-company-market" className="ob-input" value={company.market} onChange={e => setCompany({ ...company, market: e.target.value })} />
                     </div>
                 </div>
 
                 <div className="ob-input-group">
-                    <label className="ob-label">Company Stage</label>
-                    <select className="ob-select" value={company.stage} onChange={e => setCompany({ ...company, stage: e.target.value })}>
+                    <label htmlFor="ob-company-stage" className="ob-label">Company Stage</label>
+                    <select id="ob-company-stage" className="ob-select" value={company.stage} onChange={e => setCompany({ ...company, stage: e.target.value })}>
                         <option value="Idea">Idea</option>
                         <option value="Early stage">Early stage</option>
                         <option value="Growing">Growing</option>
@@ -310,14 +342,14 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({
                         has_website: Boolean(company.website),
                         industry: company.industry,
                         market: company.market,
                         stage: company.stage
                     })} disabled={!company.name || !host} style={{ opacity: company.name && host ? 1 : 0.5 }}>
-                        Continue to competitors <FiChevronRight />
+                        Continue to competitors <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -361,7 +393,7 @@ export default function IntelligenceBriefing() {
                 {competitors.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
                         {competitors.map(c => (
-                            <div key={c.domain} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: '1px solid #ffcc80', borderRadius: 16, padding: '10px 16px' }}>
+                            <div key={c.domain} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--ob-surface)', border: '1px solid var(--ob-border-warm)', borderRadius: 16, padding: '10px 16px' }}>
                                 <input
                                     className="ob-input"
                                     style={{ flex: 1, border: 'none', padding: 0, background: 'transparent', fontWeight: 600 }}
@@ -369,9 +401,9 @@ export default function IntelligenceBriefing() {
                                     aria-label={`Name for ${c.domain}`}
                                     onChange={e => renameCompetitor(c.domain, e.target.value)}
                                 />
-                                <span style={{ color: '#8d6e63', fontSize: 13 }}>{c.domain}</span>
+                                <span style={{ color: 'var(--ob-brown-muted)', fontSize: 13 }}>{c.domain}</span>
                                 <button className="ob-btn-text" style={{ padding: 0 }} aria-label={`Remove ${c.name}`} onClick={() => removeCompetitor(c.domain)}>
-                                    <FiX />
+                                    <X />
                                 </button>
                             </div>
                         ))}
@@ -380,7 +412,7 @@ export default function IntelligenceBriefing() {
 
                 {competitors.length < 5 && (
                     <div className="ob-input-group" style={{ position: 'relative' }}>
-                        <FiSearch style={{ position: 'absolute', left: 20, top: 20, color: '#8d6e63' }} />
+                        <Search style={{ position: 'absolute', left: 20, top: 20, color: 'var(--ob-brown-muted)' }} />
                         <input
                             className="ob-input"
                             style={{ paddingLeft: 50 }}
@@ -392,12 +424,12 @@ export default function IntelligenceBriefing() {
                             }}
                         />
                         {compInput && !typedHost && (
-                            <div style={{ marginTop: 8, fontSize: 13, color: '#d84315' }}>
+                            <div style={{ marginTop: 8, fontSize: 13, color: 'var(--ob-accent-deep)' }}>
                                 That is not a website yet — try something like acme.com
                             </div>
                         )}
                         {alreadyAdded && (
-                            <div style={{ marginTop: 8, fontSize: 13, color: '#8d6e63' }}>
+                            <div style={{ marginTop: 8, fontSize: 13, color: 'var(--ob-brown-muted)' }}>
                                 {typedHost} is already on the list
                             </div>
                         )}
@@ -411,9 +443,9 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({ competitor_count: competitors.length })}>
-                        Define what matters <FiChevronRight />
+                        Define what matters <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -431,6 +463,10 @@ export default function IntelligenceBriefing() {
         };
 
         const list = activeTab === 'keywords' ? signals.keywords : activeTab === 'products' ? signals.categories : signals.trends;
+
+        const addSuggestedKeyword = (s: string) => {
+            setSignals({ ...signals, keywords: [...signals.keywords, s] });
+        };
 
         return (
             <div className="ob-step-container">
@@ -467,24 +503,30 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div style={{ marginTop: 24 }}>
-                    <div style={{ fontSize: 13, color: '#8d6e63', marginBottom: 12, fontWeight: 600 }}>SUGGESTIONS</div>
+                    <div style={{ fontSize: 13, color: 'var(--ob-brown-muted)', marginBottom: 12, fontWeight: 600 }}>SUGGESTIONS</div>
                     <div className="ob-chips-container">
                         {['AI automation', 'Pricing changes', 'Social commerce'].map(s => (
-                            <div key={s} className="ob-chip" style={{ background: '#fff3e0', border: 'none' }} onClick={() => {
-                                setSignals({ ...signals, keywords: [...signals.keywords, s] });
-                            }}>+ {s}</div>
+                            <div
+                                key={s}
+                                className="ob-chip"
+                                style={{ background: 'var(--ob-surface-warm)', border: 'none' }}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => addSuggestedKeyword(s)}
+                                onKeyDown={onActivateKey(() => addSuggestedKeyword(s))}
+                            >+ {s}</div>
                         ))}
                     </div>
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({
                         keyword_count: signals.keywords.length,
                         category_count: signals.categories.length,
                         trend_count: signals.trends.length
                     })}>
-                        Add business context <FiChevronRight />
+                        Add business context <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -524,7 +566,7 @@ export default function IntelligenceBriefing() {
 
                     <div className="ob-footer" style={{ marginTop: 24 }}>
                         <button className="ob-btn-text" onClick={() => setMethod('choice')}>Edit later</button>
-                        <button className="ob-btn-primary" onClick={() => nextStep({ profile_method: profileMethod.current, skipped: false })}>Continue <FiChevronRight /></button>
+                        <button className="ob-btn-primary" onClick={() => nextStep({ profile_method: profileMethod.current, skipped: false })}>Continue <ChevronRight /></button>
                     </div>
                 </div>
             );
@@ -536,8 +578,8 @@ export default function IntelligenceBriefing() {
                     <h1 className="ob-title">Guided Agent Interview</h1>
                     <p className="ob-desc">Question {qIndex + 1} of {questions.length}</p>
 
-                    <div style={{ background: '#fff', padding: 24, borderRadius: 24, border: '1px solid #ffcc80', marginBottom: 24 }}>
-                        <div style={{ fontSize: 18, fontWeight: 600, color: '#3e2723', marginBottom: 16 }}>{questions[qIndex]}</div>
+                    <div style={{ background: 'var(--ob-surface)', padding: 24, borderRadius: 24, border: '1px solid var(--ob-border-warm)', marginBottom: 24 }}>
+                        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--ob-brown-dark)', marginBottom: 16 }}>{questions[qIndex]}</div>
                         <textarea className="ob-input" style={{ width: '100%', height: 100, boxSizing: 'border-box' }} placeholder="Type your answer here..." />
                     </div>
 
@@ -549,7 +591,7 @@ export default function IntelligenceBriefing() {
                                 simulateProcessing(['Analyzing answers...', 'Mapping to BMC...'], () => setMethod('review'));
                             }
                         }}>
-                            {qIndex < questions.length - 1 ? 'Next Question' : 'Complete Interview'} <FiChevronRight />
+                            {qIndex < questions.length - 1 ? 'Next Question' : 'Complete Interview'} <ChevronRight />
                         </button>
                     </div>
                 </div>
@@ -565,30 +607,54 @@ export default function IntelligenceBriefing() {
                 <p className="ob-desc">The more context Oshift has, the more relevant its opportunities, threats, and recommendations become.</p>
 
                 <div className="ob-cards-grid">
-                    <div className="ob-card" onClick={() => {
-                        profileMethod.current = 'document';
-                        track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
-                        simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
-                    }}>
-                        <FiUploadCloud size={32} color="#ff7043" style={{ marginBottom: 12 }} />
+                    <div
+                        className="ob-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                            profileMethod.current = 'document';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
+                            simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
+                        }}
+                        onKeyDown={e => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                            e.preventDefault();
+                            profileMethod.current = 'document';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'document' }));
+                            simulateProcessing(['Detecting value proposition...', 'Identifying customer segments...', 'Understanding revenue streams...'], () => setMethod('review'));
+                        }}
+                    >
+                        <UploadCloud size={32} color="var(--ob-accent-strong)" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Upload a business document</div>
                         <div className="ob-card-desc">Upload an existing Business Model Canvas, company profile, strategy document, pitch deck, or business plan.</div>
-                        <div style={{ marginTop: 16, fontSize: 13, color: '#ff9800', fontWeight: 600 }}>Click to simulate upload</div>
+                        <div style={{ marginTop: 16, fontSize: 13, color: 'var(--ob-accent)', fontWeight: 600 }}>Click to simulate upload</div>
                     </div>
-                    <div className="ob-card" onClick={() => {
-                        profileMethod.current = 'interview';
-                        track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'interview' }));
-                        setMethod('interview');
-                    }}>
-                        <div style={{ position: 'absolute', top: -12, right: 20, background: '#4CAF50', color: '#fff', fontSize: 11, padding: '4px 12px', borderRadius: 12, fontWeight: 700 }}>RECOMMENDED</div>
-                        <FiMessageSquare size={32} color="#ff7043" style={{ marginBottom: 12 }} />
+                    <div
+                        className="ob-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                            profileMethod.current = 'interview';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'interview' }));
+                            setMethod('interview');
+                        }}
+                        onKeyDown={e => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                            e.preventDefault();
+                            profileMethod.current = 'interview';
+                            track(EVENTS.ONBOARDING_PROFILE_METHOD_CHOSEN, stepProps(5, { method: 'interview' }));
+                            setMethod('interview');
+                        }}
+                    >
+                        <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--ob-success)', color: 'var(--ob-surface)', fontSize: 11, padding: '4px 12px', borderRadius: 12, fontWeight: 700 }}>RECOMMENDED</div>
+                        <MessageSquare size={32} color="var(--ob-accent-strong)" style={{ marginBottom: 12 }} />
                         <div className="ob-card-title">Let Oshift interview you</div>
                         <div className="ob-card-desc">Answer a few simple questions and the agent will create your company profile and Business Model Canvas.</div>
                     </div>
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-text" onClick={() => nextStep({ profile_method: null, skipped: true })}>Skip for now</button>
                 </div>
             </div>
@@ -610,7 +676,16 @@ export default function IntelligenceBriefing() {
                     <div className="ob-label" style={{ marginBottom: 12 }}>Social Sources</div>
                     <div className="ob-chips-container">
                         {['LinkedIn', 'Instagram', 'TikTok', 'X'].map(p => (
-                            <div key={p} className="ob-chip" style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }} onClick={() => togglePlat(p)}>
+                            <div
+                                key={p}
+                                className="ob-chip"
+                                style={{ background: sources.platforms.includes(p) ? 'var(--ob-accent)' : 'var(--ob-surface)', color: sources.platforms.includes(p) ? 'var(--ob-surface)' : 'var(--ob-accent-deep)' }}
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={sources.platforms.includes(p)}
+                                onClick={() => togglePlat(p)}
+                                onKeyDown={onActivateKey(() => togglePlat(p))}
+                            >
                                 {p}
                             </div>
                         ))}
@@ -621,7 +696,16 @@ export default function IntelligenceBriefing() {
                     <div className="ob-label" style={{ marginBottom: 12 }}>Review Sources</div>
                     <div className="ob-chips-container">
                         {['Google Reviews', 'Trustpilot', 'G2', 'App Store'].map(p => (
-                            <div key={p} className="ob-chip" style={{ background: sources.platforms.includes(p) ? '#ff9800' : '#fff', color: sources.platforms.includes(p) ? '#fff' : '#d84315' }} onClick={() => togglePlat(p)}>
+                            <div
+                                key={p}
+                                className="ob-chip"
+                                style={{ background: sources.platforms.includes(p) ? 'var(--ob-accent)' : 'var(--ob-surface)', color: sources.platforms.includes(p) ? 'var(--ob-surface)' : 'var(--ob-accent-deep)' }}
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={sources.platforms.includes(p)}
+                                onClick={() => togglePlat(p)}
+                                onKeyDown={onActivateKey(() => togglePlat(p))}
+                            >
                                 {p}
                             </div>
                         ))}
@@ -629,8 +713,8 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-input-group">
-                    <label className="ob-label">How often should Oshift brief you?</label>
-                    <select className="ob-select" value={sources.frequency} onChange={e => setSources({ ...sources, frequency: e.target.value })}>
+                    <label htmlFor="ob-brief-frequency" className="ob-label">How often should Oshift brief you?</label>
+                    <select id="ob-brief-frequency" className="ob-select" value={sources.frequency} onChange={e => setSources({ ...sources, frequency: e.target.value })}>
                         <option>Important alerts only</option>
                         <option>Daily summary</option>
                         <option>Weekly intelligence brief</option>
@@ -639,13 +723,13 @@ export default function IntelligenceBriefing() {
                 </div>
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Back</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Back</button>
                     <button className="ob-btn-primary" onClick={() => nextStep({
                         platform_count: sources.platforms.length,
                         platforms: sources.platforms,
                         frequency: sources.frequency
                     })}>
-                        Review my setup <FiChevronRight />
+                        Review my setup <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -663,32 +747,32 @@ export default function IntelligenceBriefing() {
                     Oshift will monitor {competitors.length} {competitors.length === 1 ? 'competitor' : 'competitors'}, follow {signalCount} strategic {signalCount === 1 ? 'signal' : 'signals'}, and focus on {mission || 'market intelligence'}.
                 </p>
 
-                <div style={{ background: '#ffffff', border: '1px solid #ffcc80', borderRadius: 24, padding: 24, marginBottom: 24, boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #f5f5f5', paddingBottom: 16 }}>
-                        <div><span style={{ color: '#8d6e63', fontSize: 13, display: 'block' }}>Company</span><strong>{company.name || 'Setup Pending'}</strong></div>
-                        <div><span style={{ color: '#8d6e63', fontSize: 13, display: 'block' }}>Briefing</span><strong>{sources.frequency}</strong></div>
+                <div style={{ background: 'var(--ob-surface)', border: '1px solid var(--ob-border-warm)', borderRadius: 24, padding: 24, marginBottom: 24, boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid var(--ob-divider)', paddingBottom: 16 }}>
+                        <div><span style={{ color: 'var(--ob-brown-muted)', fontSize: 13, display: 'block' }}>Company</span><strong>{company.name || 'Setup Pending'}</strong></div>
+                        <div><span style={{ color: 'var(--ob-brown-muted)', fontSize: 13, display: 'block' }}>Briefing</span><strong>{sources.frequency}</strong></div>
                     </div>
-                    <div style={{ color: '#d84315', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <FiCheck /> Ready to save
+                    <div style={{ color: 'var(--ob-accent-deep)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Check /> Ready to save
                     </div>
                 </div>
 
                 {saveError && (
-                    <div role="alert" style={{ background: '#fff3e0', border: '1px solid #d84315', borderRadius: 16, padding: 16, marginBottom: 24, color: '#d84315', fontSize: 14 }}>
+                    <div role="alert" style={{ background: 'var(--ob-surface-warm)', border: '1px solid var(--ob-accent-deep)', borderRadius: 16, padding: 16, marginBottom: 24, color: 'var(--ob-accent-deep)', fontSize: 14 }}>
                         {saveError}
                     </div>
                 )}
 
                 {skipped.length > 0 && (
-                    <div style={{ background: '#fff8e1', border: '1px solid #ffcc80', borderRadius: 16, padding: 16, marginBottom: 24, color: '#8d6e63', fontSize: 14 }}>
+                    <div style={{ background: 'var(--ob-surface-warm-2)', border: '1px solid var(--ob-border-warm)', borderRadius: 16, padding: 16, marginBottom: 24, color: 'var(--ob-brown-muted)', fontSize: 14 }}>
                         Already being tracked, so left as they are: {skipped.join(', ')}
                     </div>
                 )}
 
                 <div className="ob-footer">
-                    <button className="ob-btn-text" onClick={prevStep}><FiChevronLeft /> Edit setup</button>
+                    <button className="ob-btn-text" onClick={prevStep}><ChevronLeft /> Edit setup</button>
                     <button className="ob-btn-primary" onClick={activate} disabled={isProcessing || !company.name || !toHost(company.website)} style={{ opacity: isProcessing || !company.name || !toHost(company.website) ? 0.5 : 1 }}>
-                        {isProcessing ? 'Saving...' : saveError ? 'Try again' : 'Activate Oshift'} <FiChevronRight />
+                        {isProcessing ? 'Saving...' : saveError ? 'Try again' : 'Activate Oshift'} <ChevronRight />
                     </button>
                 </div>
             </div>
@@ -725,11 +809,11 @@ export default function IntelligenceBriefing() {
 
                 {(() => {
                     // Mascot is perfectly centered, static and big
-                    let currentScale = 1.3;
+                    const currentScale = 1.3;
                     
                     return (
-                        <img
-                            src="/investigator_mascot.png"
+                        <Image
+                            src={mascotImg}
                             alt="Oshift Mascot"
                             className="ob-mascot"
                             style={{
@@ -745,7 +829,7 @@ export default function IntelligenceBriefing() {
 
                 {/* Case File visual for Company steps only */}
                 <div className={`ob-case-file ${(step === 2) ? 'visible' : ''}`}>
-                    <div style={{ borderBottom: '2px solid #ffcc80', paddingBottom: 12, marginBottom: 16, fontWeight: 700, color: '#d84315' }}>
+                    <div style={{ borderBottom: '2px solid var(--ob-border-warm)', paddingBottom: 12, marginBottom: 16, fontWeight: 700, color: 'var(--ob-accent-deep)' }}>
                         INVESTIGATION CASE FILE
                     </div>
                     <div className="ob-case-row">
@@ -762,7 +846,7 @@ export default function IntelligenceBriefing() {
                     </div>
                     <div className="ob-case-row" style={{ border: 'none' }}>
                         <span className="ob-case-label">PROFILE STATUS</span>
-                        <span className="ob-case-value" style={{ color: step > 5 ? '#4CAF50' : '#ff9800' }}>
+                        <span className="ob-case-value" style={{ color: step > 5 ? 'var(--ob-success)' : 'var(--ob-accent)' }}>
                             {step > 5 ? 'Compiled' : 'Gathering Data...'}
                         </span>
                     </div>

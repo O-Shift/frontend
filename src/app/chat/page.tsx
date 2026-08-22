@@ -52,12 +52,14 @@ function MessageContextItem({ item }: { item: ChatContextItem }) {
   return (
     <span className="chat-message-context flex items-center gap-1.5">
       {item.logo && !imgErr ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={item.logo}
           alt=""
+          width={14}
+          height={14}
           className="h-3.5 w-3.5 rounded object-contain shrink-0"
           onError={() => setImgErr(true)}
+          unoptimized
         />
       ) : (
         <Icon className="h-3 w-3 text-[var(--accent)] shrink-0" />
@@ -88,12 +90,14 @@ function InlineMentionBadge({ item, raw }: { item?: ChatContextItem; raw: string
     <span className="chat-inline-mention-badge" title={item?.subtitle || label}>
       <span className="badge-icon">
         {item?.logo && !imgErr ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={item.logo}
             alt=""
+            width={15}
+            height={15}
             onError={() => setImgErr(true)}
             loading="lazy"
+            unoptimized
           />
         ) : (
           <Icon className="h-3 w-3 text-[var(--accent)]" />
@@ -266,7 +270,7 @@ function ChatContent() {
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-2xl text-xs text-[var(--text-primary)]"
           >
-            <Check className="h-4 w-4 text-[#3ddc97] shrink-0" />
+            <Check className="h-4 w-4 text-[var(--color-success)] shrink-0" />
             <span>{deleteNotification}</span>
           </motion.div>
         )}

@@ -10,7 +10,7 @@ export interface Competitor {
   founding_year: number;
   market_valuation_usd: number;
   industry: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MetricPoint {
@@ -49,7 +49,7 @@ export function useCompany(domain: string) {
         const res = await apiFetch<Competitor[]>('/competitors');
         if (!res.ok) throw new Error(res.error);
         
-        let comp = res.data.find(c => c.website && c.website.toLowerCase().includes(domain.toLowerCase()));
+        const comp = res.data.find(c => c.website && c.website.toLowerCase().includes(domain.toLowerCase()));
         if (!comp) {
           setError('Not Found');
           setLoading(false);
@@ -79,8 +79,8 @@ export function useCompany(domain: string) {
           if (reviewsRes.ok) setReviews(reviewsRes.data);
           if (campRes.ok) setCampaigns(campRes.data);
         }
-      } catch (err: any) {
-        setError(err.message || 'Error loading company');
+      } catch (err) {
+        setError(err instanceof Error && err.message ? err.message : 'Error loading company');
       } finally {
         setLoading(false);
       }

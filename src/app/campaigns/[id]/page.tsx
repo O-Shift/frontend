@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
-import { Playfair_Display, Inter } from 'next/font/google';
+import { Playfair_Display } from 'next/font/google';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import {
   fetchCampaign,
@@ -14,8 +14,9 @@ import {
 } from '@/lib/api';
 import { getPostArtwork, getDeckArtwork } from '@/lib/campaign-artwork';
 
-const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700', '800'], style: ['normal', 'italic'] });
-const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'] });
+// The CSS variable is what makes globals.css's var(--font-playfair, fallback)
+// resolve on this route; the class must be mounted for the variable to exist.
+const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700', '800'], style: ['normal', 'italic'], variable: '--font-playfair' });
 
 type SlideProps = { campaign: Campaign };
 
@@ -125,7 +126,7 @@ function SampleBadge({ label }: { label: string }) {
         fontWeight: 700,
         letterSpacing: 1,
         textTransform: 'uppercase',
-        fontFamily: inter.style.fontFamily,
+        fontFamily: 'var(--font-inter)',
       }}
     >
       {label}
@@ -147,10 +148,10 @@ function DeckMessage({
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '120px 8% 6% 8%', textAlign: 'center' }}>
       {icon}
-      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: 0, letterSpacing: '-0.01em' }}>
+      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: 'var(--font-playfair)', margin: 0, letterSpacing: '-0.01em' }}>
         {title}
       </h2>
-      <p style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0, maxWidth: 540, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: 'var(--font-inter)', margin: 0, maxWidth: 540, lineHeight: 1.5 }}>
         {body}
       </p>
       {action}
@@ -242,7 +243,7 @@ function Slide1({ campaign }: SlideProps) {
             fontWeight: 700,
             textTransform: 'uppercase',
             color: '#9c1c31',
-            fontFamily: inter.style.fontFamily,
+            fontFamily: 'var(--font-inter)',
           }}
         >
           {themeLabel(campaign)} · {confidenceLabel(campaign)}
@@ -253,7 +254,7 @@ function Slide1({ campaign }: SlideProps) {
           transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
           style={{
             fontSize: 'clamp(36px, 5vw, 68px)',
-            fontFamily: playfair.style.fontFamily,
+            fontFamily: 'var(--font-playfair)',
             color: '#0a0a0a',
             lineHeight: 1.1,
             margin: 0,
@@ -273,7 +274,7 @@ function Slide1({ campaign }: SlideProps) {
             margin: 0,
             fontWeight: 500,
             letterSpacing: '0.01em',
-            fontFamily: inter.style.fontFamily
+            fontFamily: 'var(--font-inter)'
           }}
         >
           {dateRangeLabel(campaign)}
@@ -352,12 +353,12 @@ function Slide2({ campaign }: SlideProps) {
           }}
           title={item.post.title}
         >
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'rgba(243,238,223,0.7)', fontFamily: inter.style.fontFamily }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'rgba(243,238,223,0.7)', fontFamily: 'var(--font-inter)' }}>
             {item.post.platform || item.post.source}
           </span>
           {/* The clamp lives on a block child: a `-webkit-box` flex item is not
               laid out as a flex item, and its text overlapped the label above. */}
-          <div style={{ fontSize: 'clamp(12px, 1.1vw, 15px)', color: '#f3eedf', fontFamily: inter.style.fontFamily, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <div style={{ fontSize: 'clamp(12px, 1.1vw, 15px)', color: '#f3eedf', fontFamily: 'var(--font-inter)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {item.post.title || item.post.content}
           </div>
         </motion.div>
@@ -379,7 +380,7 @@ function Slide2({ campaign }: SlideProps) {
       >
         <h2 style={{
           fontSize: 'clamp(36px, 5.5vw, 68px)',
-          fontFamily: playfair.style.fontFamily,
+          fontFamily: 'var(--font-playfair)',
           color: '#f3eedf',
           lineHeight: 1,
           margin: 0,
@@ -389,7 +390,7 @@ function Slide2({ campaign }: SlideProps) {
         </h2>
         <div style={{
           fontSize: 'clamp(28px, 4vw, 44px)',
-          fontFamily: playfair.style.fontFamily,
+          fontFamily: 'var(--font-playfair)',
           color: '#ebdcb9',
           fontStyle: 'italic',
           marginTop: 12
@@ -428,7 +429,7 @@ function Slide3({ campaign }: SlideProps) {
           marginBottom: 80,
           fontWeight: 700,
           letterSpacing: '-0.02em',
-          fontFamily: playfair.style.fontFamily,
+          fontFamily: 'var(--font-playfair)',
           textAlign: 'center'
         }}
       >
@@ -436,7 +437,7 @@ function Slide3({ campaign }: SlideProps) {
       </motion.h2>
 
       {bars.length === 0 ? (
-        <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0, textAlign: 'center', maxWidth: 520, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 'clamp(16px, 2vw, 20px)', color: '#555555', fontFamily: 'var(--font-inter)', margin: 0, textAlign: 'center', maxWidth: 520, lineHeight: 1.5 }}>
           No posts have been captured for this campaign yet, so there is nothing to chart.
         </p>
       ) : (
@@ -450,7 +451,7 @@ function Slide3({ campaign }: SlideProps) {
              transition={{ delay: i * 0.08, duration: 0.5 }}
              style={{ position: 'absolute', bottom: `${(val/axisTop)*100}%`, left: 0, right: 0, borderBottom: '1px solid rgba(10,10,10,0.1)' }}
            >
-             <span style={{ position: 'absolute', left: -44, bottom: -9, fontSize: 15, color: '#1a1a1a', fontWeight: 600, fontFamily: inter.style.fontFamily }}>
+             <span style={{ position: 'absolute', left: -44, bottom: -9, fontSize: 15, color: '#1a1a1a', fontWeight: 600, fontFamily: 'var(--font-inter)' }}>
                {val}
              </span>
            </motion.div>
@@ -464,7 +465,7 @@ function Slide3({ campaign }: SlideProps) {
            style={{ position: 'absolute', top: -45, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 10 }}
          >
              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#0033a0' }} />
-             <span style={{ fontSize: 16, color: '#1a1a1a', fontWeight: 600, fontFamily: inter.style.fontFamily }}>Posts captured</span>
+             <span style={{ fontSize: 16, color: '#1a1a1a', fontWeight: 600, fontFamily: 'var(--font-inter)' }}>Posts captured</span>
          </motion.div>
 
          {/* Bars */}
@@ -487,7 +488,7 @@ function Slide3({ campaign }: SlideProps) {
                initial={{ opacity: 0, y: 10 }}
                animate={{ opacity: 1, y: 0 }}
                transition={{ delay: 0.8 + i * 0.1 }}
-               style={{ marginTop: 20, fontSize: 18, color: '#0a0a0a', fontWeight: 700, fontFamily: inter.style.fontFamily, textAlign: 'center', wordBreak: 'break-word' }}
+               style={{ marginTop: 20, fontSize: 18, color: '#0a0a0a', fontWeight: 700, fontFamily: 'var(--font-inter)', textAlign: 'center', wordBreak: 'break-word' }}
              >
                {bar.label}
              </motion.div>
@@ -560,7 +561,7 @@ function Slide4({ campaign }: SlideProps) {
             lineHeight: 1.25,
             fontWeight: 400,
             letterSpacing: '-0.015em',
-            fontFamily: playfair.style.fontFamily,
+            fontFamily: 'var(--font-playfair)',
             margin: 0
           }}
         >
@@ -575,7 +576,7 @@ function Slide4({ campaign }: SlideProps) {
             display: 'flex',
             alignItems: 'center',
             gap: 14,
-            fontFamily: inter.style.fontFamily,
+            fontFamily: 'var(--font-inter)',
             color: 'rgba(255,255,255,0.85)',
           }}
         >
@@ -614,7 +615,7 @@ function Slide5({ campaign }: SlideProps) {
            transition={{ type: 'spring', stiffness: 100, damping: 15 }}
            style={{
              fontSize: 'clamp(50px, 9vw, 120px)',
-             fontFamily: playfair.style.fontFamily,
+             fontFamily: 'var(--font-playfair)',
              color: '#0a0a0a',
              margin: 0,
              lineHeight: 0.95,
@@ -632,7 +633,7 @@ function Slide5({ campaign }: SlideProps) {
              color: '#1a1a1a',
              fontWeight: 600,
              letterSpacing: '-0.02em',
-             fontFamily: inter.style.fontFamily,
+             fontFamily: 'var(--font-inter)',
              margin: '24px 0 8px 0'
            }}
          >
@@ -647,7 +648,7 @@ function Slide5({ campaign }: SlideProps) {
              color: '#1a1a1a',
              fontWeight: 600,
              letterSpacing: '-0.02em',
-             fontFamily: inter.style.fontFamily,
+             fontFamily: 'var(--font-inter)',
              margin: 0
            }}
          >
@@ -657,7 +658,7 @@ function Slide5({ campaign }: SlideProps) {
 
        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'clamp(16px, 3vw, 40px)', marginTop: 60, maxWidth: 1100 }}>
          {platforms.length === 0 ? (
-           <p style={{ gridColumn: '1 / -1', fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0 }}>
+           <p style={{ gridColumn: '1 / -1', fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: 'var(--font-inter)', margin: 0 }}>
              No platforms have been recorded for this campaign yet.
            </p>
          ) : platforms.map((platform, i) => (
@@ -684,7 +685,7 @@ function Slide5({ campaign }: SlideProps) {
                }}
              >
                <span style={{
-                 fontFamily: playfair.style.fontFamily,
+                 fontFamily: 'var(--font-playfair)',
                  fontWeight: 700,
                  fontSize: 'clamp(22px, 3vw, 34px)',
                  color: '#f3eedf',
@@ -701,7 +702,7 @@ function Slide5({ campaign }: SlideProps) {
                letterSpacing: 2,
                color: '#1a1a1a',
                fontWeight: 700,
-               fontFamily: inter.style.fontFamily
+               fontFamily: 'var(--font-inter)'
              }}>
                {(() => {
                  const count = counts.get(platform.trim().toLowerCase())?.count ?? 0;
@@ -721,20 +722,20 @@ function Slide6({ campaign }: SlideProps) {
   const posts = campaign.posts.slice(0, 4);
   const themes = campaignThemes(campaign).slice(0, 4);
   const themeStyles: React.CSSProperties[] = [
-    { fontSize: 'clamp(28px, 4vw, 44px)', fontFamily: playfair.style.fontFamily, fontStyle: 'italic', color: '#0033a0' },
-    { fontSize: 'clamp(20px, 3vw, 28px)', fontFamily: inter.style.fontFamily, fontWeight: 700, letterSpacing: 5, color: '#9c1c31', textTransform: 'uppercase' },
-    { fontSize: 'clamp(32px, 4.5vw, 50px)', fontFamily: playfair.style.fontFamily, fontWeight: 800, color: '#0a0a0a', lineHeight: 1 },
-    { fontSize: 'clamp(18px, 2.5vw, 24px)', fontFamily: inter.style.fontFamily, fontWeight: 500, color: '#3a3a3a', letterSpacing: '0.05em' },
+    { fontSize: 'clamp(28px, 4vw, 44px)', fontFamily: 'var(--font-playfair)', fontStyle: 'italic', color: '#0033a0' },
+    { fontSize: 'clamp(20px, 3vw, 28px)', fontFamily: 'var(--font-inter)', fontWeight: 700, letterSpacing: 5, color: '#9c1c31', textTransform: 'uppercase' },
+    { fontSize: 'clamp(32px, 4.5vw, 50px)', fontFamily: 'var(--font-playfair)', fontWeight: 800, color: '#0a0a0a', lineHeight: 1 },
+    { fontSize: 'clamp(18px, 2.5vw, 24px)', fontFamily: 'var(--font-inter)', fontWeight: 500, color: '#3a3a3a', letterSpacing: '0.05em' },
   ];
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', display: 'flex', flexDirection: 'column', padding: '120px 8% 6% 8%', overflow: 'hidden' }}>
-      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: '0 0 32px 0', letterSpacing: '-0.01em' }}>
+      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: 'var(--font-playfair)', margin: '0 0 32px 0', letterSpacing: '-0.01em' }}>
         The Moodboard
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(3, 14vh)', gap: 20, flex: 1, maxWidth: 750 }}>
         {posts.length === 0 ? (
-          <p style={{ gridColumn: '1 / -1', fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily, margin: 0 }}>
+          <p style={{ gridColumn: '1 / -1', fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: 'var(--font-inter)', margin: 0 }}>
             No posts have been captured for this campaign yet.
           </p>
         ) : posts.map((post, i) => (
@@ -765,13 +766,13 @@ function Slide6({ campaign }: SlideProps) {
             }}
             whileHover={{ scale: 1.02 }}
           >
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.75, fontFamily: inter.style.fontFamily }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.75, fontFamily: 'var(--font-inter)' }}>
               {post.platform || post.source || 'Captured'}
             </span>
-            <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, fontFamily: inter.style.fontFamily, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, fontFamily: 'var(--font-inter)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
               {post.title || post.content || 'Untitled post'}
             </span>
-            <span style={{ fontSize: 11, opacity: 0.7, fontFamily: inter.style.fontFamily }}>
+            <span style={{ fontSize: 11, opacity: 0.7, fontFamily: 'var(--font-inter)' }}>
               {formatDate(post.captured_at) ?? 'Capture date unknown'}
             </span>
           </motion.a>
@@ -781,7 +782,7 @@ function Slide6({ campaign }: SlideProps) {
       {/* Themes recorded on the campaign, styled with the deck's keyword treatments */}
       <div style={{ position: 'absolute', right: '10%', top: '28%', maxWidth: '32%', display: 'flex', flexDirection: 'column', gap: 28, zIndex: 10, textAlign: 'right' }}>
         {themes.length === 0 ? (
-          <span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: inter.style.fontFamily }}>
+          <span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', color: '#555555', fontFamily: 'var(--font-inter)' }}>
             No themes recorded
           </span>
         ) : themes.map((theme, i) => (
@@ -840,7 +841,7 @@ function Slide7({ campaign }: SlideProps) {
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', display: 'flex', flexDirection: 'column', padding: '120px 8% 6% 8%', overflow: 'hidden' }}>
-      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: '0 0 40px 0', letterSpacing: '-0.01em' }}>
+      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: 'var(--font-playfair)', margin: '0 0 40px 0', letterSpacing: '-0.01em' }}>
         Recorded Metrics
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 30, flex: 1, alignItems: 'center', maxWidth: 1050 }}>
@@ -865,9 +866,9 @@ function Slide7({ campaign }: SlideProps) {
           >
             <div style={{ background: metric.accent, flex: 1, width: '100%' }} />
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#0a0a0a', fontFamily: inter.style.fontFamily }}>{metric.name}</div>
-              <div style={{ fontSize: metric.value.length > 12 ? 17 : 24, fontWeight: 700, color: '#0033a0', fontFamily: playfair.style.fontFamily, lineHeight: 1.2 }}>{metric.value}</div>
-              <div style={{ fontSize: 13, color: '#555555', fontFamily: inter.style.fontFamily, lineHeight: 1.3, marginTop: 4 }}>{metric.desc}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#0a0a0a', fontFamily: 'var(--font-inter)' }}>{metric.name}</div>
+              <div style={{ fontSize: metric.value.length > 12 ? 17 : 24, fontWeight: 700, color: '#0033a0', fontFamily: 'var(--font-playfair)', lineHeight: 1.2 }}>{metric.value}</div>
+              <div style={{ fontSize: 13, color: '#555555', fontFamily: 'var(--font-inter)', lineHeight: 1.3, marginTop: 4 }}>{metric.desc}</div>
             </div>
           </motion.div>
         ))}
@@ -887,10 +888,10 @@ function Slide8({ campaign }: SlideProps) {
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f3eedf', position: 'relative', display: 'flex', flexDirection: 'column', padding: '120px 8% 6% 8%', overflow: 'hidden' }}>
-      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: playfair.style.fontFamily, margin: '0 0 8px 0', letterSpacing: '-0.01em' }}>
+      <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', color: '#0a0a0a', fontWeight: 700, fontFamily: 'var(--font-playfair)', margin: '0 0 8px 0', letterSpacing: '-0.01em' }}>
         Sources
       </h2>
-      <p style={{ fontSize: 14, color: '#555555', fontFamily: inter.style.fontFamily, margin: '0 0 32px 0' }}>
+      <p style={{ fontSize: 14, color: '#555555', fontFamily: 'var(--font-inter)', margin: '0 0 32px 0' }}>
         {posts.length === 0
           ? 'No posts were clustered into this campaign.'
           : `Every claim in this deck comes from ${posts.length} captured post${posts.length === 1 ? '' : 's'}.`}
@@ -921,19 +922,19 @@ function Slide8({ campaign }: SlideProps) {
               cursor: post.url ? 'pointer' : 'default',
             }}
           >
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#9c1c31', fontFamily: inter.style.fontFamily, fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#9c1c31', fontFamily: 'var(--font-inter)', fontVariantNumeric: 'tabular-nums' }}>
               {String(i + 1).padStart(2, '0')}
             </span>
             <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: '#0a0a0a', fontFamily: inter.style.fontFamily, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: '#0a0a0a', fontFamily: 'var(--font-inter)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {post.title || post.content || 'Untitled post'}
               </span>
-              <span style={{ display: 'block', fontSize: 12, color: '#555555', fontFamily: inter.style.fontFamily, marginTop: 3 }}>
+              <span style={{ display: 'block', fontSize: 12, color: '#555555', fontFamily: 'var(--font-inter)', marginTop: 3 }}>
                 {(post.platform || post.source || 'Unattributed')}
                 {formatDate(post.captured_at) ? ` · captured ${formatDate(post.captured_at)}` : ''}
               </span>
             </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: post.url ? '#0033a0' : '#999999', fontFamily: inter.style.fontFamily, whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: post.url ? '#0033a0' : '#999999', fontFamily: 'var(--font-inter)', whiteSpace: 'nowrap' }}>
               {post.url ? 'Open ↗' : 'No link'}
             </span>
           </motion.a>
@@ -1064,7 +1065,7 @@ export default function WrappedCampaignPage() {
             <div
                 style={{
                     position: 'fixed', inset: 0, zIndex: 99999, background: '#0a0a0c',
-                    fontFamily: inter.style.fontFamily,
+                    fontFamily: 'var(--font-inter)',
                     display: 'flex', flexDirection: 'column',
                     alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24,
                 }}
@@ -1123,12 +1124,13 @@ export default function WrappedCampaignPage() {
     return (
         <motion.div 
             onClick={handleTap}
+            className={playfair.variable}
             initial={{ y: '100vh', opacity: 0 }}
             animate={isExiting ? { y: '100vh', opacity: 0 } : { y: 0, opacity: 1 }}
             transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
             style={{ 
                 position: 'fixed', inset: 0, zIndex: 99999, background: '#0a0a0c', cursor: 'pointer',
-                fontFamily: inter.style.fontFamily,
+                fontFamily: 'var(--font-inter)',
                 userSelect: 'none',
                 overflow: 'hidden'
             }}

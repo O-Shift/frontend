@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiBriefcase, FiChevronDown, FiAlertCircle } from 'react-icons/fi';
+import { Mail, Lock, Eye, EyeOff, User, Briefcase, ChevronDown, AlertCircle } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import AuthRightPanel from '@/components/AuthRightPanel';
 import { EVENTS, track } from '@/lib/analytics';
@@ -193,7 +193,7 @@ export default function SignupPage() {
                     {checkEmail ? (
                         <div className="auth-form">
                             <p>Check your email to confirm your account, then sign in.</p>
-                            <Link href="/login" className="auth-submit-btn" style={{ display: 'inline-block', marginTop: '1rem', textAlign: 'center' }}>
+                            <Link href="/login" className="btn-primary" style={{ display: 'inline-block', marginTop: '1rem', textAlign: 'center' }}>
                                 Go to login
                             </Link>
                         </div>
@@ -201,18 +201,19 @@ export default function SignupPage() {
                         <form className="auth-form" onSubmit={handleSignup}>
                             {errors.general && (
                                 <div className="auth-error-box">
-                                    <FiAlertCircle className="auth-error-icon" />
+                                    <AlertCircle className="auth-error-icon" />
                                     {errors.general}
                                 </div>
                             )}
                             
                             <div className="auth-field">
                                 <div className={`auth-input-wrapper ${errors.name ? 'error' : ''}`}>
-                                    <FiUser className="auth-input-icon" />
+                                    <User className="auth-input-icon" />
                                     <input 
                                         type="text" 
                                         className={`auth-input ${errors.name ? 'error' : ''}`}
                                         placeholder="Full name" 
+                                        aria-label="Full name"
                                         autoComplete="name"
                                         value={name}
                                         onChange={(e) => { setName(e.target.value); if(errors.name) setErrors({...errors, name: undefined}); }}
@@ -223,11 +224,12 @@ export default function SignupPage() {
 
                             <div className="auth-field">
                                 <div className={`auth-input-wrapper ${errors.email ? 'error' : ''}`}>
-                                    <FiMail className="auth-input-icon" />
+                                    <Mail className="auth-input-icon" />
                                     <input 
                                         type="email" 
                                         className={`auth-input ${errors.email ? 'error' : ''}`}
                                         placeholder="Work email" 
+                                        aria-label="Work email"
                                         autoComplete="email"
                                         value={email}
                                         onChange={(e) => { setEmail(e.target.value); if(errors.email) setErrors({...errors, email: undefined}); }}
@@ -238,11 +240,12 @@ export default function SignupPage() {
 
                             <div className="auth-field" ref={dropdownRef}>
                                 <div className={`auth-input-wrapper ${errors.role ? 'error' : ''}`}>
-                                    <FiBriefcase className="auth-input-icon" />
+                                    <Briefcase className="auth-input-icon" />
                                     <input 
                                         type="text" 
                                         className={`auth-input ${errors.role ? 'error' : ''}`}
                                         placeholder="Role in company" 
+                                        aria-label="Role in company"
                                         value={roleSearch}
                                         onChange={(e) => {
                                             setRoleSearch(e.target.value);
@@ -251,7 +254,7 @@ export default function SignupPage() {
                                         }}
                                         onFocus={() => setIsDropdownOpen(true)}
                                     />
-                                    <FiChevronDown 
+                                    <ChevronDown 
                                         className={`auth-input-icon right auth-dropdown-chevron ${isDropdownOpen ? 'open' : ''}`}
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                     />
@@ -285,6 +288,7 @@ export default function SignupPage() {
                                             type="text" 
                                             className={`auth-input ${errors.customRole ? 'error' : ''}`}
                                             placeholder="Please specify your role" 
+                                            aria-label="Please specify your role"
                                             style={{ paddingLeft: '1.2rem' }}
                                             value={customRole}
                                             onChange={(e) => { setCustomRole(e.target.value); if(errors.customRole) setErrors({...errors, customRole: undefined}); }}
@@ -296,11 +300,12 @@ export default function SignupPage() {
 
                             <div className="auth-field">
                                 <div className={`auth-input-wrapper ${errors.password ? 'error' : ''}`}>
-                                    <FiLock className="auth-input-icon" />
+                                    <Lock className="auth-input-icon" />
                                     <input 
                                         type={showPassword ? 'text' : 'password'}
                                         className={`auth-input ${errors.password ? 'error' : ''}`}
                                         placeholder="Password (min. 8 characters)" 
+                                        aria-label="Password (min. 8 characters)"
                                         autoComplete="new-password"
                                         value={password}
                                         onChange={(e) => { setPassword(e.target.value); if(errors.password) setErrors({...errors, password: undefined}); }}
@@ -311,13 +316,13 @@ export default function SignupPage() {
                                         onClick={() => setShowPassword(prev => !prev)}
                                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                                     >
-                                        {showPassword ? <FiEye /> : <FiEyeOff />}
+                                        {showPassword ? <Eye /> : <EyeOff />}
                                     </button>
                                 </div>
                                 {errors.password && <div className="auth-error-text">{errors.password}</div>}
                             </div>
 
-                            <button type="submit" className="auth-submit-btn" disabled={loading}>
+                            <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
                                 {loading ? 'Creating account…' : 'Create account'}
                                 {!loading ? (
                                     <span className="btn-icon">→</span>

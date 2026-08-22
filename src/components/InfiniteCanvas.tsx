@@ -87,7 +87,13 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
       updateTransform();
 
       // ── Interaction handlers ──────────────────────────────────────
-      const onMouseDown = (e: MouseEvent) => {
+      const activePointers = new Map<number, { x: number; y: number }>();
+      let pinchState: { initDist: number; initK: number } | null = null;
+
+      const distBetween = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+        Math.hypot(a.x - b.x, a.y - b.y);
+
+      const onPointerDown = (e: PointerEvent) => {
         if (
           (e.target as Element).closest('.campaign-node')       ||
           (e.target as Element).closest('.command-wrapper')     ||
@@ -105,12 +111,48 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
           if (consumed) return;
         }
 
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (activePointers.size === 2) {
+          isDragging.current = false;
+          const [a, b] = [...activePointers.values()];
+          pinchState = {
+            initDist: distBetween(a, b),
+            initK:    targetTransform.current.k,
+          };
+          return;
+        }
+
+        if (activePointers.size !== 1) return;
+
+        try { container.setPointerCapture(e.pointerId); } catch {}
+
         isDragging.current = true;
         lastPos.current    = { x: e.clientX, y: e.clientY };
         container.style.cursor = 'grabbing';
       };
 
-      const onMouseMove = (e: MouseEvent) => {
+      const onPointerMove = (e: PointerEvent) => {
+        if (activePointers.has(e.pointerId)) {
+          activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        }
+
+        if (pinchState && activePointers.size >= 2) {
+          const [a, b] = [...activePointers.values()];
+          const dist = distBetween(a, b);
+          if (pinchState.initDist <= 0 || dist <= 0) return;
+          const rect = container.getBoundingClientRect();
+          const midX = (a.x + b.x) / 2 - rect.left;
+          const midY = (a.y + b.y) / 2 - rect.top;
+          const newK  = Math.min(Math.max(pinchState.initK * (dist / pinchState.initDist), 0.15), 3);
+          const ratio = newK / targetTransform.current.k;
+          const t = targetTransform.current;
+          t.x = midX - (midX - t.x) * ratio;
+          t.y = midY - (midY - t.y) * ratio;
+          t.k = newK;
+          return;
+        }
+
         if (!isDragging.current) return;
         const dx = e.clientX - lastPos.current.x;
         const dy = e.clientY - lastPos.current.y;
@@ -121,14 +163,20 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
         transform.current.x = targetTransform.current.x;
         transform.current.y = targetTransform.current.y;
         lastPos.current = { x: e.clientX, y: e.clientY };
-
-
       };
 
-      const onMouseUp = () => {
-        isDragging.current = false;
-        container.style.cursor = 'grab';
+      const endPointer = (e: PointerEvent) => {
+        try { container.releasePointerCapture(e.pointerId); } catch {}
+        activePointers.delete(e.pointerId);
+        if (activePointers.size < 2) pinchState = null;
+        if (activePointers.size === 0) {
+          isDragging.current = false;
+          container.style.cursor = 'grab';
+        }
       };
+
+      const onPointerUp = (e: PointerEvent) => endPointer(e);
+      const onPointerCancel = (e: PointerEvent) => endPointer(e);
 
       const onWheel = (e: WheelEvent) => {
         if (
@@ -138,6 +186,7 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
         ) {
           return;
         }
+        if (activePointers.size > 0) return;
         e.preventDefault();
 
         const zoomAmount = Math.exp(e.deltaY * -0.002);
@@ -151,23 +200,25 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
         targetTransform.current.k = newK;
       };
 
-      container.addEventListener('mousedown', onMouseDown);
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup',   onMouseUp);
+      container.addEventListener('pointerdown',  onPointerDown);
+      container.addEventListener('pointermove',  onPointerMove);
+      container.addEventListener('pointerup',    onPointerUp);
+      container.addEventListener('pointercancel', onPointerCancel);
       container.addEventListener('wheel',  onWheel, { passive: false });
 
       return () => {
         cancelAnimationFrame(animFrameId);
-        container.removeEventListener('mousedown', onMouseDown);
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('mouseup',   onMouseUp);
+        container.removeEventListener('pointerdown',  onPointerDown);
+        container.removeEventListener('pointermove',  onPointerMove);
+        container.removeEventListener('pointerup',    onPointerUp);
+        container.removeEventListener('pointercancel', onPointerCancel);
         container.removeEventListener('wheel',  onWheel);
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
-      <div ref={containerRef} className={`main-content ${className}`} style={{ cursor: 'grab', position: 'absolute', inset: 0 }}>
+      <div ref={containerRef} className={`main-content ${className}`} style={{ cursor: 'grab', position: 'absolute', inset: 0, touchAction: 'none' }}>
 
         {/* World layer — transforms applied here */}
         <div
@@ -202,9 +253,9 @@ const InfiniteCanvas = forwardRef<InfiniteCanvasHandle, InfiniteCanvasProps>(
               </svg>
             </button>
           </div>
-          <div className="br-pill br-zoom" onClick={resetView} style={{ cursor: 'pointer' }}>
+          <button type="button" className="br-pill br-zoom" onClick={resetView} style={{ cursor: 'pointer', fontFamily: 'inherit' }}>
             {zoom}%
-          </div>
+          </button>
           <button className="br-circle" onClick={resetView} title="Reset view">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>

@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import type { AnalysisStage } from '@/hooks/use-videos';
-import type { VideoAsset } from '@/types/entities';
+import type { VideoAsset, VideoCollectResult } from '@/types/entities';
 
 interface VideoAnalyzerInputProps {
   isAnalyzing: boolean;
@@ -29,7 +29,7 @@ interface VideoAnalyzerInputProps {
     competitorId?: string,
     apiKey?: string,
     forceRefresh?: boolean
-  ) => Promise<any>;
+  ) => Promise<VideoCollectResult | null>;
   checkExistingVideo?: (videoUrl: string) => Promise<VideoAsset | null>;
   onSelectExistingAsset?: (asset: VideoAsset) => void;
 }
@@ -57,6 +57,8 @@ export default function VideoAnalyzerInput({
         error.toLowerCase().includes('api key') ||
         error.toLowerCase().includes('key'))
     ) {
+      // Latch semantics (stays open after user hides/toggle, persists past error change) mean this is not derivable from `error` alone.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowApiKeyInput(true);
     }
   }, [error]);

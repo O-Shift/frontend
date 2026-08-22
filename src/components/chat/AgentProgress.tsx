@@ -62,7 +62,7 @@ export default function AgentProgress({
           {isRunning ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
           ) : (
-            <Check className="h-3.5 w-3.5 text-[#3ddc97]" />
+            <Check className="h-3.5 w-3.5 text-[var(--color-success)]" />
           )}
         </span>
 
@@ -99,7 +99,7 @@ export default function AgentProgress({
                 >
                   <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
                     {step.done ? (
-                      <Check className="h-3 w-3 text-[#3ddc97]" />
+                      <Check className="h-3 w-3 text-[var(--color-success)]" />
                     ) : (
                       <Loader2 className="h-3 w-3 animate-spin text-[var(--accent)]" />
                     )}

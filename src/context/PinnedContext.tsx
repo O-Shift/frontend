@@ -124,6 +124,7 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     }, []);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time watchlist load; setState fires after awaits inside loadWatchlist
         void loadWatchlist();
 
         const supabase = createClient();
