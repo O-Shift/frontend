@@ -3,7 +3,7 @@ import Skeleton from '@/components/Skeleton';
 export default function SettingsSkeleton() {
     return (
         <div className="main-content" style={{ overflowY: 'auto', padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 32 }}>
+            <div style={{ width: '100%', maxWidth: 768, display: 'flex', flexDirection: 'column', gap: 32 }}>
                 {/* Title */}
                 <Skeleton variant="line" width={160} height={36} style={{ marginBottom: 8 }} />
 

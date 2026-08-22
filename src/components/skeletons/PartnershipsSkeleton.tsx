@@ -3,10 +3,15 @@ import Skeleton from '@/components/Skeleton';
 export default function PartnershipsSkeleton() {
     return (
         <div className="canvas-container" style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-            {/* Top Toolbar pill (Graph / Timeline) */}
-            <div className="canvas-header" style={{ position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6, padding: '6px 12px', borderRadius: 20, background: 'var(--card-bg)', border: '1px solid var(--border-color)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-                    <Skeleton variant="card" width={80} height={28} style={{ borderRadius: 14 }} />
+            {/* Top glass dock: segmented Graph/Timeline switcher + category pills */}
+            <div className="canvas-header" style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: 8 }}>
+                <div className="glass-dock" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 5px', borderRadius: 999 }}>
+                    <Skeleton variant="card" width={90} height={24} style={{ borderRadius: 999 }} />
+                    <Skeleton variant="card" width={80} height={24} style={{ borderRadius: 999 }} />
+                    <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.1)', margin: '0 2px' }} />
+                    {[70, 64, 82, 74].map((w, i) => (
+                        <Skeleton key={i} variant="card" width={w} height={24} style={{ borderRadius: 999 }} />
+                    ))}
                 </div>
             </div>
 
@@ -43,11 +48,13 @@ export default function PartnershipsSkeleton() {
                 </div>
             </div>
 
-            {/* Bottom-right zoom controls */}
-            <div style={{ position: 'absolute', bottom: 32, right: 32, zIndex: 30, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Skeleton variant="card" width={80} height={36} style={{ borderRadius: 18 }} />
-                <Skeleton variant="card" width={56} height={36} style={{ borderRadius: 18 }} />
-                <Skeleton variant="card" width={36} height={36} style={{ borderRadius: 18 }} />
+            {/* Bottom-right zoom & view HUD */}
+            <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 30, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="glass-dock" style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '3px 4px', borderRadius: 999 }}>
+                    <Skeleton variant="card" width={32} height={26} style={{ borderRadius: 999 }} />
+                    <Skeleton variant="card" width={32} height={26} style={{ borderRadius: 999 }} />
+                </div>
+                <Skeleton variant="card" width={72} height={30} style={{ borderRadius: 999 }} />
             </div>
 
             {/* Bottom floating PromptField Command Bar */}

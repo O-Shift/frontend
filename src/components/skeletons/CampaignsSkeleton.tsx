@@ -3,11 +3,12 @@ import Skeleton from '@/components/Skeleton';
 export default function CampaignsSkeleton() {
     return (
         <div className="page-canvas" style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-            {/* Top Toolbar pill (Clusters / Heatmap) */}
-            <div style={{ position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 6, padding: '6px 12px', borderRadius: 20, background: 'var(--card-bg)', border: '1px solid var(--border-color)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-                    <Skeleton variant="card" width={80} height={28} style={{ borderRadius: 14 }} />
-                    <Skeleton variant="card" width={80} height={28} style={{ borderRadius: 14 }} />
+            {/* Page header: top-left title + view controls, like the real header */}
+            <div style={{ position: 'absolute', top: 28, left: 28, zIndex: 30, display: 'flex', alignItems: 'center', gap: 16 }}>
+                <Skeleton variant="line" width={150} height={28} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Skeleton variant="card" width={120} height={34} style={{ borderRadius: 8 }} />
+                    <Skeleton variant="card" width={44} height={34} style={{ borderRadius: 8 }} />
                 </div>
             </div>
 

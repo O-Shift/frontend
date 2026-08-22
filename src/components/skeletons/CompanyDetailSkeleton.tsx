@@ -4,8 +4,8 @@ export default function CompanyDetailSkeleton() {
     return (
         <div className="page-container px-4 md:px-8 pt-8 pb-24 relative z-10">
             <div className="w-full max-w-[1320px] mx-auto flex flex-col gap-8">
-                {/* ── HERO CARD ── */}
-                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 md:p-8 relative">
+                {/* ── HERO CARD (logo + identity + right stats, divider, quick stats) ── */}
+                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 md:p-8 relative overflow-hidden">
                     <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start">
                         {/* Logo */}
                         <Skeleton variant="card" width={80} height={80} style={{ borderRadius: 8 }} />
@@ -22,82 +22,70 @@ export default function CompanyDetailSkeleton() {
                             </div>
                         </div>
 
-                        {/* Right: Actions & Stats */}
-                        <div className="flex flex-col gap-3 items-end">
-                            <div className="flex gap-2">
-                                <Skeleton variant="card" width={70} height={32} style={{ borderRadius: 6 }} />
-                                <Skeleton variant="card" width={70} height={32} style={{ borderRadius: 6 }} />
-                            </div>
-                            <div className="flex gap-4 mt-2">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="flex flex-col gap-1 items-end">
-                                        <Skeleton variant="line-sm" width={80} />
-                                        <Skeleton variant="line" width={50} height={18} />
-                                    </div>
-                                ))}
-                            </div>
+                        {/* Right: Pin action & Market info */}
+                        <div className="flex flex-col gap-2 items-start md:items-end">
+                            <Skeleton variant="card" width={120} height={30} style={{ borderRadius: 6 }} />
+                            <Skeleton variant="line-sm" width={110} />
+                            <Skeleton variant="line" width={80} height={24} />
+                            <Skeleton variant="line-sm" width={70} />
+                            <Skeleton variant="card" width={90} height={20} style={{ borderRadius: 4 }} />
                         </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-[1px] bg-[var(--border-color)] my-6" />
+
+                    {/* Quick stats row */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="p-4 rounded-lg bg-[var(--card-bg-alt)] border border-[var(--border-color)] flex flex-col gap-2">
+                                <Skeleton variant="line" width={90} height={22} />
+                                <Skeleton variant="line-sm" width={130} />
+                                <Skeleton variant="line-sm" width={100} />
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* ── TREND LINE CHART CARD ── */}
-                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 md:p-8 flex flex-col gap-6">
-                    <div className="flex justify-between items-center">
-                        <Skeleton variant="line" width={200} height={20} />
-                        <div className="flex gap-2">
-                            <Skeleton variant="card" width={90} height={28} style={{ borderRadius: 6 }} />
-                            <Skeleton variant="card" width={90} height={28} style={{ borderRadius: 6 }} />
-                        </div>
+                {/* ── 2-COL: CHARTS | STRATEGIC GAPS ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+                    {/* Charts */}
+                    <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 min-w-0 flex flex-col gap-5">
+                        <Skeleton variant="line-sm" width={170} height={16} />
+                        <Skeleton variant="chart" height={260} />
+                        <Skeleton variant="chart" height={160} />
                     </div>
-                    <Skeleton variant="chart" height={280} />
-                </div>
 
-                {/* ── 3-COLUMN LOWER INTELLIGENCE GRID ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Col 1: Gaps */}
+                    {/* Strategic Gaps */}
                     <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 flex flex-col gap-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <Skeleton variant="line" width={140} height={20} />
-                            <Skeleton variant="line-sm" width={40} />
+                        <div className="flex justify-between items-center">
+                            <Skeleton variant="line-sm" width={130} height={16} />
+                            <Skeleton variant="card" width={36} height={20} style={{ borderRadius: 4 }} />
                         </div>
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="p-4 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex flex-col gap-2">
+                            <div key={i} className="p-3.5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex flex-col gap-2">
                                 <Skeleton variant="line" width="80%" height={16} />
                                 <Skeleton variant="line-sm" width="100%" />
                                 <Skeleton variant="line-sm" width="60%" />
                             </div>
                         ))}
                     </div>
+                </div>
 
-                    {/* Col 2: Reviews */}
-                    <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 flex flex-col gap-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <Skeleton variant="line" width={140} height={20} />
-                            <Skeleton variant="line-sm" width={40} />
-                        </div>
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="p-4 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex flex-col gap-2">
-                                <div className="flex justify-between items-center">
-                                    <Skeleton variant="line-sm" width={70} />
-                                    <Skeleton variant="line-sm" width={50} />
-                                </div>
-                                <Skeleton variant="line-sm" width="100%" />
-                                <Skeleton variant="line-sm" width="80%" />
-                            </div>
-                        ))}
+                {/* ── FULL-WIDTH MEDIA GRID ── */}
+                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 mb-8 flex flex-col gap-5">
+                    <div className="flex justify-between items-center">
+                        <Skeleton variant="line-sm" width={150} height={16} />
+                        <Skeleton variant="card" width={110} height={26} style={{ borderRadius: 4 }} />
                     </div>
-
-                    {/* Col 3: Campaigns */}
-                    <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 flex flex-col gap-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <Skeleton variant="line" width={140} height={20} />
-                            <Skeleton variant="line-sm" width={40} />
-                        </div>
-                        {[1, 2].map((i) => (
-                            <div key={i} className="p-4 rounded-lg border border-[var(--border-color)] bg-[var(--card-bg-alt)] flex flex-col gap-3">
-                                <Skeleton variant="line" width="85%" height={16} />
-                                <Skeleton variant="line-sm" width="60%" />
-                                <Skeleton variant="card" height={90} style={{ borderRadius: 8 }} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="rounded-xl border border-[var(--border-color)] bg-[var(--card-bg-alt)] overflow-hidden">
+                                <Skeleton variant="card" height={140} style={{ borderRadius: 0 }} />
+                                <div className="p-4 flex flex-col gap-2">
+                                    <Skeleton variant="line" width="85%" height={16} />
+                                    <Skeleton variant="line-sm" width="55%" />
+                                </div>
                             </div>
                         ))}
                     </div>

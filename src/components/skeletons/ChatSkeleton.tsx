@@ -2,10 +2,13 @@ import Skeleton from '@/components/Skeleton';
 
 export default function ChatSkeleton() {
     return (
-        <div className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-main)]">
+        <div className="chat-page">
+            <div className="chat-ambient" aria-hidden="true"><span /><span /></div>
+
             {/* Top Bar */}
             <header className="chat-topbar">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                    <Skeleton variant="card" width={16} height={16} style={{ borderRadius: 4 }} />
                     <Skeleton variant="line" width={180} height={20} />
                 </div>
                 <div className="flex items-center gap-2">

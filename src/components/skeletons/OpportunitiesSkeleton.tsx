@@ -52,7 +52,7 @@ export default function OpportunitiesSkeleton() {
                 </div>
 
                 {/* Right Column: 3D Origami Briefing Accordion Fold */}
-                <div style={{ width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ width: 340, maxWidth: '100%', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Skeleton variant="line-sm" width={120} />
