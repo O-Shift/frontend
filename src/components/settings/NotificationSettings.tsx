@@ -181,6 +181,8 @@ export default function NotificationSettings() {
   const [testResultMsg, setTestResultMsg] = useState<{ ok: boolean; msg: string } | null>(null);
   const [testingDestId, setTestingDestId] = useState<string | null>(null);
   const [triggerToast, setTriggerToast] = useState<string | null>(null);
+  // Telegram bot token (Telegram uses Bot API, not webhooks)
+  const [targetBotToken, setTargetBotToken] = useState('');
 
   // Workspace Members for 1-click email linking
   const [workspaceMembers, setWorkspaceMembers] = useState<{ user_id: string; email: string; role: string }[]>([]);
@@ -202,6 +204,8 @@ export default function NotificationSettings() {
       if (cfg.platform === platformId) return true;
       if (platformId === 'slack' && d.destination_type === 'slack') return true;
       if (platformId === 'email' && d.destination_type === 'email') return true;
+      if (platformId === 'telegram' && d.destination_type === 'telegram') return true;
+      if (platformId === 'discord' && d.destination_type === 'discord') return true;
       if (platformId === 'webhook' && d.destination_type === 'webhook' && !cfg.platform) return true;
       return false;
     });
@@ -221,6 +225,7 @@ export default function NotificationSettings() {
     setTargetWebhookUrl('');
     setTargetEmail('');
     setTargetSecret('');
+    setTargetBotToken('');
     setDestModalError(null);
     setTestResultMsg(null);
   };
@@ -303,6 +308,25 @@ export default function NotificationSettings() {
       return;
     }
 
+    if (activePlatformModal.id === 'telegram') {
+      if (!targetBotToken.trim()) {
+        setDestModalError('Telegram bot token is required to test connection.');
+        return;
+      }
+      if (!targetChannel.trim()) {
+        setDestModalError('Chat ID / channel handle is required to test connection.');
+        return;
+      }
+      const res = await testDestination('telegram', {
+        bot_token: targetBotToken.trim(),
+        chat_id: targetChannel.trim(),
+      });
+      if (res) {
+        setTestResultMsg({ ok: res.ok, msg: res.message });
+      }
+      return;
+    }
+
     if (!targetWebhookUrl.trim()) {
       setDestModalError('Webhook URL is required to test connection.');
       return;
@@ -359,6 +383,32 @@ export default function NotificationSettings() {
       return;
     }
 
+    if (activePlatformModal.id === 'telegram') {
+      if (!targetBotToken.trim()) {
+        setDestModalError('Telegram bot token is required (get one from @BotFather).');
+        return;
+      }
+      if (!targetChannel.trim()) {
+        setDestModalError('Chat ID / channel handle is required.');
+        return;
+      }
+      const res = await createDestination({
+        destination_type: 'telegram',
+        name: destName.trim(),
+        config: {
+          bot_token: targetBotToken.trim(),
+          chat_id: targetChannel.trim(),
+          platform: 'telegram',
+        },
+      });
+      if (res) {
+        setActivePlatformModal(null);
+        setTestResultMsg(null);
+        refreshDestinations();
+      }
+      return;
+    }
+
     if (!targetWebhookUrl.trim()) {
       setDestModalError('Webhook URL is required.');
       return;
@@ -375,6 +425,8 @@ export default function NotificationSettings() {
     const backendDestType =
       activePlatformModal.id === 'slack'
         ? 'slack'
+        : activePlatformModal.id === 'discord'
+        ? 'discord'
         : 'webhook';
 
     const res = await createDestination({
@@ -1044,7 +1096,7 @@ export default function NotificationSettings() {
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                           {activeDests.map((dest) => {
                             const cfg = (dest.config || {}) as Record<string, unknown>;
-                            const targetDisplay = (cfg.emails as string) || (cfg.channel as string) || (cfg.url as string) || 'Configured';
+                            const targetDisplay = (cfg.emails as string) || (cfg.chat_id as string) || (cfg.channel as string) || (cfg.url as string) || 'Configured';
                             const isTestingThis = testingDestId === dest.id;
 
                             return (
@@ -1146,14 +1198,42 @@ export default function NotificationSettings() {
                             Emails are delivered directly from <strong className="text-[var(--text-primary)]">agent@oshift.sheref.dev</strong>.
                           </p>
                         </div>
+                      ) : activePlatformModal.id === 'telegram' ? (
+                        <>
+                          <div>
+                            <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
+                              Bot Token
+                            </label>
+                            <input
+                              type="password"
+                              placeholder="123456:ABC-DEF... (from @BotFather)"
+                              value={targetBotToken}
+                              onChange={(e) => setTargetBotToken(e.target.value)}
+                              className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
+                              Chat ID / Channel Handle
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="@my_team_channel or -1001234567890"
+                              value={targetChannel}
+                              onChange={(e) => setTargetChannel(e.target.value)}
+                              className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
+                            />
+                            <p className="text-[10px] text-[var(--text-secondary)] mt-1.5">
+                              Add your bot to the group/channel first, then send any message there so it can see the chat.
+                            </p>
+                          </div>
+                        </>
                       ) : (
                         <>
                           <div>
                             <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
                               {activePlatformModal.id === 'slack' || activePlatformModal.id === 'discord'
                                 ? 'Channel Name'
-                                : activePlatformModal.id === 'telegram'
-                                ? 'Chat ID / Channel Handle'
                                 : 'Channel / Destination Target'}
                             </label>
                             <input
@@ -1161,9 +1241,7 @@ export default function NotificationSettings() {
                               placeholder={
                                 activePlatformModal.id === 'slack'
                                   ? '#competitive-intel'
-                                  : activePlatformModal.id === 'discord'
-                                  ? '#market-intel'
-                                  : '@my_team_channel'
+                                  : '#market-intel'
                               }
                               value={targetChannel}
                               onChange={(e) => setTargetChannel(e.target.value)}
@@ -1180,9 +1258,7 @@ export default function NotificationSettings() {
                               placeholder={
                                 activePlatformModal.id === 'slack'
                                   ? 'https://hooks.slack.com/services/...'
-                                  : activePlatformModal.id === 'discord'
-                                  ? 'https://discord.com/api/webhooks/...'
-                                  : 'https://api.telegram.org/bot.../sendMessage'
+                                  : 'https://discord.com/api/webhooks/...'
                               }
                               value={targetWebhookUrl}
                               onChange={(e) => setTargetWebhookUrl(e.target.value)}

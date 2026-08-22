@@ -10,6 +10,7 @@ import {
   ExportLogEntry,
   SlackExportIn,
   SlackExportOut,
+  DispatchOut,
 } from '@/types/entities';
 
 export interface TestDestinationResponse {
@@ -144,6 +145,28 @@ export function useExports(initialMonth?: string) {
     [fetchJobs]
   );
 
+  // Type-aware brief dispatch (slack / telegram / webhook / discord)
+  const dispatchBrief = useCallback(
+    async (payload: SlackExportIn) => {
+      setIsExportingSlack(true);
+      setError(null);
+      const res = await apiFetch<DispatchOut>('/exports/dispatch', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        await fetchJobs();
+        setIsExportingSlack(false);
+        return res.data;
+      } else {
+        setError(res.error);
+        setIsExportingSlack(false);
+        return null;
+      }
+    },
+    [fetchJobs]
+  );
+
   // Initial load
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loaders after awaits
@@ -171,6 +194,7 @@ export function useExports(initialMonth?: string) {
     deleteDestination,
     testDestination,
     exportBriefToSlack,
+    dispatchBrief,
     refreshDestinations: fetchDestinations,
     refreshJobs: fetchJobs,
     refreshLogs: () => fetchLogs(selectedMonth),
