@@ -15,8 +15,6 @@ import {
   Globe,
   User,
   Heart,
-  Copy,
-  Check,
   Tag,
   DollarSign,
   TrendingUp,
@@ -31,11 +29,10 @@ interface VideoAnalysisModalProps {
   onClose: () => void;
 }
 
-type ModalTab = 'overview' | 'hook_pacing' | 'cultural' | 'timeline' | 'raw_json';
+type ModalTab = 'overview' | 'hook_pacing' | 'cultural' | 'timeline';
 
 export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModalProps) {
   const [activeTab, setActiveTab] = useState<ModalTab>('overview');
-  const [copiedJson, setCopiedJson] = useState(false);
   const mounted = useMounted();
 
   if (!mounted || !asset) return null;
@@ -48,29 +45,28 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
   const emotions = analysis?.emotional_reaction_prediction?.primary_emotions || [];
   const meta = analysis?.video_metadata;
 
-  const handleCopyJson = () => {
-    if (analysis) {
-      navigator.clipboard.writeText(JSON.stringify(analysis, null, 2));
-      setCopiedJson(true);
-      setTimeout(() => setCopiedJson(false), 2000);
-    }
-  };
-
   if (!mounted) return null;
 
+  const TABS: { id: ModalTab; label: string }[] = [
+    { id: 'overview', label: 'Overview & Scorecard' },
+    { id: 'hook_pacing', label: 'Hook & Attention Pacing' },
+    { id: 'cultural', label: 'Cultural & Psychological Triggers' },
+    { id: 'timeline', label: 'Key Moments Timeline' },
+  ];
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm">
+      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] overflow-hidden shadow-2xl">
         {/* Modal Header */}
         <div className="flex items-start justify-between p-5 border-b border-[var(--border-color)] bg-[var(--card-bg-alt)] shrink-0">
           <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/15 border border-[var(--accent)]/30 flex items-center justify-center text-[var(--accent)] shrink-0 mt-0.5">
+            <div className="w-10 h-10 rounded-xl bg-[var(--card-bg)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-secondary)] shrink-0 mt-0.5">
               <Film className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 {asset.competitor_name && (
-                  <span className="px-2 py-0.5 rounded text-[11px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20">
+                  <span className="px-2 py-0.5 rounded text-[11px] font-bold text-[var(--text-primary)] bg-[var(--card-bg)] border border-[var(--border-color)]">
                     {asset.competitor_name}
                   </span>
                 )}
@@ -118,63 +114,22 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
           </div>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation — neutral white underline, no orange */}
         <div className="flex items-center gap-1 px-5 border-b border-[var(--border-color)] bg-[var(--card-bg)] shrink-0 overflow-x-auto scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setActiveTab('overview')}
-            className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'overview'
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            Overview & Scorecard
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('hook_pacing')}
-            className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'hook_pacing'
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            Hook & Attention Pacing
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('cultural')}
-            className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'cultural'
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            Cultural & Psychological Triggers
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('timeline')}
-            className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'timeline'
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            Key Moments Timeline
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('raw_json')}
-            className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'raw_json'
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            Raw Analysis JSON
-          </button>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer shrink-0 ${
+                activeTab === tab.id
+                  ? 'border-[var(--text-primary)] text-[var(--text-primary)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Modal Body Content (Scrollable) */}
@@ -182,10 +137,10 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
           {/* TAB 1: OVERVIEW & SCORECARD */}
           {activeTab === 'overview' && (
             <div className="flex flex-col gap-6">
-              {/* Executive Summary Card */}
+              {/* Executive Summary Card — no orange icon */}
               {analysis?.summary && (
                 <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--item-hover)]">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent)] uppercase tracking-wider mb-1.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Viral Strategy Reverse-Engineered</span>
                   </div>
@@ -220,13 +175,13 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
                   <div className="flex items-center gap-4 text-xs text-[var(--text-primary)]">
                     {meta?.visible_creator_type && (
                       <span className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-[var(--accent)]" />
+                        <User className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                         <strong className="capitalize">{meta.visible_creator_type}</strong>
                       </span>
                     )}
                     {meta?.country_or_region && (
                       <span className="flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-[var(--accent)]" />
+                        <Globe className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                         <span>{meta.country_or_region}</span>
                       </span>
                     )}
@@ -250,7 +205,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
                     {analysis?.viral_formula_tags?.map((tag, i) => (
                       <span
                         key={i}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)]"
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--card-bg)] border border-[var(--border-color)] text-[var(--text-secondary)]"
                       >
                         {tag}
                       </span>
@@ -265,7 +220,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
           {activeTab === 'hook_pacing' && (
             <div className="flex flex-col gap-6">
               {/* 3-Second Hook Card */}
-              <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm">
+              <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-400" />
@@ -274,8 +229,8 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
                     </h3>
                   </div>
                   {scores?.hook_score !== undefined && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                      {scores.hook_score}/100 Strength
+                    <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-[var(--card-bg-alt)] text-[var(--text-primary)] border border-[var(--border-color)]">
+                      {scores.hook_score}/100
                     </span>
                   )}
                 </div>
@@ -328,9 +283,9 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
 
               {/* Attention & Pacing Dynamics */}
               {attention && (
-                <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm space-y-4">
+                <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] space-y-4">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-[var(--accent)]" />
+                    <TrendingUp className="w-4 h-4 text-[var(--text-secondary)]" />
                     <h3 className="text-sm font-bold text-[var(--text-primary)]">
                       Visual Pacing & Attention Architecture
                     </h3>
@@ -391,7 +346,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
             <div className="flex flex-col gap-6">
               {/* Primary Emotions */}
               {emotions.length > 0 && (
-                <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm">
+                <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]">
                   <div className="flex items-center gap-2 mb-3">
                     <Heart className="w-4 h-4 text-rose-400" />
                     <h3 className="text-sm font-bold text-[var(--text-primary)]">
@@ -402,7 +357,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
                     {emotions.map((emotion, idx) => (
                       <span
                         key={idx}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/10 border border-rose-500/25 text-rose-300"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--card-bg)] border border-[var(--border-color)] text-rose-300"
                       >
                         {emotion}
                       </span>
@@ -413,9 +368,9 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
 
               {/* Cultural & Regional Signals */}
               {cultural && (
-                <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm space-y-4">
+                <div className="p-5 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] space-y-4">
                   <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-[var(--accent)]" />
+                    <Globe className="w-4 h-4 text-[var(--text-secondary)]" />
                     <h3 className="text-sm font-bold text-[var(--text-primary)]">
                       Cultural Nuances & Meme Resonance
                     </h3>
@@ -458,7 +413,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
                           ...(cultural.egyptian_arab_meme_references || []),
                         ].map((ref, idx) => (
                           <li key={idx} className="flex items-start gap-1.5">
-                            <span className="text-[var(--accent)]">•</span>
+                            <span className="text-[var(--text-secondary)]">•</span>
                             <span>{ref}</span>
                           </li>
                         ))}
@@ -473,8 +428,8 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
                     </span>
                     <span className="text-xs font-bold text-[var(--text-primary)]">
                       {cultural.travels_outside_local_audience
-                        ? '✅ High (Appeals across international regions)'
-                        : '📍 Local Specific (Tailored strictly to regional audience)'}
+                        ? 'High (Appeals across international regions)'
+                        : 'Local Specific (Tailored strictly to regional audience)'}
                     </span>
                   </div>
                 </div>
@@ -492,36 +447,7 @@ export default function VideoAnalysisModal({ asset, onClose }: VideoAnalysisModa
             />
           )}
 
-          {/* TAB 5: RAW JSON */}
-          {activeTab === 'raw_json' && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--text-secondary)]">
-                  Complete structured payload parsed from Gemini 2.5 Flash Vision.
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyJson}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--pill-bg)] hover:bg-[var(--item-hover)] text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
-                >
-                  {copiedJson ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy JSON</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <pre className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg-alt)] text-[11px] font-mono text-[var(--text-secondary)] overflow-x-auto max-h-96 leading-relaxed">
-                {JSON.stringify(analysis, null, 2)}
-              </pre>
-            </div>
-          )}
+          {/* RAW JSON tab removed per user request */}
         </div>
 
         {/* Modal Footer */}

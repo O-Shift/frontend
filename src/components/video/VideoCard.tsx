@@ -69,10 +69,10 @@ function formatDuration(seconds?: number | null): string {
 }
 
 function getScoreColor(score: number) {
-  if (score >= 90) return { text: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30' };
-  if (score >= 75) return { text: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/15', border: 'border-[var(--accent)]/30' };
-  if (score >= 60) return { text: 'text-amber-400', bg: 'bg-amber-500/15', border: 'border-amber-500/30' };
-  return { text: 'text-rose-400', bg: 'bg-rose-500/15', border: 'border-rose-500/30' };
+  if (score >= 90) return { text: 'text-emerald-400', bg: 'bg-[var(--card-bg)]', border: 'border-[var(--border-color)]' };
+  if (score >= 75) return { text: 'text-[var(--accent)]', bg: 'bg-[var(--card-bg)]', border: 'border-[var(--border-color)]' };
+  if (score >= 60) return { text: 'text-amber-400', bg: 'bg-[var(--card-bg)]', border: 'border-[var(--border-color)]' };
+  return { text: 'text-rose-400', bg: 'bg-[var(--card-bg)]', border: 'border-[var(--border-color)]' };
 }
 
 export default function VideoCard({ asset, onSelect }: VideoCardProps) {
@@ -97,7 +97,7 @@ export default function VideoCard({ asset, onSelect }: VideoCardProps) {
   return (
     <div
       onClick={() => onSelect(asset)}
-      className="group relative flex flex-col justify-between rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)]/90 backdrop-blur-md hover:border-[var(--accent)]/80 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
+      className="group relative flex flex-col justify-between rounded-md border border-[var(--border-color)] bg-[var(--card-bg)] hover:border-[var(--border-color)] hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
     >
       {/* Subtle top gradient glow based on platform */}
       <div
@@ -110,7 +110,7 @@ export default function VideoCard({ asset, onSelect }: VideoCardProps) {
           {/* Platform & Duration */}
           <div className="flex items-center gap-2">
             <span
-              className="px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 shadow-sm"
+              className="px-2.5 py-1 rounded-md text-[11px] font-bold border flex items-center gap-1.5"
               style={{
                 backgroundColor: platStyle.bg,
                 color: platStyle.color,
@@ -122,7 +122,7 @@ export default function VideoCard({ asset, onSelect }: VideoCardProps) {
             </span>
 
             {asset.duration_s && asset.duration_s > 0 ? (
-              <span className="flex items-center gap-1 text-[11px] font-mono text-[var(--text-secondary)] bg-[var(--pill-bg)] px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-[11px] font-mono text-[var(--text-secondary)] bg-[var(--pill-bg)] px-2 py-0.5 rounded-md">
                 <Clock className="w-3 h-3" />
                 {formatDuration(asset.duration_s)}
               </span>
@@ -132,7 +132,7 @@ export default function VideoCard({ asset, onSelect }: VideoCardProps) {
           {/* Viral Score Gauge */}
           {scores ? (
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border shadow-sm ${scoreColors.bg} ${scoreColors.border}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border  ${scoreColors.bg} ${scoreColors.border}`}
             >
               <Sparkles className={`w-3 h-3 ${scoreColors.text}`} />
               <span className={`text-xs font-black ${scoreColors.text}`}>
@@ -163,7 +163,7 @@ export default function VideoCard({ asset, onSelect }: VideoCardProps) {
 
         {/* 3-Second Hook Strategy Box */}
         {hookText ? (
-          <div className="p-3.5 rounded-xl bg-[var(--card-bg-alt)] border border-[var(--border-color)] relative overflow-hidden group-hover:border-[var(--accent)]/40 transition-colors">
+          <div className="p-3.5 rounded-md bg-[var(--card-bg-alt)] border border-[var(--border-color)] relative overflow-hidden group-hover:border-[var(--border-color)] transition-colors">
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--text-primary)] mb-1">
               <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>3-Second Hook Mechanism</span>
@@ -195,7 +195,7 @@ export default function VideoCard({ asset, onSelect }: VideoCardProps) {
       </div>
 
       {/* Card Footer */}
-      <div className="px-5 py-3.5 border-t border-[var(--border-color)] bg-[var(--card-bg-alt)]/50 relative z-10 flex items-center justify-between gap-2">
+      <div className="px-5 py-3.5 border-t border-[var(--border-color)] bg-[var(--card-bg)] relative z-10 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 text-[11px] text-[var(--text-secondary)]">
           {region && (
             <span className="flex items-center gap-1 truncate max-w-[100px]" title={`Region: ${region}`}>
