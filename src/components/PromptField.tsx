@@ -355,7 +355,7 @@ export default function PromptField({
         fetchCompany(),
         apiFetch<CompetitorRecord[]>('/competitors'),
         fetchCampaigns({ limit: 100 }),
-        fetchGaps({ limit: 200 }),
+        fetchGaps({ limit: 100 }),
         fetchOpportunities({ limit: 100 }),
         apiFetch<PartnershipResponse>('/graph/partnerships'),
       ]);

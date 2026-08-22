@@ -199,7 +199,7 @@ export default function CampaignsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await fetchCampaigns({ limit: 200 });
+      const res = await fetchCampaigns({ limit: 100 });
       if (cancelled) return;
       if (res.ok) {
         setCampaigns(res.data);
