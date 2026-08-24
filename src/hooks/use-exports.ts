@@ -19,6 +19,18 @@ export interface TestDestinationResponse {
   message: string;
 }
 
+/** Response shape of the platform-bot install/link endpoints. */
+export interface IntegrationStartResponse {
+  ok: boolean;
+  reason?: string | null;
+  destination_id?: string | null;
+  /** Slack / Discord OAuth authorize URL — redirect the browser to it. */
+  authorize_url?: string | null;
+  /** Telegram t.me deep link — the user opens it and presses Start. */
+  deep_link?: string | null;
+  expires_at?: string | null;
+}
+
 export function useExports(initialMonth?: string) {
   const currentYYYYMM = new Date().toISOString().slice(0, 7);
 
@@ -167,6 +179,41 @@ export function useExports(initialMonth?: string) {
     [fetchJobs]
   );
 
+  // Platform-owned bot installs — users never paste tokens or webhook URLs.
+  const startIntegrationInstall = useCallback(async (platform: 'slack' | 'discord') => {
+    setError(null);
+    const res = await apiFetch<IntegrationStartResponse>(
+      `/exports/integrations/${platform}/install`,
+      { method: 'POST' }
+    );
+    if (res.ok) {
+      return res.data;
+    } else {
+      setError(res.error);
+      return null;
+    }
+  }, []);
+
+  const startSlackInstall = useCallback(() => startIntegrationInstall('slack'), [startIntegrationInstall]);
+  const startDiscordInstall = useCallback(
+    () => startIntegrationInstall('discord'),
+    [startIntegrationInstall]
+  );
+
+  // Telegram: mint a one-time code + t.me deep link; the user presses Start.
+  const linkTelegram = useCallback(async () => {
+    setError(null);
+    const res = await apiFetch<IntegrationStartResponse>('/exports/integrations/telegram/link', {
+      method: 'POST',
+    });
+    if (res.ok) {
+      return res.data;
+    } else {
+      setError(res.error);
+      return null;
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loaders after awaits
@@ -195,6 +242,9 @@ export function useExports(initialMonth?: string) {
     testDestination,
     exportBriefToSlack,
     dispatchBrief,
+    startSlackInstall,
+    startDiscordInstall,
+    linkTelegram,
     refreshDestinations: fetchDestinations,
     refreshJobs: fetchJobs,
     refreshLogs: () => fetchLogs(selectedMonth),
