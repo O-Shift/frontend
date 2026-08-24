@@ -126,6 +126,9 @@ export default function NotificationSettings() {
     createDestination,
     deleteDestination,
     testDestination,
+    startSlackInstall,
+    startDiscordInstall,
+    linkTelegram,
     refreshDestinations,
   } = useExports();
 
@@ -181,6 +184,12 @@ export default function NotificationSettings() {
   const [testResultMsg, setTestResultMsg] = useState<{ ok: boolean; msg: string } | null>(null);
   const [testingDestId, setTestingDestId] = useState<string | null>(null);
   const [triggerToast, setTriggerToast] = useState<string | null>(null);
+  // Telegram bot token (Telegram uses Bot API, not webhooks)
+  const [targetBotToken, setTargetBotToken] = useState('');
+
+  // Platform-bot connect flows (OAuth redirect / t.me deep link)
+  const [isConnectingPlatform, setIsConnectingPlatform] = useState(false);
+  const [tgDeepLink, setTgDeepLink] = useState<string | null>(null);
 
   // Workspace Members for 1-click email linking
   const [workspaceMembers, setWorkspaceMembers] = useState<{ user_id: string; email: string; role: string }[]>([]);
@@ -202,6 +211,8 @@ export default function NotificationSettings() {
       if (cfg.platform === platformId) return true;
       if (platformId === 'slack' && d.destination_type === 'slack') return true;
       if (platformId === 'email' && d.destination_type === 'email') return true;
+      if (platformId === 'telegram' && d.destination_type === 'telegram') return true;
+      if (platformId === 'discord' && d.destination_type === 'discord') return true;
       if (platformId === 'webhook' && d.destination_type === 'webhook' && !cfg.platform) return true;
       return false;
     });
@@ -221,6 +232,7 @@ export default function NotificationSettings() {
     setTargetWebhookUrl('');
     setTargetEmail('');
     setTargetSecret('');
+    setTargetBotToken('');
     setDestModalError(null);
     setTestResultMsg(null);
   };
@@ -285,6 +297,48 @@ export default function NotificationSettings() {
     }
   };
 
+  // Start the platform-owned bot connect flow for Slack/Discord: creates a
+  // pending destination server-side and sends the browser through OAuth.
+  const startOAuthConnect = async (platform: 'slack' | 'discord') => {
+    setDestModalError(null);
+    setIsConnectingPlatform(true);
+    const res = platform === 'slack' ? await startSlackInstall() : await startDiscordInstall();
+    setIsConnectingPlatform(false);
+    if (!res) {
+      setDestModalError('Could not start the installation. Try again shortly.');
+      return;
+    }
+    if (res.authorize_url) {
+      window.location.href = res.authorize_url;
+    } else {
+      setDestModalError(res.reason ?? 'Installation is not available.');
+    }
+  };
+
+  // Mint a one-time code + t.me deep link; the user presses Start in Telegram.
+  const startTelegramLink = async () => {
+    setDestModalError(null);
+    setTgDeepLink(null);
+    setIsConnectingPlatform(true);
+    const res = await linkTelegram();
+    setIsConnectingPlatform(false);
+    if (!res) {
+      setDestModalError('Could not create a link code. Try again shortly.');
+      return;
+    }
+    if (res.deep_link) {
+      setTgDeepLink(res.deep_link);
+    } else {
+      setDestModalError(res.reason ?? 'Linking is not available.');
+    }
+  };
+
+  const finishTelegramLink = () => {
+    setTgDeepLink(null);
+    setActivePlatformModal(null);
+    refreshDestinations();
+  };
+
   // Handle Test Connection in Modal
   const handleModalTestConnection = async () => {
     if (!activePlatformModal) return;
@@ -297,6 +351,25 @@ export default function NotificationSettings() {
         return;
       }
       const res = await testDestination('email', { emails: targetEmail.trim() });
+      if (res) {
+        setTestResultMsg({ ok: res.ok, msg: res.message });
+      }
+      return;
+    }
+
+    if (activePlatformModal.id === 'telegram') {
+      if (!targetBotToken.trim()) {
+        setDestModalError('Telegram bot token is required to test connection.');
+        return;
+      }
+      if (!targetChannel.trim()) {
+        setDestModalError('Chat ID / channel handle is required to test connection.');
+        return;
+      }
+      const res = await testDestination('telegram', {
+        bot_token: targetBotToken.trim(),
+        chat_id: targetChannel.trim(),
+      });
       if (res) {
         setTestResultMsg({ ok: res.ok, msg: res.message });
       }
@@ -333,6 +406,18 @@ export default function NotificationSettings() {
     if (!activePlatformModal) return;
     setDestModalError(null);
 
+    // Slack/Discord/Telegram use the platform-bot connect flows — the
+    // destination row is created server-side, nothing to fill in here.
+    const pid = activePlatformModal.id;
+    if (pid === 'slack' || pid === 'discord') {
+      await startOAuthConnect(pid);
+      return;
+    }
+    if (pid === 'telegram') {
+      await startTelegramLink();
+      return;
+    }
+
     if (!destName.trim()) {
       setDestModalError('Integration name is required.');
       return;
@@ -359,6 +444,32 @@ export default function NotificationSettings() {
       return;
     }
 
+    if (activePlatformModal.id === 'telegram') {
+      if (!targetBotToken.trim()) {
+        setDestModalError('Telegram bot token is required (get one from @BotFather).');
+        return;
+      }
+      if (!targetChannel.trim()) {
+        setDestModalError('Chat ID / channel handle is required.');
+        return;
+      }
+      const res = await createDestination({
+        destination_type: 'telegram',
+        name: destName.trim(),
+        config: {
+          bot_token: targetBotToken.trim(),
+          chat_id: targetChannel.trim(),
+          platform: 'telegram',
+        },
+      });
+      if (res) {
+        setActivePlatformModal(null);
+        setTestResultMsg(null);
+        refreshDestinations();
+      }
+      return;
+    }
+
     if (!targetWebhookUrl.trim()) {
       setDestModalError('Webhook URL is required.');
       return;
@@ -375,6 +486,8 @@ export default function NotificationSettings() {
     const backendDestType =
       activePlatformModal.id === 'slack'
         ? 'slack'
+        : activePlatformModal.id === 'discord'
+        ? 'discord'
         : 'webhook';
 
     const res = await createDestination({
@@ -1044,7 +1157,7 @@ export default function NotificationSettings() {
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                           {activeDests.map((dest) => {
                             const cfg = (dest.config || {}) as Record<string, unknown>;
-                            const targetDisplay = (cfg.emails as string) || (cfg.channel as string) || (cfg.url as string) || 'Configured';
+                            const targetDisplay = (cfg.emails as string) || (cfg.chat_id as string) || (cfg.channel as string) || (cfg.url as string) || 'Configured';
                             const isTestingThis = testingDestId === dest.id;
 
                             return (
@@ -1146,25 +1259,111 @@ export default function NotificationSettings() {
                             Emails are delivered directly from <strong className="text-[var(--text-primary)]">agent@oshift.sheref.dev</strong>.
                           </p>
                         </div>
+                      ) : activePlatformModal.id === 'telegram' ? (
+                        tgDeepLink ? (
+                          <div className="space-y-3">
+                            <p className="text-[var(--text-primary)]">
+                              <span className="mr-1">1.</span> Open Telegram with the button below.
+                            </p>
+                            <p className="text-[var(--text-primary)]">
+                              <span className="mr-1">2.</span> Press{' '}
+                              <strong>Start</strong> (or send any message) — that connects this chat
+                              to OShift. The link expires in 15 minutes.
+                            </p>
+                            <a
+                              href={tgDeepLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-block px-4 py-2 rounded-lg bg-[#229ED9] text-white text-xs font-semibold hover:opacity-90 transition-all"
+                            >
+                              Open Telegram
+                            </a>
+                            <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
+                              <button
+                                type="button"
+                                onClick={() => setTgDeepLink(null)}
+                                className="px-3.5 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                              >
+                                Back
+                              </button>
+                              <button
+                                type="button"
+                                onClick={finishTelegramLink}
+                                className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
+                              >
+                                Done — Check Connection
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
+                              No bot tokens needed. We generate a private, one-time invite to the
+                              official OShift bot — open it in Telegram and press{' '}
+                              <strong className="text-[var(--text-primary)]">Start</strong>. The chat
+                              connects itself and briefs arrive there.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={startTelegramLink}
+                              disabled={isConnectingPlatform}
+                              className="w-full px-4 py-2.5 rounded-lg bg-[#229ED9] text-white text-xs font-semibold hover:opacity-90 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {isConnectingPlatform ? 'Creating your link…' : 'Create Telegram Link'}
+                            </button>
+                            <div className="flex justify-end pt-4 border-t border-[var(--border-color)]">
+                              <button
+                                type="button"
+                                onClick={() => setActivePlatformModal(null)}
+                                className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      ) : activePlatformModal.id === 'slack' || activePlatformModal.id === 'discord' ? (
+                        <div className="space-y-3">
+                          <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] p-3.5 space-y-1.5">
+                            <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
+                              Connects through the official {activePlatformModal.name} app — you pick
+                              the server or channel during authorization. No tokens, no webhook URLs.
+                            </p>
+                            <ul className="list-disc list-inside text-[10px] text-[var(--text-secondary)] space-y-0.5">
+                              <li>You choose exactly where briefs are posted.</li>
+                              <li>Revoke anytime by removing the OShift app in your workspace settings.</li>
+                            </ul>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => startOAuthConnect(activePlatformModal.id as 'slack' | 'discord')}
+                            disabled={isConnectingPlatform}
+                            className="w-full px-4 py-2.5 rounded-lg text-white text-xs font-semibold hover:opacity-90 transition-all cursor-pointer disabled:opacity-50"
+                            style={{ backgroundColor: activePlatformModal.color }}
+                          >
+                            {isConnectingPlatform
+                              ? 'Redirecting…'
+                              : `Connect ${activePlatformModal.name}`}
+                          </button>
+                          <div className="flex justify-end pt-4 border-t border-[var(--border-color)]">
+                            <button
+                              type="button"
+                              onClick={() => setActivePlatformModal(null)}
+                              className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
                       ) : (
                         <>
                           <div>
                             <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
-                              {activePlatformModal.id === 'slack' || activePlatformModal.id === 'discord'
-                                ? 'Channel Name'
-                                : activePlatformModal.id === 'telegram'
-                                ? 'Chat ID / Channel Handle'
-                                : 'Channel / Destination Target'}
+                              Channel / Destination Target
                             </label>
                             <input
                               type="text"
-                              placeholder={
-                                activePlatformModal.id === 'slack'
-                                  ? '#competitive-intel'
-                                  : activePlatformModal.id === 'discord'
-                                  ? '#market-intel'
-                                  : '@my_team_channel'
-                              }
+                              placeholder="e.g. internal-alerts"
                               value={targetChannel}
                               onChange={(e) => setTargetChannel(e.target.value)}
                               className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
@@ -1173,17 +1372,11 @@ export default function NotificationSettings() {
 
                           <div>
                             <label className="block text-[var(--text-secondary)] font-medium mb-1.5">
-                              {activePlatformModal.name} Webhook URL
+                              Webhook URL
                             </label>
                             <input
                               type="url"
-                              placeholder={
-                                activePlatformModal.id === 'slack'
-                                  ? 'https://hooks.slack.com/services/...'
-                                  : activePlatformModal.id === 'discord'
-                                  ? 'https://discord.com/api/webhooks/...'
-                                  : 'https://api.telegram.org/bot.../sendMessage'
-                              }
+                              placeholder="https://example.com/hooks/..."
                               value={targetWebhookUrl}
                               onChange={(e) => setTargetWebhookUrl(e.target.value)}
                               className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--text-secondary)]"
@@ -1214,32 +1407,34 @@ export default function NotificationSettings() {
                         </p>
                       )}
 
-                      <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
-                        <button
-                          type="button"
-                          onClick={handleModalTestConnection}
-                          disabled={isTestingDest}
-                          className="px-3.5 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                        >
-                          {isTestingDest ? 'Testing...' : 'Test Connection'}
-                        </button>
-
-                        <div className="flex items-center gap-3">
+                      {(activePlatformModal.id === 'email' || activePlatformModal.id === 'webhook') && (
+                        <div className="flex items-center justify-between pt-4 border-t border-[var(--border-color)]">
                           <button
                             type="button"
-                            onClick={() => setActivePlatformModal(null)}
-                            className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                            onClick={handleModalTestConnection}
+                            disabled={isTestingDest}
+                            className="px-3.5 py-2 rounded-lg border border-[var(--border-color)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                           >
-                            Close
+                            {isTestingDest ? 'Testing...' : 'Test Connection'}
                           </button>
-                          <button
-                            type="submit"
-                            className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
-                          >
-                            Add Destination
-                          </button>
+
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setActivePlatformModal(null)}
+                              className="px-4 py-2 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                            >
+                              Close
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--card-bg)] text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
+                            >
+                              Add Destination
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </form>
                   </div>
                 </motion.div>

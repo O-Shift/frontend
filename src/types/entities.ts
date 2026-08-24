@@ -126,6 +126,13 @@ export interface SlackExportIn {
   destination_id: string;
 }
 
+export interface DispatchOut {
+  job_id: string;
+  status: string;
+  attempts: number;
+  destination_type: string;
+}
+
 export interface SlackExportOut {
   job_id: string;
   status: string;
