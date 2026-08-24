@@ -329,17 +329,24 @@ export default function NotificationSettings() {
   // pending destination server-side and sends the browser through OAuth.
   // Start the platform-owned bot connect flow for Slack/Discord.
   //
-  // The auth tab is opened SYNCHRONOUSLY (user gesture) pointing at a
-  // same-origin hop page, so browsers don't block it; once the install
-  // endpoint responds we navigate that tab to the authorize URL. The tab
-  // posts the outcome back and closes itself — this tab never navigates.
+  // The auth tab is opened SYNCHRONOUSLY (user gesture) on about:blank with
+  // an inline placeholder — NOT an app route. A fresh tab has empty
+  // sessionStorage, so any app page (connecting hop included) gets hijacked
+  // by AppShell's workspace guard before our redirect lands. From blank we
+  // go straight to the provider; the tab posts its outcome back and closes.
   const startOAuthConnect = async (platform: 'slack' | 'discord') => {
     setDestModalError(null);
     setIsConnectingPlatform(true);
-    const authTab = window.open(
-      `/integrations/connecting?platform=${platform}`,
-      'oshift-integration-auth'
-    );
+    const authTab = window.open('about:blank', 'oshift-integration-auth');
+    if (authTab) {
+      authTab.document.write(
+        '<html><head><meta name="referrer" content="no-referrer"></head>' +
+          '<body style="margin:0;background:#0f172a;color:#94a3b8;' +
+          'font-family:system-ui,sans-serif;display:grid;place-items:center;height:100vh">' +
+          'Opening authorization&hellip;</body></html>'
+      );
+      authTab.document.close();
+    }
     try {
       const res = platform === 'slack' ? await startSlackInstall() : await startDiscordInstall();
       if (!res?.authorize_url) {
