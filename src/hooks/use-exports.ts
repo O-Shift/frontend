@@ -31,6 +31,13 @@ export interface IntegrationStartResponse {
   expires_at?: string | null;
 }
 
+export interface SlackChannel {
+  id: string;
+  name: string;
+  is_private?: boolean;
+  is_member?: boolean;
+}
+
 export function useExports(initialMonth?: string) {
   const currentYYYYMM = new Date().toISOString().slice(0, 7);
 
@@ -214,6 +221,55 @@ export function useExports(initialMonth?: string) {
     }
   }, []);
 
+  // Channel options for an installed Slack destination (conversations.list
+  // runs server-side with the stored bot token — the UI never sees secrets).
+  const listSlackChannels = useCallback(async (destinationId: string) => {
+    const res = await apiFetch<{ ok: boolean; reason?: string | null; channels: SlackChannel[] }>(
+      `/exports/integrations/slack/${destinationId}/channels`
+    );
+    if (res.ok) {
+      return res.data.channels;
+    } else {
+      setError(res.error);
+      return null;
+    }
+  }, []);
+
+  // Merge-update a destination. Config keys merge server-side, so masked
+  // `***` values on the read model never overwrite stored credentials.
+  const patchDestination = useCallback(
+    async (destinationId: string, patch: { name?: string; config?: Record<string, unknown> }) => {
+      setError(null);
+      const res = await apiFetch<DestinationOut>(`/exports/destinations/${destinationId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
+      if (res.ok) {
+        setDestinations((prev) => prev.map((d) => (d.id === destinationId ? res.data : d)));
+        return res.data;
+      } else {
+        setError(res.error);
+        return null;
+      }
+    },
+    []
+  );
+
+  // Test an installed Slack destination against its STORED connection — the
+  // list only ever holds masked tokens, so the test must resolve server-side.
+  const testSlackDestinationById = useCallback(async (destinationId: string) => {
+    const res = await apiFetch<TestDestinationResponse>(
+      `/exports/integrations/slack/${destinationId}/test`,
+      { method: 'POST' }
+    );
+    if (res.ok) {
+      return res.data;
+    } else {
+      setError(res.error);
+      return { ok: false, message: res.error } as TestDestinationResponse;
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch; setState fires from async loaders after awaits
@@ -245,6 +301,9 @@ export function useExports(initialMonth?: string) {
     startSlackInstall,
     startDiscordInstall,
     linkTelegram,
+    listSlackChannels,
+    patchDestination,
+    testSlackDestinationById,
     refreshDestinations: fetchDestinations,
     refreshJobs: fetchJobs,
     refreshLogs: () => fetchLogs(selectedMonth),

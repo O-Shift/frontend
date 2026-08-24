@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 import { useAutomations } from '@/hooks/use-automations';
 import { useExports } from '@/hooks/use-exports';
+import type { SlackChannel } from '@/hooks/use-exports';
 import { useMounted } from '@/hooks/use-mounted';
 import {
   ScheduleFrequency,
@@ -129,6 +130,9 @@ export default function NotificationSettings() {
     startSlackInstall,
     startDiscordInstall,
     linkTelegram,
+    listSlackChannels,
+    patchDestination,
+    testSlackDestinationById,
     refreshDestinations,
   } = useExports();
 
@@ -191,6 +195,10 @@ export default function NotificationSettings() {
   const [isConnectingPlatform, setIsConnectingPlatform] = useState(false);
   const [tgDeepLink, setTgDeepLink] = useState<string | null>(null);
 
+  // Per-destination Slack channel options, fetched lazily for installed rows.
+  const [slackChannelsFor, setSlackChannelsFor] = useState<Record<string, SlackChannel[]>>({});
+  const [slackChannelBusyId, setSlackChannelBusyId] = useState<string | null>(null);
+
   // Workspace Members for 1-click email linking
   const [workspaceMembers, setWorkspaceMembers] = useState<{ user_id: string; email: string; role: string }[]>([]);
 
@@ -203,6 +211,21 @@ export default function NotificationSettings() {
     }
     loadMembers();
   }, []);
+
+  // Lazily fetch channel options for every installed Slack destination.
+  useEffect(() => {
+    destinations
+      .filter((d) => {
+        const cfg = (d.config || {}) as Record<string, unknown>;
+        return d.destination_type === 'slack' && cfg.status === 'installed';
+      })
+      .forEach((d) => {
+        if (slackChannelsFor[d.id]) return;
+        listSlackChannels(d.id).then((channels) => {
+          setSlackChannelsFor((prev) => ({ ...prev, [d.id]: channels ?? [] }));
+        });
+      });
+  }, [destinations, slackChannelsFor, listSlackChannels]);
 
   // Helper to filter all instances of a platform
   const getPlatformDestinations = (platformId: string) => {
@@ -241,7 +264,12 @@ export default function NotificationSettings() {
   const handleTestExistingDestination = async (destId: string, destType: string, config: Record<string, unknown>) => {
     setTestingDestId(destId);
     setTestResultMsg(null);
-    const res = await testDestination(destType, config);
+    // Slack rows only ever hold masked tokens client-side — the test must
+    // resolve the stored connection server-side.
+    const res =
+      destType === 'slack'
+        ? await testSlackDestinationById(destId)
+        : await testDestination(destType, config);
     if (res) {
       setTestResultMsg({ ok: res.ok, msg: res.message });
     }
@@ -337,6 +365,15 @@ export default function NotificationSettings() {
     setTgDeepLink(null);
     setActivePlatformModal(null);
     refreshDestinations();
+  };
+
+  // Change where an installed Slack destination delivers (DM by default).
+  const changeSlackChannel = async (destId: string, channelId: string) => {
+    if (!channelId) return;
+    setSlackChannelBusyId(destId);
+    await patchDestination(destId, { config: { channel_id: channelId, channel_kind: '' } });
+    setSlackChannelBusyId(null);
+    setTestResultMsg({ ok: true, msg: 'Delivery target updated.' });
   };
 
   // Handle Test Connection in Modal
@@ -1159,6 +1196,10 @@ export default function NotificationSettings() {
                             const cfg = (dest.config || {}) as Record<string, unknown>;
                             const targetDisplay = (cfg.emails as string) || (cfg.chat_id as string) || (cfg.channel as string) || (cfg.url as string) || 'Configured';
                             const isTestingThis = testingDestId === dest.id;
+                            const isInstalledSlack =
+                              dest.destination_type === 'slack' && cfg.status === 'installed';
+                            const channels = slackChannelsFor[dest.id] ?? [];
+                            const currentChannel = (cfg.channel_id as string) || '';
 
                             return (
                               <div
@@ -1169,9 +1210,33 @@ export default function NotificationSettings() {
                                   <div className="font-semibold text-[var(--text-primary)] truncate">
                                     {dest.name}
                                   </div>
-                                  <div className="text-[11px] text-[var(--text-secondary)] font-mono truncate">
-                                    {targetDisplay}
-                                  </div>
+                                  {isInstalledSlack ? (
+                                    <select
+                                      value={currentChannel}
+                                      disabled={slackChannelBusyId === dest.id || !channels.length}
+                                      onChange={(e) => changeSlackChannel(dest.id, e.target.value)}
+                                      title="Where briefs are delivered"
+                                      className="mt-0.5 max-w-[200px] rounded-md border border-[var(--border-color)] bg-[var(--bg-main-alt)] px-2 py-1 text-[11px] text-[var(--text-primary)] outline-none cursor-pointer disabled:opacity-50"
+                                    >
+                                      {!channels.length && (
+                                        <option value="">
+                                          {currentChannel ? `DM with installer (${currentChannel})` : 'Loading channels…'}
+                                        </option>
+                                      )}
+                                      {currentChannel && !channels.some((c) => c.id === currentChannel) && (
+                                        <option value={currentChannel}>DM with installer</option>
+                                      )}
+                                      {channels.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {(c.is_private ? '🔒 ' : '#') + c.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <div className="text-[11px] text-[var(--text-secondary)] font-mono truncate">
+                                      {targetDisplay}
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
