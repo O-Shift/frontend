@@ -327,21 +327,64 @@ export default function NotificationSettings() {
 
   // Start the platform-owned bot connect flow for Slack/Discord: creates a
   // pending destination server-side and sends the browser through OAuth.
+  // Start the platform-owned bot connect flow for Slack/Discord.
+  //
+  // The auth tab is opened SYNCHRONOUSLY (user gesture) on about:blank with
+  // an inline placeholder — NOT an app route. A fresh tab has empty
+  // sessionStorage, so any app page (connecting hop included) gets hijacked
+  // by AppShell's workspace guard before our redirect lands. From blank we
+  // go straight to the provider; the tab posts its outcome back and closes.
   const startOAuthConnect = async (platform: 'slack' | 'discord') => {
     setDestModalError(null);
     setIsConnectingPlatform(true);
-    const res = platform === 'slack' ? await startSlackInstall() : await startDiscordInstall();
-    setIsConnectingPlatform(false);
-    if (!res) {
-      setDestModalError('Could not start the installation. Try again shortly.');
-      return;
+    const authTab = window.open('about:blank', 'oshift-integration-auth');
+    if (authTab) {
+      authTab.document.write(
+        '<html><head><meta name="referrer" content="no-referrer"></head>' +
+          '<body style="margin:0;background:#0f172a;color:#94a3b8;' +
+          'font-family:system-ui,sans-serif;display:grid;place-items:center;height:100vh">' +
+          'Opening authorization&hellip;</body></html>'
+      );
+      authTab.document.close();
     }
-    if (res.authorize_url) {
-      window.location.href = res.authorize_url;
-    } else {
-      setDestModalError(res.reason ?? 'Installation is not available.');
+    try {
+      const res = platform === 'slack' ? await startSlackInstall() : await startDiscordInstall();
+      if (!res?.authorize_url) {
+        authTab?.close();
+        setDestModalError(res?.reason ?? 'Installation is not available.');
+        return;
+      }
+      if (authTab) {
+        authTab.location.href = res.authorize_url;
+      } else {
+        // Popup/new-tab blocked — fall back to navigating this tab.
+        window.location.href = res.authorize_url;
+      }
+    } catch {
+      authTab?.close();
+      setDestModalError('Could not start the installation. Try again shortly.');
+    } finally {
+      setIsConnectingPlatform(false);
     }
   };
+
+  // Completion handshake: the auth tab reports its outcome, then closes.
+  useEffect(() => {
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return;
+      const data = ev.data as { source?: string; platform?: string; ok?: boolean; reason?: string };
+      if (data?.source !== 'oshift-integrations') return;
+      refreshDestinations();
+      setTestResultMsg({
+        ok: !!data.ok,
+        msg: data.ok
+          ? `${data.platform ?? 'Integration'} connected.`
+          : `${data.platform ?? 'Integration'} connection failed${data.reason ? ` — ${data.reason.replace(/_/g, ' ')}` : ''}`,
+      });
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [refreshDestinations]);
 
   // Mint a one-time code + t.me deep link; the user presses Start in Telegram.
   const startTelegramLink = async () => {
@@ -1395,7 +1438,8 @@ export default function NotificationSettings() {
                               the server or channel during authorization. No tokens, no webhook URLs.
                             </p>
                             <ul className="list-disc list-inside text-[10px] text-[var(--text-secondary)] space-y-0.5">
-                              <li>You choose exactly where briefs are posted.</li>
+                              <li>Opens in a new tab — it closes itself when done.</li>
+                              <li>You choose exactly where briefs are posted (a DM by default).</li>
                               <li>Revoke anytime by removing the OShift app in your workspace settings.</li>
                             </ul>
                           </div>
@@ -1407,7 +1451,7 @@ export default function NotificationSettings() {
                             style={{ backgroundColor: activePlatformModal.color }}
                           >
                             {isConnectingPlatform
-                              ? 'Redirecting…'
+                              ? 'Waiting for authorization…'
                               : `Connect ${activePlatformModal.name}`}
                           </button>
                           <div className="flex justify-end pt-4 border-t border-[var(--border-color)]">
