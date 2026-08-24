@@ -2,10 +2,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import PinterestVideoCard from '@/components/video/PinterestVideoCard';
 import VideoAnalyzerInput from '@/components/video/VideoAnalyzerInput';
 import VideoFilters from '@/components/video/VideoFilters';
-import VideoAnalysisModal from '@/components/video/VideoAnalysisModal';
+import VideoDetailView from '@/components/video/VideoDetailView';
 import SocialAccountsTab from '@/components/video/SocialAccountsTab';
 import ChannelVideoDeck from '@/components/video/ChannelVideoDeck';
 import { useVideos } from '@/hooks/use-videos';
@@ -44,6 +45,20 @@ export default function VideosPage() {
     analyzeVideoUrl,
     checkExistingVideo,
   } = useVideos();
+
+  // If a video asset is selected, render the dedicated in-place detail view (No popup modal!)
+  if (selectedAsset) {
+    return (
+      <div className="flex-1 overflow-y-auto min-h-0 relative px-4 sm:px-6 lg:px-8 py-5">
+        <div className="max-w-7xl mx-auto w-full">
+          <VideoDetailView
+            asset={selectedAsset}
+            onBack={() => setSelectedAsset(null)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto min-h-0 relative px-4 sm:px-6 lg:px-8 py-5 space-y-4">
@@ -157,6 +172,7 @@ export default function VideosPage() {
                     asset={asset}
                     onSelect={(selected) => setSelectedAsset(selected)}
                     aspectRatio={idx % 3 === 0 ? 'vertical' : idx % 2 === 0 ? 'portrait' : 'standard'}
+                    index={idx}
                   />
                 ))}
               </div>
@@ -209,6 +225,7 @@ export default function VideosPage() {
                       asset={asset}
                       onSelect={(selected) => setSelectedAsset(selected)}
                       aspectRatio={idx % 3 === 0 ? 'vertical' : idx % 2 === 0 ? 'portrait' : 'standard'}
+                      index={idx}
                     />
                   ))}
                 </div>
@@ -237,12 +254,6 @@ export default function VideosPage() {
             )}
           </div>
         )}
-
-        {/* ── MODAL INSPECTOR ── */}
-        <VideoAnalysisModal
-          asset={selectedAsset}
-          onClose={() => setSelectedAsset(null)}
-        />
       </div>
     </div>
   );
