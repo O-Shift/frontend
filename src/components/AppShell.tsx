@@ -18,7 +18,11 @@ const SHELL_EXCLUDED_ROUTES = [
     '/onboarding',
     '/workspaces',
     '/landing',
-    '/auth'
+    '/auth',
+    // OAuth landing pages open in a dedicated auth tab whose sessionStorage
+    // is empty — the workspace guard below would bounce them to /workspaces
+    // before they can postMessage the opener and close themselves.
+    '/integrations'
 ];
 
 function subscribeToWorkspace(callback: () => void): () => void {
