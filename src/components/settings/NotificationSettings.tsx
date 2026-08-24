@@ -327,21 +327,57 @@ export default function NotificationSettings() {
 
   // Start the platform-owned bot connect flow for Slack/Discord: creates a
   // pending destination server-side and sends the browser through OAuth.
+  // Start the platform-owned bot connect flow for Slack/Discord.
+  //
+  // The auth tab is opened SYNCHRONOUSLY (user gesture) pointing at a
+  // same-origin hop page, so browsers don't block it; once the install
+  // endpoint responds we navigate that tab to the authorize URL. The tab
+  // posts the outcome back and closes itself — this tab never navigates.
   const startOAuthConnect = async (platform: 'slack' | 'discord') => {
     setDestModalError(null);
     setIsConnectingPlatform(true);
-    const res = platform === 'slack' ? await startSlackInstall() : await startDiscordInstall();
-    setIsConnectingPlatform(false);
-    if (!res) {
+    const authTab = window.open(
+      `/integrations/connecting?platform=${platform}`,
+      'oshift-integration-auth'
+    );
+    try {
+      const res = platform === 'slack' ? await startSlackInstall() : await startDiscordInstall();
+      if (!res?.authorize_url) {
+        authTab?.close();
+        setDestModalError(res?.reason ?? 'Installation is not available.');
+        return;
+      }
+      if (authTab) {
+        authTab.location.href = res.authorize_url;
+      } else {
+        // Popup/new-tab blocked — fall back to navigating this tab.
+        window.location.href = res.authorize_url;
+      }
+    } catch {
+      authTab?.close();
       setDestModalError('Could not start the installation. Try again shortly.');
-      return;
-    }
-    if (res.authorize_url) {
-      window.location.href = res.authorize_url;
-    } else {
-      setDestModalError(res.reason ?? 'Installation is not available.');
+    } finally {
+      setIsConnectingPlatform(false);
     }
   };
+
+  // Completion handshake: the auth tab reports its outcome, then closes.
+  useEffect(() => {
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return;
+      const data = ev.data as { source?: string; platform?: string; ok?: boolean; reason?: string };
+      if (data?.source !== 'oshift-integrations') return;
+      refreshDestinations();
+      setTestResultMsg({
+        ok: !!data.ok,
+        msg: data.ok
+          ? `${data.platform ?? 'Integration'} connected.`
+          : `${data.platform ?? 'Integration'} connection failed${data.reason ? ` — ${data.reason.replace(/_/g, ' ')}` : ''}`,
+      });
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [refreshDestinations]);
 
   // Mint a one-time code + t.me deep link; the user presses Start in Telegram.
   const startTelegramLink = async () => {
@@ -1395,7 +1431,8 @@ export default function NotificationSettings() {
                               the server or channel during authorization. No tokens, no webhook URLs.
                             </p>
                             <ul className="list-disc list-inside text-[10px] text-[var(--text-secondary)] space-y-0.5">
-                              <li>You choose exactly where briefs are posted.</li>
+                              <li>Opens in a new tab — it closes itself when done.</li>
+                              <li>You choose exactly where briefs are posted (a DM by default).</li>
                               <li>Revoke anytime by removing the OShift app in your workspace settings.</li>
                             </ul>
                           </div>
@@ -1407,7 +1444,7 @@ export default function NotificationSettings() {
                             style={{ backgroundColor: activePlatformModal.color }}
                           >
                             {isConnectingPlatform
-                              ? 'Redirecting…'
+                              ? 'Waiting for authorization…'
                               : `Connect ${activePlatformModal.name}`}
                           </button>
                           <div className="flex justify-end pt-4 border-t border-[var(--border-color)]">
