@@ -1,5 +1,5 @@
-import PartnershipsSkeleton from '@/components/skeletons/PartnershipsSkeleton';
+import PartnershipsSkeletonMatched from '@/components/skeletons/PartnershipsSkeletonMatched';
 
 export default function Loading() {
-    return <PartnershipsSkeleton />;
+    return <PartnershipsSkeletonMatched />;
 }
