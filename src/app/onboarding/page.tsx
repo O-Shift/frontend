@@ -781,7 +781,7 @@ export default function IntelligenceBriefing() {
 
     // --- RIGHT PANEL RENDERING ---
     const renderRightPanel = () => {
-        const isRunning = isProcessing || step === 1 || step === 7;
+
 
         return (
             <div className="ob-radar-container">
