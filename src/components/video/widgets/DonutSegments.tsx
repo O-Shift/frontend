@@ -30,8 +30,6 @@ export default function DonutSegments({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  let accumulatedPercent = 0;
-
   return (
     <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 flex flex-col justify-between shadow-sm hover:border-white/20 transition-all">
       {/* Header */}
@@ -62,9 +60,11 @@ export default function DonutSegments({
 
             {/* Segment arcs */}
             {items.map((item, idx) => {
+              const accumulatedOffset = items
+                .slice(0, idx)
+                .reduce((sum, prev) => sum + prev.percentage, 0);
               const strokeDasharray = `${(item.percentage / 100) * circumference} ${circumference}`;
-              const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
-              accumulatedPercent += item.percentage;
+              const strokeDashoffset = -((accumulatedOffset / 100) * circumference);
 
               return (
                 <motion.circle
