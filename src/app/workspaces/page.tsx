@@ -269,7 +269,7 @@ export default function WorkspacesPage() {
           </div>
         )}
 
-        {!ready &&
+        {ready &&
           (createOpen || workspaces.length === 0 ? (
             <form className="ws-create-form" onSubmit={createWorkspace}>
               <input
@@ -279,7 +279,7 @@ export default function WorkspacesPage() {
                 placeholder="Workspace name"
                 aria-label="New workspace name"
                 maxLength={100}
-                autoFocus={createOpen}
+                autoFocus={createOpen || workspaces.length === 0}
                 required
               />
               <button type="submit" className="ws-create-submit" disabled={creating}>

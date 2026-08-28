@@ -4,26 +4,45 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Mail, AlertCircle } from 'lucide-react';
 import AuthRightPanel from '@/components/AuthRightPanel';
+import { createClient } from '@/utils/supabase/client';
 
 export default function ForgotPasswordPage() {
     const [isSent, setIsSent] = useState(false);
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!email) {
+        const cleanEmail = email.trim();
+        if (!cleanEmail) {
             setError('Please enter your email address');
             return;
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
             setError('Please enter a valid email address');
             return;
         }
 
         setError('');
-        // BACKEND: supabase.auth.resetPasswordForEmail(email, { redirectTo: '/update-password' })
-        setIsSent(true);
+        setLoading(true);
+
+        try {
+            const supabase = createClient();
+            const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/update-password` : undefined;
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo });
+
+            if (resetError) {
+                setError(resetError.message);
+                return;
+            }
+            setIsSent(true);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+            setError(message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -48,7 +67,7 @@ export default function ForgotPasswordPage() {
                     </div>
 
                     {!isSent ? (
-                        <form className="auth-form" onSubmit={handleSubmit}>
+                        <form className="auth-form" onSubmit={handleSubmit} noValidate>
                             <div className="auth-field">
                                 <div className={`auth-input-wrapper ${error ? 'error' : ''}`}>
                                     <Mail className="auth-input-icon" />
@@ -63,12 +82,19 @@ export default function ForgotPasswordPage() {
                                         }}
                                     />
                                 </div>
-                                {error && <div className="auth-error-text">{error}</div>}
+                                {error && (
+                                    <div className="auth-error-text">
+                                        <AlertCircle style={{ width: 14, height: 14, flexShrink: 0 }} />
+                                        <span>{error}</span>
+                                    </div>
+                                )}
                             </div>
 
-                            <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-                                Send Reset Link
-                                <span className="btn-icon">→</span>
+                            <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
+                                {loading ? 'Sending…' : 'Send Reset Link'}
+                                {!loading ? (
+                                    <span className="btn-icon">→</span>
+                                ) : null}
                             </button>
                         </form>
                     ) : (
@@ -77,10 +103,7 @@ export default function ForgotPasswordPage() {
                             <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '2rem', fontSize: '1.05rem' }}>
                                 We&apos;ve sent a secure link to update your password. Kindly check your inbox.
                             </p>
-                            {/* Temporary link for testing purposes since emails aren't real yet */}
-                            <Link href="/update-password" style={{ display: 'inline-block', padding: '0.9rem 1.5rem', background: 'var(--accent)', color: 'var(--bg-body)', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, fontSize: '0.95rem' }}>
-                                [Simulate Email Link: Update Password]
-                            </Link>
+                            
                         </div>
                     )}
 

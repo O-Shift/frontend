@@ -28,15 +28,16 @@ const NotificationSettings = dynamic(() => import('@/components/settings/Notific
   ),
 });
 
-const SampleBadge = () => (
-  <span style={{ fontSize: 10, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle', textTransform: 'uppercase', fontWeight: 600 }}>Mock data</span>
-);
+
 
 export default function SettingsPage() {
   const router = useRouter();
   const { users, featureFlags, updateFeatureFlag } = useSettings();
   const [activeTab, setActiveTab] = useState('main');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
+  const [resetError, setResetError] = useState('');
   const { theme, toggle } = useTheme();
 
   // PromptField State
@@ -85,6 +86,32 @@ export default function SettingsPage() {
     sessionStorage.removeItem('oshift.workspace_id');
     router.push('/login');
     router.refresh();
+  };
+
+  const handlePasswordReset = async () => {
+    setSendingReset(true);
+    setResetMessage('');
+    setResetError('');
+    try {
+      const supabase = createClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user || !user.email) {
+        setResetError('Unable to retrieve your account email.');
+        return;
+      }
+      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/update-password` : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo });
+      if (error) {
+        setResetError(error.message);
+      } else {
+        setResetMessage('Reset link sent to your email.');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setResetError(message);
+    } finally {
+      setSendingReset(false);
+    }
   };
 
   const renderHeader = (title: string) => (
@@ -200,12 +227,14 @@ export default function SettingsPage() {
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
                     <div>
-                      <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Password Reset <SampleBadge /></h3>
+                      <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Password Reset</h3>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Send a password reset link to your email.</p>
+                      {resetError && <p style={{ fontSize: 13, color: 'var(--color-danger)', margin: '4px 0 0' }}>{resetError}</p>}
+                      {resetMessage && <p style={{ fontSize: 13, color: 'var(--color-success)', margin: '4px 0 0' }}>{resetMessage}</p>}
                     </div>
                   </div>
-                  <button className="rounded-md" style={{ background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--text-primary)', padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                    Send Link
+                  <button onClick={handlePasswordReset} disabled={sendingReset} className="rounded-md" style={{ background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--text-primary)', padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: sendingReset ? 'wait' : 'pointer', opacity: sendingReset ? 0.7 : 1 }}>
+                    {sendingReset ? 'Sending…' : 'Send Link'}
                   </button>
                 </div>
 

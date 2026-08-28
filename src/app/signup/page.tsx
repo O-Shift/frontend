@@ -89,13 +89,17 @@ export default function SignupPage() {
         setLoading(false);
 
         if (signUpError) {
-            const msg = signUpError.message.toLowerCase();
-            if (msg.includes('already registered') || msg.includes('already exists')) {
+            let errorMsg = signUpError.message;
+            if (!errorMsg || errorMsg === '{}' || typeof errorMsg !== 'string') {
+                errorMsg = 'An unexpected error occurred. If you already have an account, please log in.';
+            }
+            const lower = errorMsg.toLowerCase();
+            if (lower.includes('already registered') || lower.includes('already exists') || lower.includes('duplicate key') || lower.includes('23505') || (signUpError as any).code === '23505') {
                 setErrors({ general: 'An account with this email already exists. Log in instead.' });
                 track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: 'email_already_registered' });
             } else {
-                setErrors({ general: signUpError.message });
-                track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: signUpError.message });
+                setErrors({ general: errorMsg });
+                track(EVENTS.SIGNUP_FAILED, { method: 'password', reason: errorMsg });
             }
             return;
         }
