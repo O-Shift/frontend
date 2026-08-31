@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import AnalyticsIdentity from "@/components/AnalyticsIdentity";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PinnedProvider } from "@/context/PinnedContext";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -48,6 +49,7 @@ export default function RootLayout({
         <ThemeProvider>
           <PinnedProvider>
             <AppShell>{children}</AppShell>
+            <ToastProvider />
           </PinnedProvider>
         </ThemeProvider>
       </body>

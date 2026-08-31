@@ -11,6 +11,9 @@ import { extractDomain } from '@/lib/utils/domain';
 import { logoUrl } from '@/lib/logos';
 import { stringToHue } from '@/lib/colors';
 import { useCompetitors } from '@/hooks/use-competitors';
+import { toast } from '@/lib/toast';
+import { ConfirmDialog } from '@/components/error/ConfirmDialog';
+import { WidgetErrorBoundary } from '@/components/error/WidgetErrorBoundary';
 
 function getBrandColors(domain: string) {
   const knownBrands: Record<string, [string, string]> = {
@@ -98,6 +101,7 @@ export default function CompetitorsPage() {
   const [newCompDesc, setNewCompDesc] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     document.body.classList.toggle('is-thinking-active', isThinking);
@@ -110,6 +114,7 @@ export default function CompetitorsPage() {
         setCommandActive(false);
         setSidebarCollapsed(true);
         setIsAddModalOpen(false);
+        setDeleteTargetId(null);
       }
     };
     window.addEventListener('keydown', onEsc);
@@ -141,19 +146,27 @@ export default function CompetitorsPage() {
       setNewCompDesc('');
       setIsAddModalOpen(false);
       loadCompetitors();
+      toast.success('Competitor added successfully');
     } else {
       setAddError(res.error || 'Failed to add competitor');
+      toast.error(res.error || 'Failed to add competitor', { ref: res.ref });
     }
   };
 
-  const handleDeleteCompetitor = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteCompetitor = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to remove this competitor?')) return;
-    // The hook filters its own list on success; a failure is surfaced here so
-    // the user still gets the same alert as before.
+    setDeleteTargetId(id);
+  };
+
+  const confirmDeleteCompetitor = async () => {
+    if (!deleteTargetId) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
     const res = await removeCompetitor(id);
     if (!res.ok) {
-      alert(res.error || 'Failed to delete competitor');
+      toast.error(res.error || 'Failed to delete competitor', { ref: res.ref });
+    } else {
+      toast.success('Competitor removed');
     }
   };
 
@@ -195,9 +208,8 @@ export default function CompetitorsPage() {
     if (!ok) {
       // pin/unpin never throw; they record the reason on the context's `error`,
       // which the banner renders. The banner is at the top of a scrolling grid
-      // and this card may be well below it, so write failures also alert — the
-      // same way handleDeleteCompetitor reports its own.
-      alert(wasPinned ? 'Failed to unpin this competitor.' : 'Failed to pin this competitor.');
+      // and this card may be well below it, so write failures also notify.
+      toast.error(wasPinned ? 'Failed to unpin this competitor.' : 'Failed to pin this competitor.');
     }
   };
 
@@ -389,13 +401,18 @@ export default function CompetitorsPage() {
             )}
           </div>
         ) : (
-          <motion.div layout style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: 32,
-            width: '100%',
-            maxWidth: 1000
-          }}>
+          <WidgetErrorBoundary
+            title="Competitors Grid Error"
+            message="An error occurred while displaying competitors."
+            className="w-full max-w-[1000px]"
+          >
+            <motion.div layout style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: 32,
+              width: '100%',
+              maxWidth: 1000
+            }}>
             {filtered.map((company, i) => {
               const domain = extractDomain(company.website);
               const [c1, c2] = getBrandColors(domain);
@@ -646,7 +663,8 @@ export default function CompetitorsPage() {
                 </div>
               );
             })}
-          </motion.div>
+            </motion.div>
+          </WidgetErrorBoundary>
         )}
       </div>
 
@@ -826,6 +844,15 @@ export default function CompetitorsPage() {
         onThinkingChange={setIsThinking}
       />
 
+      <ConfirmDialog
+        isOpen={!!deleteTargetId}
+        title="Remove Competitor"
+        description="Are you sure you want to remove this competitor? This will remove them from your workspace tracking."
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={confirmDeleteCompetitor}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </>
   );
 }

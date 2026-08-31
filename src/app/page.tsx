@@ -9,6 +9,7 @@ import { useDashboard, type Rail } from '@/hooks/use-dashboard';
 import { apiFetch, updateOpportunityStatus, campaignThemes, campaignThumbnails, type Campaign, type SenseReview } from '@/lib/api';
 import { extractDomain } from '@/lib/utils/domain';
 import { getDeckArtwork, getDeckCardStyle } from '@/lib/campaign-artwork';
+import { WidgetErrorBoundary } from '@/components/error/WidgetErrorBoundary';
 
 // recharts is 340 KB and the analytics panel it draws is the last thing on the
 // dashboard, below three cards of content. Loading it on its own chunk lets the
@@ -287,9 +288,15 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     
                     {/* ── TOP LEFT (Span 2): LATEST CAMPAIGN HERO ── */}
+                    <div className="col-span-1 lg:col-span-2 h-full">
+                    <WidgetErrorBoundary
+                        title="Campaign Performance Unavailable"
+                        message="An error occurred while rendering the latest campaign performance card."
+                        resetKeys={[activeCamp?.id, campaignIdx]}
+                    >
                     <motion.div 
                         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.05 }}
-                        className="col-span-1 lg:col-span-2 flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 h-full min-h-[380px]"
+                        className="flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 h-full min-h-[380px]"
                     >
                         <div className="flex items-center justify-between mb-6">
                             <span className="text-base font-medium text-[var(--text-primary)]">Latest campaign performance</span>
@@ -386,11 +393,18 @@ export default function DashboardPage() {
                             )}
                         </div>
                     </motion.div>
+                    </WidgetErrorBoundary>
+                    </div>
 
                     {/* ── TOP RIGHT (Span 1): HIGH-LEVEL KPIs ── */}
+                    <div className="col-span-1 h-full">
+                    <WidgetErrorBoundary
+                        title="KPI Summary Unavailable"
+                        message="An error occurred while computing key performance indicators."
+                    >
                     <motion.div 
                         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}
-                        className="col-span-1 flex flex-col gap-4 h-full"
+                        className="flex flex-col gap-4 h-full"
                     >
                         {stats.map((kpi, i) => (
                             <div key={i} className="flex items-center justify-between bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 flex-1">
@@ -411,11 +425,19 @@ export default function DashboardPage() {
                             </div>
                         ))}
                     </motion.div>
+                    </WidgetErrorBoundary>
+                    </div>
 
                     {/* ── BOTTOM LEFT (Span 2): PERFORMANCE CHARTS ── */}
+                    <div className="col-span-1 lg:col-span-2">
+                    <WidgetErrorBoundary
+                        title="Analytics Chart Unavailable"
+                        message="An error occurred while rendering the historical analytics chart."
+                        resetKeys={[activeChart, chartData.length]}
+                    >
                     <motion.div 
                         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.15 }} 
-                        className="col-span-1 lg:col-span-2 flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6"
+                        className="flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6"
                     >
                         <div className="flex justify-between items-center mb-8">
                             <div className="flex items-center">
@@ -462,11 +484,19 @@ export default function DashboardPage() {
                             ))}
                         </div>
                     </motion.div>
+                    </WidgetErrorBoundary>
+                    </div>
 
                     {/* ── BOTTOM RIGHT (Span 1): ACTION CENTERS ── */}
+                    <div className="col-span-1">
+                    <WidgetErrorBoundary
+                        title="Action Center Unavailable"
+                        message="An error occurred while loading action items."
+                        resetKeys={[gaps.items.length, opportunities.items.length]}
+                    >
                     <motion.div 
                         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.2 }} 
-                        className="col-span-1 flex flex-col gap-6"
+                        className="flex flex-col gap-6"
                     >
                         <div className="flex flex-col bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6">
                             <h3 className="text-base font-medium text-[var(--text-primary)] mb-5">Action center</h3>
@@ -526,10 +556,17 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     </motion.div>
+                    </WidgetErrorBoundary>
+                    </div>
 
                 </div>
 
                 {/* ── CUSTOMER REVIEWS (Horizontal Scroll) ── */}
+                <WidgetErrorBoundary
+                    title="Customer Sentiment Unavailable"
+                    message="An error occurred while loading customer reviews."
+                    resetKeys={[reviews.items.length]}
+                >
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -581,7 +618,7 @@ export default function DashboardPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex gap-1.5 text-[var(--text-primary)]">
                                             {[...Array(5)].map((_, idx) => (
-                                                <svg key={idx} width="16" height="16" viewBox="0 0 24 24" fill={idx < (rev.rating || 0) ? "currentColor" : "none"} stroke={idx < (rev.rating || 0) ? "none" : "currentColor"} strokeWidth="2" className={idx >= (rev.rating || 0) ? "opacity-20" : ""}>
+                                                 <svg key={idx} width="16" height="16" viewBox="0 0 24 24" fill={idx < (rev.rating || 0) ? "currentColor" : "none"} stroke={idx < (rev.rating || 0) ? "none" : "currentColor"} strokeWidth="2" className={idx >= (rev.rating || 0) ? "opacity-20" : ""}>
                                                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                                                 </svg>
                                             ))}
@@ -592,8 +629,14 @@ export default function DashboardPage() {
                         ))}
                     </div>
                 </motion.div>
+                </WidgetErrorBoundary>
 
                 {/* ── MY CAMPAIGNS (Horizontal Scroll) ── */}
+                <WidgetErrorBoundary
+                    title="My Campaigns Unavailable"
+                    message="An error occurred while displaying your campaigns."
+                    resetKeys={[campaigns.items.length]}
+                >
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -618,6 +661,7 @@ export default function DashboardPage() {
                         ))}
                     </div>
                 </motion.div>
+                </WidgetErrorBoundary>
 
             </div>
         </div>

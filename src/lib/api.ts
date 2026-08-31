@@ -1,5 +1,5 @@
-import { createClient } from "@/utils/supabase/client";
-import { getApiBaseUrl } from "@/lib/auth/constants";
+import { createClient } from "../utils/supabase/client.ts";
+import { getApiBaseUrl } from "./auth/constants.ts";
 import type {
   VideoAsset,
   VideoCollectRequest,
@@ -7,12 +7,16 @@ import type {
   VideoDownloadRequest,
   VideoDownloadResponse,
   VideoLookupResponse,
-} from "@/types/entities";
+} from "../types/entities.ts";
 
 export async function getAccessToken(): Promise<string | null> {
-  const supabase = createClient();
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function signInWithGoogle(nextPath: string = "/workspaces") {
@@ -27,74 +31,346 @@ export async function signInWithGoogle(nextPath: string = "/workspaces") {
   });
 }
 
+export interface ErrorFieldDetail {
+  /** The path or name of the field that caused the error (e.g. 'name', 'website', 'items.0.url') */
+  field?: string;
+  /** Human-readable explanation of the validation error */
+  message: string;
+  /** Granular error code for the specific field validation failure */
+  code?: string;
+}
+
+export interface ProblemDetails {
+  /** RFC 9457 URI reference identifying the error type (e.g. 'https://errors.oshift.ai/DATABASE_UNAVAILABLE') */
+  type: string;
+  /** RFC 9457 short human-readable summary (e.g. 'Service Unavailable') */
+  title: string;
+  /** HTTP status code (e.g. 503) */
+  status: number;
+  /** Human-readable explanation of this occurrence */
+  detail: string;
+  /** URI identifying specific occurrence (e.g. '/v1/opportunities') */
+  instance?: string;
+  /** Stable domain error code from taxonomy (e.g. 'DATABASE_UNAVAILABLE', 'VALIDATION_FAILED', 'RATE_LIMITED') */
+  code?: string;
+  /** High-entropy Crockford Base32 correlation reference ID (e.g. 'ERR-8F3K2') */
+  ref?: string;
+  /** Whether the error is transient/retryable */
+  retryable?: boolean;
+  /** Recommended backoff in seconds before retrying */
+  retry_after_seconds?: number;
+  /** UTC timestamp in ISO 8601 format */
+  timestamp?: string;
+  /** Granular field validation or sub-item errors */
+  errors?: ErrorFieldDetail[];
+  /** Open index signature for RFC 9457 extensions */
+  [key: string]: unknown;
+}
+
+function statusToErrorCode(status: number): string {
+  switch (status) {
+    case 400: return "BAD_REQUEST";
+    case 401: return "AUTHENTICATION_REQUIRED";
+    case 403: return "PERMISSION_DENIED";
+    case 404: return "RESOURCE_NOT_FOUND";
+    case 409: return "RESOURCE_CONFLICT";
+    case 422: return "VALIDATION_FAILED";
+    case 429: return "RATE_LIMITED";
+    case 499: return "REQUEST_ABORTED";
+    case 500: return "UNEXPECTED_ERROR";
+    case 502: return "UPSTREAM_5XX_ERROR";
+    case 503: return "SERVICE_UNAVAILABLE";
+    case 504: return "UPSTREAM_TIMEOUT";
+    default:
+      if (status >= 400 && status < 500) return "CLIENT_ERROR";
+      if (status >= 500) return "INTERNAL_ERROR";
+      return "UNKNOWN_ERROR";
+  }
+}
+
+function statusToTitle(status: number): string {
+  switch (status) {
+    case 400: return "Bad Request";
+    case 401: return "Unauthorized";
+    case 403: return "Forbidden";
+    case 404: return "Not Found";
+    case 409: return "Conflict";
+    case 422: return "Validation Error";
+    case 429: return "Too Many Requests";
+    case 499: return "Request Cancelled";
+    case 500: return "Internal Server Error";
+    case 502: return "Bad Gateway";
+    case 503: return "Service Unavailable";
+    case 504: return "Gateway Timeout";
+    default:
+      if (status >= 400 && status < 500) return "Client Error";
+      if (status >= 500) return "Server Error";
+      return "Error";
+  }
+}
+
+export class ApiError extends Error {
+  public readonly status: number;
+  public readonly code: string;
+  public readonly ref?: string;
+  public readonly requestId?: string;
+  public readonly instance?: string;
+  public readonly retryable: boolean;
+  public readonly retryAfterSeconds?: number;
+  public readonly errors: ErrorFieldDetail[];
+  public readonly problem?: ProblemDetails;
+  public readonly headers?: Headers;
+
+  // Ergonomic classification flags
+  public readonly isNetworkError: boolean;
+  public readonly isTimeout: boolean;
+  public readonly isAborted: boolean;
+  public readonly isRateLimited: boolean;
+  public readonly isAuthError: boolean;
+  public readonly isClientError: boolean;
+  public readonly isServerError: boolean;
+
+  constructor(params: {
+    message: string;
+    status: number;
+    code?: string;
+    ref?: string;
+    requestId?: string;
+    instance?: string;
+    retryable?: boolean;
+    retryAfterSeconds?: number;
+    errors?: ErrorFieldDetail[];
+    problem?: ProblemDetails;
+    headers?: Headers;
+    cause?: unknown;
+  }) {
+    super(params.message);
+    this.name = "ApiError";
+    this.status = params.status;
+    this.code = params.code || statusToErrorCode(params.status);
+    this.ref = params.ref;
+    this.requestId = params.requestId;
+    this.instance = params.instance;
+    this.retryable = params.retryable ?? (params.status === 429 || params.status === 502 || params.status === 503 || params.status === 504);
+    this.retryAfterSeconds = params.retryAfterSeconds;
+    this.errors = params.errors || [];
+    this.problem = params.problem;
+    this.headers = params.headers;
+    if (params.cause) {
+      this.cause = params.cause;
+    }
+
+    this.isNetworkError = this.status === 0 || this.code === "NETWORK_CONNECTION_FAILED";
+    this.isTimeout = this.code === "UPSTREAM_TIMEOUT" || this.code === "REQUEST_TIMEOUT" || this.status === 504;
+    this.isAborted = this.code === "REQUEST_ABORTED" || this.status === 499;
+    this.isRateLimited = this.status === 429 || this.code === "RATE_LIMITED";
+    this.isAuthError = this.status === 401 || this.status === 403 || this.code === "AUTHENTICATION_REQUIRED" || this.code === "PERMISSION_DENIED";
+    this.isClientError = this.status >= 400 && this.status < 500;
+    this.isServerError = this.status >= 500 && this.status < 600;
+  }
+
+  /** Formats a safe, actionable user-facing message with correlation reference if available */
+  public getUserMessage(): string {
+    if (this.ref) {
+      return `${this.message} (Reference: ${this.ref})`;
+    }
+    return this.message;
+  }
+
+  /** Returns field-keyed validation messages for easy form binding */
+  public getFieldErrors(): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const err of this.errors) {
+      if (err.field && err.message) {
+        result[err.field] = err.message;
+      }
+    }
+    return result;
+  }
+
+  /** Factory from parsed RFC 9457 ProblemDetails object */
+  public static fromProblem(
+    problem: ProblemDetails,
+    headers?: Headers,
+    requestId?: string
+  ): ApiError {
+    const ref = problem.ref || headers?.get("x-error-ref") || undefined;
+    const retryAfterHeader = headers?.get("retry-after");
+    const parsedRetryAfter = retryAfterHeader ? parseFloat(retryAfterHeader) : undefined;
+    const retryAfterSeconds = problem.retry_after_seconds ?? (Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : undefined);
+
+    return new ApiError({
+      message: problem.detail || problem.title || "An error occurred",
+      status: problem.status,
+      code: problem.code,
+      ref,
+      requestId: requestId || headers?.get("x-request-id") || undefined,
+      instance: problem.instance,
+      retryable: problem.retryable,
+      retryAfterSeconds: Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : undefined,
+      errors: problem.errors,
+      problem,
+      headers,
+    });
+  }
+
+  /** Factory for network drop / DNS / CORS / offline errors */
+  public static fromNetworkError(
+    err: unknown,
+    url?: string,
+    requestId?: string
+  ): ApiError {
+    const msg = err instanceof Error ? err.message : "Network connection failed";
+    const problem: ProblemDetails = {
+      type: "https://errors.oshift.ai/NETWORK_CONNECTION_FAILED",
+      title: "Network Connection Failed",
+      status: 0,
+      detail: msg,
+      code: "NETWORK_CONNECTION_FAILED",
+      instance: url,
+      retryable: true,
+      timestamp: new Date().toISOString(),
+      errors: [],
+    };
+    return new ApiError({
+      message: msg,
+      status: 0,
+      code: "NETWORK_CONNECTION_FAILED",
+      instance: url,
+      requestId,
+      retryable: true,
+      problem,
+      cause: err,
+    });
+  }
+
+  /** Factory for client-side timeout bounds */
+  public static fromTimeout(
+    timeoutMs: number,
+    url?: string,
+    requestId?: string
+  ): ApiError {
+    const msg = `Request timed out after ${Math.round(timeoutMs / 1000)}s`;
+    const problem: ProblemDetails = {
+      type: "https://errors.oshift.ai/UPSTREAM_TIMEOUT",
+      title: "Gateway Timeout",
+      status: 504,
+      detail: msg,
+      code: "UPSTREAM_TIMEOUT",
+      instance: url,
+      retryable: true,
+      timestamp: new Date().toISOString(),
+      errors: [],
+    };
+    return new ApiError({
+      message: msg,
+      status: 504,
+      code: "UPSTREAM_TIMEOUT",
+      instance: url,
+      requestId,
+      retryable: true,
+      problem,
+    });
+  }
+
+  /** Factory for deliberate user cancellation / navigation aborts */
+  public static fromAbort(url?: string, requestId?: string): ApiError {
+    const msg = "Request was cancelled";
+    const problem: ProblemDetails = {
+      type: "https://errors.oshift.ai/REQUEST_ABORTED",
+      title: "Request Cancelled",
+      status: 499,
+      detail: msg,
+      code: "REQUEST_ABORTED",
+      instance: url,
+      retryable: false,
+      timestamp: new Date().toISOString(),
+      errors: [],
+    };
+    return new ApiError({
+      message: msg,
+      status: 499,
+      code: "REQUEST_ABORTED",
+      instance: url,
+      requestId,
+      retryable: false,
+      problem,
+    });
+  }
+}
+
+export interface ApiFetchOptions extends RequestInit {
+  skipWorkspace?: boolean;
+  /** Skip authentication check (useful for unauthenticated public endpoints and unit tests) */
+  skipAuth?: boolean;
+  /** Timeout in milliseconds (default: 30,000ms / 30s). Set to 0 or Infinity to disable. */
+  timeoutMs?: number;
+  /** Explicit request ID for tracing. If omitted, a unique client request ID is generated. */
+  requestId?: string;
+}
+
 export type ApiResult<T> =
-  | { ok: true; data: T; status: number }
-  | { ok: false; error: string; status: number };
+  | {
+      ok: true;
+      data: T;
+      status: number;
+      headers?: Headers;
+      requestId?: string;
+    }
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      problem?: ProblemDetails;
+      apiError: ApiError;
+      ref?: string;
+      requestId?: string;
+    };
 
 const WORKSPACE_STORAGE_KEY = "oshift.workspace_id";
 
-/**
- * Workspace resolution, in one place.
- *
- * sessionStorage is the source of truth: it holds the workspace the user picked
- * on /workspaces, and it is read on every call rather than shadowed by a module
- * variable. An earlier version cached the id in `cachedWorkspaceId` and checked
- * that *first*, which meant an auto-resolved guess made before the user chose
- * anything outranked the choice they then made, for the rest of the tab's life.
- * getItem is a synchronous local read; there was never anything to save here.
- * The network round trip was the cost worth removing, and `inFlight` below still
- * removes it.
- */
 let inFlightWorkspaceId: Promise<string | null> | null = null;
 
 function readStoredWorkspaceId(): string | null {
   if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(WORKSPACE_STORAGE_KEY);
+  try {
+    return sessionStorage.getItem(WORKSPACE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
 }
 
-/** Records the active workspace so apiFetch and sseStream both see it. */
 export function setActiveWorkspaceId(id: string): void {
   if (typeof window !== "undefined") {
-    sessionStorage.setItem(WORKSPACE_STORAGE_KEY, id);
+    try {
+      sessionStorage.setItem(WORKSPACE_STORAGE_KEY, id);
+    } catch {
+      // Ignore private mode storage restrictions
+    }
     window.dispatchEvent(
       new CustomEvent("oshift:workspace-changed", { detail: { workspaceId: id } }),
     );
   }
 }
 
-/**
- * The active workspace, or null when the user has not picked one yet.
- *
- * Exported so callers that need to *display* the active workspace read it from
- * the same place apiFetch does, rather than repeating the storage key.
- */
 export function getActiveWorkspaceId(): string | null {
   return readStoredWorkspaceId();
 }
 
-/** Clears the cached workspace, e.g. on sign-out or an explicit switch. */
 export function clearActiveWorkspaceId(): void {
   inFlightWorkspaceId = null;
   if (typeof window !== "undefined") {
-    sessionStorage.removeItem(WORKSPACE_STORAGE_KEY);
+    try {
+      sessionStorage.removeItem(WORKSPACE_STORAGE_KEY);
+    } catch {
+      // Ignore
+    }
     window.dispatchEvent(
       new CustomEvent("oshift:workspace-changed", { detail: { workspaceId: null } }),
     );
   }
 }
 
-/**
- * The workspace to send, resolving it from the API on a cache miss.
- *
- * Mirrors `require_role` in app/auth/deps.py exactly: a workspace is auto-
- * resolved only when the user belongs to exactly one. Past that the backend
- * refuses to guess, and so does this — `/core/workspaces` is ordered
- * `created_at DESC`, so taking `data[0]` hands a multi-workspace user their
- * newest workspace, which for anyone who has ever created a scratch workspace
- * is an empty one. Returning null there produces an honest 403 the caller can
- * route to /workspaces on, instead of silently rendering the wrong tenant's
- * (usually empty) data as if it were theirs.
- */
 export async function resolveWorkspaceId(): Promise<string | null> {
   const stored = readStoredWorkspaceId();
   if (stored) return stored;
@@ -110,8 +386,7 @@ export async function resolveWorkspaceId(): Promise<string | null> {
         return res.data[0].id;
       }
     } catch {
-      // Falls through to null: a missing header is a 403 from the backend,
-      // which the caller surfaces, and is preferable to throwing here.
+      // Falls through to null
     } finally {
       inFlightWorkspaceId = null;
     }
@@ -121,31 +396,203 @@ export async function resolveWorkspaceId(): Promise<string | null> {
   return inFlightWorkspaceId;
 }
 
-/** One item of a FastAPI validation-error `detail` array (422 responses). */
 export interface ValidationDetail {
   loc: (string | number)[];
   msg: string;
   type: string;
 }
 
-function isValidationDetail(d: unknown): d is ValidationDetail {
-  return (
-    typeof d === "object" &&
-    d !== null &&
-    "msg" in d &&
-    typeof (d as { msg: unknown }).msg === "string" &&
-    "loc" in d &&
-    Array.isArray((d as { loc: unknown }).loc)
-  );
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+function createTimeoutController(
+  callerSignal?: AbortSignal | null,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): {
+  controller: AbortController;
+  cleanup: () => void;
+  isTimeout: () => boolean;
+} {
+  const controller = new AbortController();
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const onCallerAbort = () => {
+    if (!controller.signal.aborted) {
+      controller.abort();
+    }
+  };
+
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      controller.abort();
+    } else {
+      callerSignal.addEventListener("abort", onCallerAbort, { once: true });
+    }
+  }
+
+  if (timeoutMs > 0 && timeoutMs !== Infinity) {
+    timer = setTimeout(() => {
+      timedOut = true;
+      if (!controller.signal.aborted) {
+        controller.abort();
+      }
+    }, timeoutMs);
+  }
+
+  const cleanup = () => {
+    if (timer) clearTimeout(timer);
+    if (callerSignal) {
+      callerSignal.removeEventListener("abort", onCallerAbort);
+    }
+  };
+
+  return {
+    controller,
+    cleanup,
+    isTimeout: () => timedOut,
+  };
+}
+
+export function parseProblemDetails(
+  status: number,
+  statusText: string,
+  rawText: string,
+  url: string,
+  headers: Headers
+): ProblemDetails {
+  const defaultCode = statusToErrorCode(status);
+  const defaultTitle = statusToTitle(status);
+  const refHeader = headers.get("x-error-ref") || undefined;
+  const retryAfterHeader = headers.get("retry-after");
+  const parsedRetryAfter = retryAfterHeader ? parseFloat(retryAfterHeader) : undefined;
+  const retryAfterSeconds = Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : undefined;
+
+  let parsed: unknown = null;
+  if (rawText && rawText.trim()) {
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const obj = parsed as Record<string, unknown>;
+
+    // Case 1: Standard RFC 9457 ProblemDetails
+    if ("type" in obj && "title" in obj && "status" in obj) {
+      const fieldErrors: ErrorFieldDetail[] = Array.isArray(obj.errors)
+        ? (obj.errors as ErrorFieldDetail[])
+        : [];
+      return {
+        type: String(obj.type || `https://errors.oshift.ai/${defaultCode}`),
+        title: String(obj.title || defaultTitle),
+        status: typeof obj.status === "number" ? obj.status : status,
+        detail: String(obj.detail || obj.title || statusText),
+        instance: typeof obj.instance === "string" ? obj.instance : url,
+        code: typeof obj.code === "string" ? obj.code : defaultCode,
+        ref: typeof obj.ref === "string" ? obj.ref : refHeader,
+        retryable: typeof obj.retryable === "boolean" ? obj.retryable : (status === 429 || status >= 502),
+        retry_after_seconds: typeof obj.retry_after_seconds === "number" ? obj.retry_after_seconds : retryAfterSeconds,
+        timestamp: typeof obj.timestamp === "string" ? obj.timestamp : new Date().toISOString(),
+        errors: fieldErrors,
+      };
+    }
+
+    // Case 2: FastAPI legacy 422 validation ({ detail: [ { loc, msg, type } ] })
+    if (Array.isArray(obj.detail)) {
+      const fieldErrors: ErrorFieldDetail[] = obj.detail.map((d: unknown) => {
+        if (d && typeof d === "object" && "msg" in d) {
+          const item = d as { loc?: unknown[]; msg: unknown; type?: unknown };
+          const locParts = Array.isArray(item.loc)
+            ? item.loc.filter((p) => p !== "body").map(String)
+            : [];
+          return {
+            field: locParts.join(".") || "request",
+            message: String(item.msg),
+            code: typeof item.type === "string" ? item.type : "INVALID_FIELD",
+          };
+        }
+        return { message: JSON.stringify(d) };
+      });
+      const summaryMsg = fieldErrors.map((e) => (e.field ? `${e.field}: ${e.message}` : e.message)).join("; ");
+      return {
+        type: "https://errors.oshift.ai/VALIDATION_FAILED",
+        title: "Validation Error",
+        status: status === 200 ? 422 : status,
+        detail: summaryMsg || "Request validation failed",
+        instance: url,
+        code: "VALIDATION_FAILED",
+        ref: refHeader,
+        retryable: false,
+        timestamp: new Date().toISOString(),
+        errors: fieldErrors,
+      };
+    }
+
+    // Case 3: Simple JSON error ({ error: "..." } or { detail: "..." } or { message: "..." })
+    const msg = typeof obj.detail === "string" ? obj.detail : (typeof obj.error === "string" ? obj.error : (typeof obj.message === "string" ? obj.message : null));
+    if (msg) {
+      return {
+        type: `https://errors.oshift.ai/${defaultCode}`,
+        title: defaultTitle,
+        status,
+        detail: msg,
+        instance: url,
+        code: typeof obj.code === "string" ? obj.code : defaultCode,
+        ref: typeof obj.ref === "string" ? obj.ref : refHeader,
+        retryable: typeof obj.retryable === "boolean" ? obj.retryable : (status === 429 || status >= 502),
+        retry_after_seconds: retryAfterSeconds,
+        timestamp: new Date().toISOString(),
+        errors: [],
+      };
+    }
+  }
+
+  // Case 4: Plaintext / HTML (Sanitize to avoid leaking raw HTML tags into UI)
+  const isHtml = /<[a-z][\s\S]*>/i.test(rawText);
+  const safeDetail = isHtml
+    ? (statusText || `HTTP ${status} error`)
+    : (rawText.slice(0, 300).trim() || statusText || `HTTP ${status} error`);
+
+  return {
+    type: `https://errors.oshift.ai/${defaultCode}`,
+    title: defaultTitle,
+    status,
+    detail: safeDetail,
+    instance: url,
+    code: defaultCode,
+    ref: refHeader,
+    retryable: status === 429 || status >= 502,
+    retry_after_seconds: retryAfterSeconds,
+    timestamp: new Date().toISOString(),
+    errors: [],
+  };
 }
 
 export async function apiFetch<T>(
   path: string,
-  init?: RequestInit & { skipWorkspace?: boolean },
+  init?: ApiFetchOptions,
 ): Promise<ApiResult<T>> {
-  const token = await getAccessToken();
-  if (!token) {
-    return { ok: false, error: "Not signed in", status: 401 };
+  const token = init?.skipAuth ? null : await getAccessToken();
+  const requestId = init?.requestId || `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const hasExplicitAuth = init?.headers && new Headers(init.headers).has("Authorization");
+  if (!token && !init?.skipAuth && !hasExplicitAuth) {
+    const authError = new ApiError({
+      message: "Not signed in",
+      status: 401,
+      code: "AUTHENTICATION_REQUIRED",
+      requestId,
+      retryable: false,
+    });
+    return {
+      ok: false,
+      error: "Not signed in",
+      status: 401,
+      apiError: authError,
+      requestId,
+    };
   }
 
   const base = getApiBaseUrl().replace(/\/$/, "");
@@ -155,13 +602,15 @@ export async function apiFetch<T>(
     : `${base}/v1${normalized}`;
 
   const headers = new Headers(init?.headers);
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  headers.set("X-Request-ID", requestId);
   if (!headers.has("Content-Type") && init?.body) {
     headers.set("Content-Type", "application/json");
   }
 
   if (!init?.skipWorkspace) {
-    // The `/workspaces` guard keeps the resolver from recursing into itself.
     const workspaceId = normalized.includes("/workspaces")
       ? readStoredWorkspaceId()
       : await resolveWorkspaceId();
@@ -170,49 +619,101 @@ export async function apiFetch<T>(
     }
   }
 
+  const timeoutMs = init?.timeoutMs !== undefined ? init.timeoutMs : DEFAULT_TIMEOUT_MS;
+  const { controller, cleanup, isTimeout } = createTimeoutController(init?.signal, timeoutMs);
+
   try {
-    const res = await fetch(url, { ...init, headers });
+    const res = await fetch(url, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+
+    const responseHeaders = res.headers;
+    const effectiveRequestId = responseHeaders?.get("x-request-id") || requestId;
+    const ref = responseHeaders?.get("x-error-ref") || undefined;
     const text = await res.text();
+
+    if (!res.ok) {
+      const problem = parseProblemDetails(res.status, res.statusText, text, url, responseHeaders || new Headers());
+      const apiError = ApiError.fromProblem(problem, responseHeaders, effectiveRequestId);
+      return {
+        ok: false,
+        error: problem.detail || problem.title || res.statusText,
+        status: res.status,
+        problem,
+        apiError,
+        ref: problem.ref || ref,
+        requestId: effectiveRequestId,
+      };
+    }
+
     let data: T | null = null;
     if (text) {
       try {
         data = JSON.parse(text) as T;
       } catch {
-        data = text as T;
+        data = text as unknown as T;
       }
+    } else if (res.status === 204) {
+      data = null as unknown as T;
     }
-    if (!res.ok) {
-      let errMsg = res.statusText;
-      if (data && typeof data === "object") {
-        if ("detail" in data) {
-          const detail = (data as { detail: unknown }).detail;
-          if (typeof detail === "string") {
-            errMsg = detail;
-          } else if (Array.isArray(detail)) {
-            errMsg = (detail as (string | ValidationDetail)[])
-              .map((d) => {
-                if (typeof d === "string") return d;
-                if (isValidationDetail(d)) {
-                  const loc = d.loc.filter((l) => l !== "body").join(".");
-                  return loc ? `${loc}: ${d.msg}` : d.msg;
-                }
-                return JSON.stringify(d);
-              })
-              .join("; ");
-          } else {
-            errMsg = JSON.stringify(detail);
-          }
-        } else if ("error" in data && typeof (data as { error: unknown }).error === "string") {
-          errMsg = (data as { error: string }).error;
-        }
-      }
-      return { ok: false, error: errMsg, status: res.status };
+
+    return {
+      ok: true,
+      data: data as T,
+      status: res.status,
+      headers: responseHeaders,
+      requestId: effectiveRequestId,
+    };
+  } catch (err: unknown) {
+    if (isTimeout()) {
+      const apiError = ApiError.fromTimeout(timeoutMs, url, requestId);
+      return {
+        ok: false,
+        error: apiError.message,
+        status: 504,
+        problem: apiError.problem,
+        apiError,
+        requestId,
+      };
     }
-    return { ok: true, data: data as T, status: res.status };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Network error";
-    return { ok: false, error: msg, status: 0 };
+
+    if (init?.signal?.aborted) {
+      const apiError = ApiError.fromAbort(url, requestId);
+      return {
+        ok: false,
+        error: apiError.message,
+        status: 499,
+        problem: apiError.problem,
+        apiError,
+        requestId,
+      };
+    }
+
+    const apiError = ApiError.fromNetworkError(err, url, requestId);
+    return {
+      ok: false,
+      error: apiError.message,
+      status: 0,
+      problem: apiError.problem,
+      apiError,
+      requestId,
+    };
+  } finally {
+    cleanup();
   }
+}
+
+export async function apiFetchOrThrow<T>(
+  path: string,
+  init?: ApiFetchOptions
+): Promise<T> {
+  const res = await apiFetch<T>(path, init);
+  if (!res.ok) {
+    throw res.apiError;
+  }
+  return res.data;
 }
 
 export interface SseEvent {
@@ -232,9 +733,6 @@ export async function* sseStream(
   const url = normalized.startsWith("/v1/")
     ? `${base}${normalized}`
     : `${base}/v1${normalized}`;
-  // Uses the same resolver as apiFetch. Reading sessionStorage directly meant a
-  // user with more than one workspace who opened a streaming page first sent no
-  // X-Workspace-ID at all, and require_role answered 403 rather than guessing.
   const workspaceId = await resolveWorkspaceId();
 
   const res = await fetch(url, {
@@ -260,9 +758,18 @@ export async function* sseStream(
 
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
+    const problem = parseProblemDetails(res.status, res.statusText, text, url, res.headers);
     yield {
       type: "error",
-      data: { status: res.status, statusText: res.statusText, body: text },
+      data: {
+        status: res.status,
+        statusText: res.statusText,
+        body: text,
+        problem,
+        code: problem.code,
+        ref: problem.ref || res.headers.get("x-error-ref"),
+        retryable: problem.retryable,
+      },
       raw: `HTTP ${res.status} ${res.statusText}`,
     };
     return;
@@ -358,14 +865,6 @@ export interface OpportunityListResponse {
   total: number;
 }
 
-/**
- * Why a synthesis run produced what it produced.
- *
- * `POST /opportunities/generate` used to answer a bare list, so an empty array
- * meant "nothing collected yet", "the model failed" and "the model looked and
- * found nothing" all at once. The backend now distinguishes them; the UI has to
- * read `status` to give the right advice.
- */
 export type OpportunityGenerationStatus =
   | "generated"
   | "no_opportunities"
@@ -421,15 +920,6 @@ export async function deleteOpportunity(id: string): Promise<ApiResult<void>> {
   });
 }
 
-/**
- * Run the full ingest pipeline.
- *
- * The three pipelines chain: each one pops `chain[0]` on completion and sends it
- * as the next event. Triggering `crawlers` alone collected and scored signals
- * and then stopped, so the opportunity synthesis step -- which lives in
- * `analyzers` -- never ran, and the button labelled "Run Ingest Pipeline" left
- * the board exactly as it found it.
- */
 export async function triggerPipeline(): Promise<ApiResult<{ run_id: string; status: string }>> {
   return apiFetch<{ run_id: string; status: string }>("/automation/trigger", {
     method: "POST",
@@ -448,17 +938,11 @@ export interface InsightSource {
   captured_at: string | null;
 }
 
-/** A row from insights.insights_gaps, layer in ('gap','act_now','alarm_for_us'). */
 export interface InsightGap {
   id: string;
   competitor_id: string | null;
   layer: "gap" | "act_now" | "alarm_for_us";
   title: string;
-  /**
-   * The gap narrative. The column is `description`, but the endpoint selects it
-   * as `description AS body` (app/insights/router.py), so `description` never
-   * arrives over the wire â€” reading it yields blank cards.
-   */
   body: string | null;
   confidence: number | null;
   detected_at: string | null;
@@ -480,7 +964,6 @@ export async function fetchGaps(params?: {
   return apiFetch<InsightGap[]>(`/insights/gaps${queryString}`);
 }
 
-/** A row from sense.sense_reviews. No author or reply state is stored. */
 export interface SenseReview {
   id: string;
   workspace_id: string;
@@ -523,7 +1006,6 @@ export interface CampaignPost {
   captured_at: string | null;
 }
 
-/** Free-form jsonb on a campaign row. */
 export interface CampaignMetadata {
   post_count?: number;
   date_range?: string | { start?: string; end?: string } | null;
@@ -532,20 +1014,6 @@ export interface CampaignMetadata {
   [key: string]: unknown;
 }
 
-/**
- * A campaign as `/v1/campaigns` actually returns it.
- *
- * Despite the name, this is not a row of `campaigns.campaigns`: the clustering
- * engine writes campaigns into `insights.insights_gaps` with `layer='campaign'`,
- * and both campaign routes read from there (app/campaigns/router.py). These
- * eight fields are the whole contract — an earlier version of this interface
- * declared budget_usd, roi, status, cluster, platforms, themes and start/end
- * dates, none of which exist on the wire, so everything derived from them
- * rendered blank.
- *
- * Themes and the date range live under `metadata`; platforms are derivable from
- * `posts`. Use the helpers below rather than reaching for a top-level field.
- */
 export interface Campaign {
   id: string;
   competitor_id: string | null;
@@ -557,14 +1025,12 @@ export interface Campaign {
   posts: CampaignPost[];
 }
 
-/** Themes recorded by the clustering engine, or [] when it recorded none. */
 export function campaignThemes(campaign: Campaign): string[] {
   const raw = campaign.metadata?.themes;
   if (!Array.isArray(raw)) return [];
   return raw.filter((t): t is string => typeof t === "string" && t.trim().length > 0);
 }
 
-/** Distinct platforms across the campaign's posts, in first-seen order. */
 export function campaignPlatforms(campaign: Campaign): string[] {
   const seen = new Set<string>();
   for (const post of campaign.posts ?? []) {
@@ -574,7 +1040,6 @@ export function campaignPlatforms(campaign: Campaign): string[] {
   return [...seen];
 }
 
-/** Collects all non-empty thumbnail and media image URLs across the campaign's posts. */
 export function campaignThumbnails(campaign: Campaign): string[] {
   const urls: string[] = [];
   for (const post of campaign.posts ?? []) {
@@ -592,7 +1057,6 @@ export function campaignThumbnails(campaign: Campaign): string[] {
   return urls;
 }
 
-/** `{start, end}` from metadata.date_range, tolerating the string form. */
 export function campaignDateRange(campaign: Campaign): { start: string | null; end: string | null } {
   const raw = campaign.metadata?.date_range;
   if (raw && typeof raw === "object") {
@@ -636,11 +1100,6 @@ export async function fetchWorkspaces(): Promise<ApiResult<Workspace[]>> {
   return apiFetch<Workspace[]>("/core/workspaces");
 }
 
-/**
- * A row of company.companies â€” the workspace's OWN company, 1:1 with the
- * workspace. GET /company answers 404 when the row does not exist, which means
- * onboarding has not run: an empty state, not a failure.
- */
 export interface Company {
   id: string;
   workspace_id: string;
@@ -659,8 +1118,6 @@ export async function fetchCompany(): Promise<ApiResult<Company>> {
   return apiFetch<Company>("/company");
 }
 
-/** What PUT /company accepts. `website` must be an absolute URL â€” the backend
- * validates it as one so the crawlers get a resolvable seed. */
 export interface CompanyUpsert {
   name: string;
   website: string;
@@ -670,10 +1127,6 @@ export interface CompanyUpsert {
   metadata?: Record<string, unknown>;
 }
 
-/**
- * Create or replace the workspace's own company profile. Upserts on
- * workspace_id, so calling it twice updates one row rather than making two.
- */
 export async function upsertCompany(
   body: CompanyUpsert,
 ): Promise<ApiResult<Company>> {
@@ -683,7 +1136,6 @@ export async function upsertCompany(
   });
 }
 
-/** What POST /competitors and /competitors/batch accept. */
 export interface CompetitorCreate {
   name: string;
   website: string;
@@ -692,11 +1144,6 @@ export interface CompetitorCreate {
   metadata?: Record<string, unknown>;
 }
 
-/**
- * `skipped` carries the names the backend rejected as duplicates (409). A
- * partial success is the normal case when onboarding is re-run, so callers
- * should report it rather than treat it as a failure.
- */
 export interface CompetitorBatchResult {
   created: { id: string; name: string; website: string | null }[];
   skipped: string[];
@@ -714,11 +1161,6 @@ export async function createCompetitorsBatch(
 export type AnalyticsRange = "1m" | "3m" | "6m" | "1y";
 export type AnalyticsGranularity = "day" | "week" | "month";
 
-/**
- * One time bucket of company.analytics_snapshots. A metric is null when no
- * snapshot in the bucket recorded it â€” distinct from a real zero, so callers
- * must not coalesce it.
- */
 export interface CompanyAnalyticsPoint {
   timestamp: string;
   followers: number | null;
@@ -726,7 +1168,6 @@ export interface CompanyAnalyticsPoint {
   engagement_rate: number | null;
 }
 
-/** `points` is empty (not an error) when the workspace has no snapshots. */
 export interface CompanyAnalytics {
   range: AnalyticsRange;
   granularity: AnalyticsGranularity;
@@ -748,10 +1189,6 @@ export async function fetchCompanyAnalytics(params?: {
   return apiFetch<CompanyAnalytics>(`/company/analytics${queryString}`);
 }
 
-/**
- * A row of competitors.watchlists â€” the workspace's pinned-competitor sets.
- * `item_count` is computed per request, not a stored column.
- */
 export interface Watchlist {
   id: string;
   workspace_id: string;
@@ -761,7 +1198,6 @@ export interface Watchlist {
   created_at: string;
 }
 
-/** One pinned competitor. `competitor_id` is the key every other endpoint takes. */
 export interface WatchlistItem {
   competitor_id: string;
   name: string | null;
@@ -769,7 +1205,6 @@ export interface WatchlistItem {
   created_at: string;
 }
 
-/** A watchlist with its members expanded. */
 export interface WatchlistDetail {
   id: string;
   workspace_id: string;
@@ -779,11 +1214,6 @@ export interface WatchlistDetail {
   items: WatchlistItem[];
 }
 
-/**
- * Answers `[]` for a workspace that has never created a watchlist. That is the
- * normal first-run state, not a failure â€” callers must not treat it as one.
- * Ordered by created_at, so the first entry is the oldest.
- */
 export async function fetchWatchlists(): Promise<ApiResult<Watchlist[]>> {
   return apiFetch<Watchlist[]>("/competitors/watchlists");
 }
@@ -798,17 +1228,12 @@ export async function createWatchlist(
   });
 }
 
-/** Answers 404 when the id belongs to another workspace. */
 export async function fetchWatchlist(
   watchlistId: string,
 ): Promise<ApiResult<WatchlistDetail>> {
   return apiFetch<WatchlistDetail>(`/competitors/watchlists/${watchlistId}`);
 }
 
-/**
- * Idempotent: pinning a competitor that is already on the watchlist answers 200
- * with the existing row rather than an error.
- */
 export async function addWatchlistItem(
   watchlistId: string,
   competitorId: string,
@@ -822,12 +1247,6 @@ export async function addWatchlistItem(
   );
 }
 
-/**
- * Answers 204 with an empty body, which apiFetch surfaces as `ok` with `data`
- * left null â€” callers must key off `ok`, never off `data`. A 404 means the
- * competitor was not pinned to this watchlist, so the caller's desired end
- * state already holds.
- */
 export async function removeWatchlistItem(
   watchlistId: string,
   competitorId: string,
@@ -837,10 +1256,6 @@ export async function removeWatchlistItem(
     { method: "DELETE" },
   );
 }
-
-
-
-// --- Extra Competitor & Analysis Helpers (from HEAD) ---
 
 export interface Competitor {
   id: string;
@@ -938,8 +1353,6 @@ export async function getSenseReviews(id: string) {
 export async function getCompetitorCampaigns(id: string) {
   return apiFetch(`/campaigns?owner_type=competitor&competitor_id=${id}`);
 }
-
-// ─── Video Intelligence & Viral Analysis ───────────────────────────────────
 
 export async function getVideoAssets(competitorId?: string): Promise<ApiResult<VideoAsset[]>> {
   const query = competitorId ? `?competitor_id=${encodeURIComponent(competitorId)}` : "";

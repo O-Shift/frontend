@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PromptField from '@/components/PromptField';
@@ -13,6 +13,7 @@ import {
 import Link from 'next/link';
 import OpportunitiesSkeleton from '@/components/skeletons/OpportunitiesSkeleton';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { WidgetErrorBoundary } from '@/components/error/WidgetErrorBoundary';
 
 /** One mapped opportunity as the board renders it. */
 interface OpportunitySlide {
@@ -480,8 +481,14 @@ export default function OpportunitiesPage() {
 
         {/* Real DB Data Content */}
         {!loading && !error && slide && (
-          <AnimatePresence mode="wait">
-            <motion.div
+          <WidgetErrorBoundary
+            title="Opportunities Deck Error"
+            message="An error occurred while displaying this opportunity slide."
+            resetKeys={[slideIndex, slide?.id]}
+            className="flex-1 w-full max-w-[1200px] mx-auto"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
               key={slideIndex}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -918,8 +925,9 @@ export default function OpportunitiesPage() {
                 </div>
               )}
 
-            </motion.div>
-          </AnimatePresence>
+              </motion.div>
+            </AnimatePresence>
+          </WidgetErrorBoundary>
         )}
       </div>
 

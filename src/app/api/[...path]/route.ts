@@ -82,9 +82,27 @@ async function proxy(request: Request, path: string[]): Promise<Response> {
         });
     } catch (err) {
         // The backend being down is an expected condition in development, not
-        // a proxy bug. Answer in the shape `apiFetch` already parses.
+        // a proxy bug. Return RFC 9457 Problem Details JSON.
         const detail = err instanceof Error ? err.message : "upstream unreachable";
-        return Response.json({ detail: `backend unreachable: ${detail}` }, { status: 502 });
+        const problem = {
+            type: "https://errors.oshift.ai/UPSTREAM_5XX_ERROR",
+            title: "Bad Gateway",
+            status: 502,
+            detail: `backend unreachable: ${detail}`,
+            instance: request.url,
+            code: "UPSTREAM_5XX_ERROR",
+            retryable: true,
+            timestamp: new Date().toISOString(),
+            errors: [],
+        };
+        return new Response(JSON.stringify(problem), {
+            status: 502,
+            statusText: "Bad Gateway",
+            headers: {
+                "content-type": "application/problem+json",
+                "cache-control": "no-store",
+            },
+        });
     }
 
     const headers = new Headers();
