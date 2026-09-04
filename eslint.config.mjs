@@ -12,7 +12,19 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "tmp/**",
+    ".citecheck/**",
+    "docs/**",
+    "competitors_plan/**",
+    "password_reset/**",
   ]),
+  {
+    files: ["**/*.test.ts", "**/*.test.mjs", "src/**/__tests__/**"],
+    rules: {
+      "prefer-const": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
+
