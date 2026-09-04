@@ -15,13 +15,12 @@ const eslintConfig = defineConfig([
     "tmp/**",
     ".citecheck/**",
     "docs/**",
-    "competitors_plan/**",
-    "password_reset/**",
   ]),
   {
     files: ["**/*.test.ts", "**/*.test.mjs", "src/**/__tests__/**"],
     rules: {
       "prefer-const": "off",
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
 ]);

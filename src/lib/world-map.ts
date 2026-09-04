@@ -5,8 +5,6 @@
 import { feature } from 'topojson-client';
 import type { Topology } from 'topojson-specification';
 import countriesTopoJson from 'world-atlas/countries-110m.json';
-import type { LngLat } from './world-map-types';
-
 export type { LngLat } from './world-map-types';
 
 type Ring = number[][];
