@@ -7,10 +7,3 @@ export function getApiBaseUrl(): string {
   return "/api";
 }
 
-export function authCallbackUrl(nextPath: string): string {
-  if (typeof window === "undefined") {
-    return `/auth/callback?next=${encodeURIComponent(nextPath)}`;
-  }
-  const origin = window.location.origin;
-  return `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-}
