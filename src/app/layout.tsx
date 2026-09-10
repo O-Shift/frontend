@@ -10,11 +10,44 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
+/**
+ * Origin used to resolve the relative URLs in `metadata` (currently `og:image`).
+ * It has to be the stable production origin rather than `VERCEL_URL`: that value
+ * is unique per deployment, so a preview build would bake a one-off hostname into
+ * tags that social crawlers then cache and keep serving.
+ */
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://oshift-eg.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "OShift",
   description: "Campaigns and Partnerships Dashboard",
   icons: { icon: "/logo.png" },
   referrer: "no-referrer",
+  // `openGraph` deliberately omits `title`/`description`/`url`. Every field set
+  // here is inherited by every route, so a literal value would override the copy
+  // of each child segment — and an inherited `url` would make /login claim to be
+  // the site root. Left unset, Next fills og:title/og:description from the page's
+  // own `title`/`description`, which is what we want on the auth screens that
+  // unauthenticated crawlers actually land on.
+  openGraph: {
+    type: "website",
+    siteName: "OShift",
+    locale: "en_US",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "OShift — competitive intelligence, continuously",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og.png"],
+  },
 };
 
 /**
