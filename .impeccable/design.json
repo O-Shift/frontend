@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T21:08:39.348909+00:00",
+  "title": "Design System: OShift Landing",
+  "extensions": {
+    "scope": {
+      "primaryTarget": "route:/landing",
+      "boundary": "Landing route only; does not replace the root app design system."
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Space Grotesk statement",
+        "purpose": "Hero statement; locally loaded as Shift Grotesk."
+      },
+      "emphasis": {
+        "displayName": "Instrument Serif italic",
+        "purpose": "Selected headline words; locally loaded as Shift Serif."
+      }
+    },
+    "shadows": [
+      {
+        "name": "source-chip",
+        "value": "0 8px 20px #10100e50",
+        "purpose": "Floating dark source chips beside the lens."
+      },
+      {
+        "name": "finding",
+        "value": "0 15px 40px #09090955",
+        "purpose": "Pale finding above the dark hero."
+      },
+      {
+        "name": "input-card",
+        "value": "0 8px 28px #77736215",
+        "purpose": "Overlapping source cards on paper."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Route transition easing."
+      },
+      {
+        "name": "headline-entry",
+        "value": "1.2s",
+        "purpose": "Masked headline lines; staggered by 0.1s."
+      },
+      {
+        "name": "chapter-entry",
+        "value": "view() / entry 0% entry 65%",
+        "purpose": "Supported CSS scroll-linked chapter reveal; content stays visible otherwise."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1100px"
+      },
+      {
+        "name": "compact-navigation",
+        "value": "800px"
+      },
+      {
+        "name": "stacked-phone",
+        "value": "560px"
+      },
+      {
+        "name": "expanded-hero",
+        "value": "1700px"
+      }
+    ],
+    "accessibility": "Orange 2px focus outline with 6px offset. Reduced motion removes automatic animation and smooth scrolling. Lens rendering parks offscreen and when the document is hidden; manual range rotation remains available. Clue connections have a touch and keyboard reveal button; mouse scanning is limited to fine-pointer desktop devices.",
+    "identity": {
+      "logo": "/orange logo.png",
+      "heroMascot": "/investigator_mascot.png",
+      "processorMascot": "/mascot.png",
+      "slogan": "Always one step ahead."
+    },
+    "scrolling": "Landing-only html/body :has(.shift-landing) overrides release the application body scroll lock for native document scrolling."
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Landing signup action with diagonal arrow.",
+      "html": "<a class=\"landing-action\" href=\"/signup\"><span>Find your next move</span><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></a>",
+      "css": ".landing-action{display:inline-flex;align-items:center;justify-content:space-between;gap:24px;background:#ff5a00;color:#141413;font-family:'Shift Grotesk',sans-serif;font-size:13px;font-weight:700;border-radius:100px;padding:15px 23px;min-height:49px;text-decoration:none;transition:background .3s,transform .4s cubic-bezier(.22,1,.36,1)}.landing-action:hover{background:#ff824f;transform:translateY(-3px)}.landing-action svg{transition:transform .4s cubic-bezier(.22,1,.36,1)}.landing-action:hover svg{transform:translate(3px,-3px)}.landing-action:focus-visible{outline:2px solid #ff5a00;outline-offset:6px}@media(prefers-reduced-motion:reduce){.landing-action,.landing-action svg{transition:none}}"
+    },
+    {
+      "name": "Story tab",
+      "kind": "button",
+      "description": "Outlined unselected pill; ink selected state on paper.",
+      "html": "<div class=\"landing-tab-preview\"><button class=\"landing-tab\" role=\"tab\" aria-selected=\"true\">Campaigns</button><button class=\"landing-tab\" role=\"tab\" aria-selected=\"false\">Positioning gaps</button></div>",
+      "css": ".landing-tab-preview{display:flex;gap:9px;flex-wrap:wrap;background:#f2f0e9;padding:16px}.landing-tab{font-family:'Shift Grotesk',sans-serif;padding:10px 17px;border:1px solid #d3cec2;border-radius:100px;font-size:11px;color:#555249;background:transparent;cursor:pointer;transition:background .3s,color .3s}.landing-tab[aria-selected=true]{background:#141413;border-color:#141413;color:#f2f0e9}.landing-tab:hover{border-color:#141413}.landing-tab:focus-visible{outline:2px solid #ff5a00;outline-offset:6px}@media(prefers-reduced-motion:reduce){.landing-tab{transition:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The signal lens",
+    "overview": "For /landing only: the authentic orange logo, investigator mascot, and Always one step ahead slogan anchor ink and paper chapters. A supporting Three.js lens and a cursor magnifier explain how fictional public artifacts reveal a connected campaign. Content remains readable independently of motion.",
+    "keyCharacteristics": [
+      "Authentic logo and investigator mascot",
+      "Grotesk slogan and italic serif emphasis",
+      "Dark and paper chapters",
+      "Fictional clue-board connections with mouse, touch, and keyboard access",
+      "Native scrolling and controlled optical motion"
+    ],
+    "rules": [
+      {
+        "name": "The Field Contrast Rule",
+        "body": "Keep the implemented paper-text contrast; dark-field muted text does not transfer to paper.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do keep the system scoped to /landing.",
+      "Do keep demo findings explicitly illustrative.",
+      "Do preserve focus, reduced motion, and real signup/login routes.",
+      "Do preserve the supplied logo and mascot assets."
+    ],
+    "donts": [
+      "Don't invent commercial proof.",
+      "Don't reintroduce the removed hero eyebrow or audience numbering.",
+      "Don't fabricate an approved comp or adopt exploratory FORM output as authority."
+    ]
+  }
+}
