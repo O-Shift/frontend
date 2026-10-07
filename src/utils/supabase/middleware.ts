@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { entryPath, RETURNING_BROWSER_COOKIE } from "@/lib/site-routing";
 
 const PUBLIC_PREFIXES = [
+  "/landing",
+  "/start",
   "/login",
   "/signup",
   "/forgot-password",
@@ -48,6 +51,8 @@ export async function updateSession(request: NextRequest) {
   if (pathname === "/api" || pathname.startsWith("/api/")) {
     return supabaseResponse;
   }
+  if (pathname === "/robots.txt" || pathname === "/sitemap.xml")
+    return supabaseResponse;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -71,6 +76,15 @@ export async function updateSession(request: NextRequest) {
         `${pathname} -> ${allowed ? "allowed (public route)" : "denied"}`,
     );
     if (allowed) {
+      if (pathname === "/start") {
+        const destination = request.nextUrl.clone();
+        destination.pathname = entryPath(
+          false,
+          request.cookies.get(RETURNING_BROWSER_COOKIE)?.value === "1",
+        );
+        destination.search = "";
+        return NextResponse.redirect(destination);
+      }
       return supabaseResponse;
     }
     return denyToLogin(request, pathname, "auth_unavailable");
@@ -97,21 +111,46 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // This marker chooses an entry form; it never grants access to protected routes.
+  // Real Supabase session cookies remain host-only on the application subdomain.
+  if (user) {
+    supabaseResponse.cookies.set(RETURNING_BROWSER_COOKIE, "1", {
+      httpOnly: true,
+      secure: request.nextUrl.protocol === "https:",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  const redirectWithCookies = (destination: URL) => {
+    const response = NextResponse.redirect(destination);
+    for (const cookie of supabaseResponse.cookies.getAll())
+      response.cookies.set(cookie);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  };
+  if (pathname === "/start") {
+    const destination = request.nextUrl.clone();
+    destination.pathname = entryPath(
+      Boolean(user),
+      request.cookies.get(RETURNING_BROWSER_COOKIE)?.value === "1",
+    );
+    destination.search = "";
+    return redirectWithCookies(destination);
+  }
+
   if (!user && !isPublicPath(pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("from", pathname);
-    return NextResponse.redirect(loginUrl);
+    return redirectWithCookies(loginUrl);
   }
 
-  if (
-    user &&
-    (pathname === "/login" || pathname === "/signup")
-  ) {
+  if (user && (pathname === "/login" || pathname === "/signup")) {
     const dest = request.nextUrl.clone();
     dest.pathname = "/workspaces";
     dest.search = "";
-    return NextResponse.redirect(dest);
+    return redirectWithCookies(dest);
   }
 
   return supabaseResponse;

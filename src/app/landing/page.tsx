@@ -1,784 +1,707 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useRef } from 'react';
-import './landing.css';
-import { useLandingFx } from './use-landing-fx';
+import Link from "next/link";
+import Image from "next/image";
+import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
+import {
+  ArrowUpRight,
+  ArrowDown,
+  AudioLines,
+  Globe2,
+  MessageSquare,
+  Play,
+  Pause,
+  Plus,
+  Minus,
+  ScanLine,
+  Sparkles,
+  Menu,
+  X,
+  Check,
+  FileText,
+  Radio,
+  CircleDot,
+} from "lucide-react";
+import "./landing.css";
+import ClueLens from "./clue-lens";
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Hero signal field. Canvas 2D rather than WebGL: this runs behind text on
-   whatever machine a visitor brings, and a few dozen points with proximity
-   links costs a fraction of a three.js scene. Pauses when scrolled away.
-   ────────────────────────────────────────────────────────────────────────── */
-function SignalField() {
-    const ref = useRef<HTMLCanvasElement>(null);
+const SignalLens = dynamic(() => import("./signal-lens"), {
+  ssr: false,
+  loading: () => (
+    <div className="signal-lens" aria-hidden="true">
+      <div className="lens-fallback" />
+    </div>
+  ),
+});
 
-    useEffect(() => {
-        const canvas = ref.current;
-        if (!canvas) return;
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-        const ctx = canvas.getContext('2d', { alpha: true });
-        if (!ctx) return;
-
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        let w = 0;
-        let h = 0;
-        let raf = 0;
-        let visible = true;
-
-        type P = { x: number; y: number; vx: number; vy: number; r: number };
-        let pts: P[] = [];
-
-        const resize = () => {
-            const rect = canvas.getBoundingClientRect();
-            w = rect.width;
-            h = rect.height;
-            canvas.width = Math.round(w * dpr);
-            canvas.height = Math.round(h * dpr);
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-            // Scale point count to area so a phone doesn't render a desktop field.
-            const n = Math.max(22, Math.min(52, Math.round((w * h) / 26000)));
-            pts = Array.from({ length: n }, () => ({
-                x: Math.random() * w,
-                y: Math.random() * h,
-                vx: (Math.random() - 0.5) * 0.14,
-                vy: (Math.random() - 0.5) * 0.14,
-                r: Math.random() * 1.3 + 0.5,
-            }));
-        };
-
-        const draw = () => {
-            ctx.clearRect(0, 0, w, h);
-
-            for (const p of pts) {
-                p.x += p.vx;
-                p.y += p.vy;
-                if (p.x < 0 || p.x > w) p.vx *= -1;
-                if (p.y < 0 || p.y > h) p.vy *= -1;
-            }
-
-            // Proximity links. O(n²) is fine at n ≤ 52.
-            for (let i = 0; i < pts.length; i++) {
-                for (let j = i + 1; j < pts.length; j++) {
-                    const dx = pts[i].x - pts[j].x;
-                    const dy = pts[i].y - pts[j].y;
-                    const d2 = dx * dx + dy * dy;
-                    if (d2 > 21000) continue;
-                    ctx.strokeStyle = `rgba(255,255,255,${0.13 * (1 - d2 / 21000)})`;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(pts[i].x, pts[i].y);
-                    ctx.lineTo(pts[j].x, pts[j].y);
-                    ctx.stroke();
-                }
-            }
-
-            for (let i = 0; i < pts.length; i++) {
-                const p = pts[i];
-                // Every seventh point burns accent — a "live signal" in the field.
-                ctx.fillStyle = i % 7 === 0 ? 'rgba(255,90,0,0.85)' : 'rgba(255,255,255,0.42)';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            raf = requestAnimationFrame(draw);
-        };
-
-        resize();
-        raf = requestAnimationFrame(draw);
-        window.addEventListener('resize', resize);
-
-        // Stop the loop entirely once the hero leaves the viewport.
-        const io = new IntersectionObserver(
-            ([e]) => {
-                if (e.isIntersecting === visible) return;
-                visible = e.isIntersecting;
-                if (visible) raf = requestAnimationFrame(draw);
-                else cancelAnimationFrame(raf);
-            },
-            { threshold: 0 },
-        );
-        io.observe(canvas);
-
-        return () => {
-            cancelAnimationFrame(raf);
-            window.removeEventListener('resize', resize);
-            io.disconnect();
-        };
-    }, []);
-
-    return <canvas ref={ref} className="lp-hero-canvas" aria-hidden="true" />;
+const stories = [
+  {
+    label: "Campaigns",
+    finding: "Your competitor is building toward a product launch.",
+    description:
+      "A new landing page. Three teaser ads. The same phrase appearing everywhere. Separate posts become one coordinated move.",
+    sources: ["New product page", "Teaser ad creative", "Social announcement"],
+    move: "Get your counter-campaign ready before launch day.",
+    confidence: 94,
+    tag: "Coordinated campaign",
+    icon: Radio,
+  },
+  {
+    label: "Positioning gaps",
+    finding: "Customers want a simpler way to get started.",
+    description:
+      "Review after review points to complicated onboarding. OShift connects the complaints to a positioning opportunity you can actually use.",
+    sources: [
+      "Public customer reviews",
+      "Competitor messaging",
+      "Community discussion",
+    ],
+    move: "Make simple onboarding the center of your next campaign.",
+    confidence: 89,
+    tag: "Positioning opportunity",
+    icon: ScanLine,
+  },
+  {
+    label: "Partnerships",
+    finding: "A creator partnership is taking shape.",
+    description:
+      "Recurring brand mentions. A shared audience. A change in content. See partnership patterns before the announcement makes them obvious.",
+    sources: ["Creator content", "Brand mentions", "Campaign activity"],
+    move: "Explore adjacent creators before the space gets crowded.",
+    confidence: 87,
+    tag: "Partnership signal",
+    icon: CircleDot,
+  },
+];
+const faqs = [
+  [
+    "What does OShift actually do?",
+    "OShift collects public competitor activity, connects the patterns, and turns them into scored opportunities. Campaigns, positioning gaps, partnership motions, and emerging risks arrive with the evidence behind them.",
+  ],
+  [
+    "How is this different from social listening?",
+    "Listening tells you what was mentioned. OShift helps you understand what it means and what you can do next, with confidence, priority, and source citations attached.",
+  ],
+  [
+    "Where do the signals come from?",
+    "The open web, social platforms, video, public ad libraries, news, and public reviews. Findings trace back to the source captures they were built from.",
+  ],
+  [
+    "Is it built for in-house teams or agencies?",
+    "Both. Marketing teams can keep a standing watch on competitors. Agencies can turn the same evidence into sharper research, client briefs, and partnership strategy.",
+  ],
+  [
+    "Can I check the evidence?",
+    "Yes. Findings include source citations and confidence scores. You can follow the evidence and judge the conclusion for yourself.",
+  ],
+];
+function Brand() {
+  return (
+    <Link className="shift-brand" href="/" aria-label="OShift home">
+      <Image
+        src="/orange logo.png"
+        alt="OShift"
+        width={160}
+        height={53}
+        preload
+      />
+    </Link>
+  );
 }
-
-/* ── Content ─────────────────────────────────────────────────────────────── */
-
-const PIPELINE = [
-    {
-        k: 'Collect',
-        h: 'Watch everything they ship',
-        p: 'Collectors run continuously across the open web, social, video, paid ads, news, and review platforms. Every competitor you name becomes a standing watch — no dashboards to refresh, no alerts to configure.',
-        tags: ['web', 'social', 'video', 'ads', 'reviews', 'news'],
-    },
-    {
-        k: 'Normalize',
-        h: 'One shape for every source',
-        p: 'Raw captures land in a normalizer that resolves entities, strips duplicates across platforms, and reduces everything to a single canonical signal record. A press mention and a Reddit thread end up comparable.',
-        tags: ['entity resolution', 'dedupe', 'canonical signals'],
-    },
-    {
-        k: 'Analyze',
-        h: 'Read the pattern, not the post',
-        p: 'Dedicated analyzers look for the things that actually move a market: coordinated campaigns, positioning gaps, brewing crises, partnership motions, and the psychology underneath negative sentiment.',
-        tags: ['campaigns', 'gaps', 'crises', 'deals', 'sentiment', 'trends'],
-    },
-    {
-        k: 'Score',
-        h: 'Rank by consequence',
-        p: 'Every finding carries a confidence value and a priority score derived from the evidence behind it. Layers separate what is merely interesting from what needs an answer this week.',
-        tags: ['confidence', 'priority', 'gap · act now · alarm'],
-    },
-    {
-        k: 'Surface',
-        h: 'Findings become moves',
-        p: 'Scored signals resolve into opportunities with a stated impact, an effort estimate, and the reasoning that produced them. Each one traces back to the source captures it was built from.',
-        tags: ['impact', 'effort', 'reasoning', 'citations'],
-    },
-    {
-        k: 'Act',
-        h: 'Out of the tool, into the work',
-        p: 'Briefs, exports, and alerts push conclusions where your team already works. Automation runs the whole loop on a schedule so the intelligence arrives before anyone thinks to ask for it.',
-        tags: ['briefs', 'exports', 'alerts', 'automation'],
-    },
-];
-
-const FAQ = [
-    {
-        q: 'How is this different from a social listening tool?',
-        a: 'Listening tools return volume — mentions, reach, share of voice. OShift returns conclusions. The pipeline reduces raw captures to scored opportunities with stated impact, effort, and the citations behind them. You are reading a decision, not a chart.',
-    },
-    {
-        q: 'Where does the data actually come from?',
-        a: 'Public sources only: the open web, social platforms, video, paid ad libraries, news, and public review platforms. Nothing is scraped from behind a login, and every finding links back to the captures it was built from so you can check the work.',
-    },
-    {
-        q: 'What happens when the model is not confident?',
-        a: 'It says so. Every gap, campaign, and opportunity carries an explicit confidence value, and low-confidence findings are ranked accordingly rather than quietly presented as fact. Anything with no evidence behind it does not ship.',
-    },
-    {
-        q: 'How long until it is useful?',
-        a: 'Name your competitors and the first collection pass begins immediately. Early signals appear within the hour; the pattern analyzers need a few days of history before campaign and trend detection carry real weight.',
-    },
-    {
-        q: 'Is my workspace data isolated?',
-        a: 'Yes. Every row is scoped to a workspace and enforced at the database level with row-level security, not just in application code. A query from one workspace cannot return another workspace’s rows even if the application layer is wrong.',
-    },
-];
-
+function CTA({
+  children = "Start watching",
+  light = false,
+}: {
+  children?: React.ReactNode;
+  light?: boolean;
+}) {
+  return (
+    <a href="/start" className={`shift-button ${light ? "button-dark" : ""}`}>
+      <span>{children}</span>
+      <ArrowUpRight size={19} aria-hidden="true" />
+    </a>
+  );
+}
 export default function LandingPage() {
-    const rootRef = useRef<HTMLDivElement>(null);
-    useLandingFx(rootRef);
-
-    // Six nodes on a circle, r=118 about (200,200), starting at 12 o’clock.
-    const nodes = [
-        [200, 82],
-        [302.2, 141],
-        [302.2, 259],
-        [200, 318],
-        [97.8, 259],
-        [97.8, 141],
-    ];
-    const caps = [
-        [200, 45],
-        [334, 120],
-        [334, 282],
-        [200, 357],
-        [66, 282],
-        [66, 120],
-    ];
-
-    return (
-        <div className="lp" ref={rootRef}>
-            <div className="lp-progress" />
-
-            {/* Custom cursor. aria-hidden — it is pure decoration over the real one. */}
-            <div className="lp-cur lp-cur-ring" aria-hidden="true" />
-            <div className="lp-cur lp-cur-dot" aria-hidden="true" />
-            <div className="lp-cur-label" aria-hidden="true" />
-
-            {/* ── Nav ─────────────────────────────────────────────────────── */}
-            <nav className="lp-nav" data-stuck="0">
-                <div className="lp-shell lp-nav-in">
-                    <Link href="/landing" className="lp-brand">
-                        <i />
-                        OShift
-                    </Link>
-                    <div className="lp-nav-links">
-                        <a className="lp-nav-link" href="#pipeline">Pipeline</a>
-                        <a className="lp-nav-link" href="#surface">Surface</a>
-                        <a className="lp-nav-link" href="#proof">Proof</a>
-                        <a className="lp-nav-link" href="#faq">FAQ</a>
-                    </div>
-                    <div className="lp-nav-cta">
-                        <Link href="/login" className="lp-btn lp-btn-ghost">Sign in</Link>
-                        <Link
-                            href="/signup"
-                            className="lp-btn lp-btn-solid"
-                            data-magnet
-                            data-cursor-label="Go"
-                        >
-                            Start watching
-                        </Link>
-                    </div>
-                </div>
-            </nav>
-
-            {/* ── Hero ────────────────────────────────────────────────────── */}
-            <header className="lp-hero">
-                <div className="lp-hero-glow" />
-                <SignalField />
-                <div className="lp-grid-lines" aria-hidden="true">
-                    <span /><span /><span /><span />
-                </div>
-
-                <div className="lp-shell" style={{ position: 'relative' }}>
-                    <div className="lp-rv" style={{ ['--rv-y' as string]: '10px' }}>
-                        <span className="lp-eyebrow">
-                            <b>●</b> Competitive intelligence, continuously
-                        </span>
-                    </div>
-
-                    <h1 className="lp-display lp-hero-head">
-                        <span className="lp-mask"><span>Your competitors</span></span>
-                        <span className="lp-mask" style={{ ['--rv-d' as string]: '90ms' }}>
-                            <span>are telling you</span>
-                        </span>
-                        <span className="lp-mask" style={{ ['--rv-d' as string]: '180ms' }}>
-                            <span>
-                                <em style={{ fontStyle: 'normal' }} className="lp-accent">everything.</em>
-                            </span>
-                        </span>
-                    </h1>
-
-                    <div className="lp-rv" style={{ ['--rv-d' as string]: '300ms' }}>
-                        <p className="lp-lede">
-                            Every launch, every price change, every angry review is public. The problem was
-                            never access — it was that reading all of it, every day, across every platform,
-                            is not a job a person can hold. OShift holds it.
-                        </p>
-                    </div>
-
-                    <div className="lp-rv lp-hero-foot" style={{ ['--rv-d' as string]: '400ms' }}>
-                        <Link
-                            href="/signup"
-                            className="lp-btn lp-btn-solid lp-btn-lg"
-                            data-magnet
-                            data-cursor-label="Start"
-                        >
-                            Start watching
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                                <polyline points="12 5 19 12 12 19" />
-                            </svg>
-                        </Link>
-                        <a href="#pipeline" className="lp-btn lp-btn-ghost lp-btn-lg">
-                            See how it works
-                        </a>
-                    </div>
-
-                    <dl className="lp-rv lp-hero-meta" style={{ ['--rv-d' as string]: '520ms' }}>
-                        <div>
-                            <dt>Sources</dt>
-                            <dd>Web, social, video, paid ads, news, reviews</dd>
-                        </div>
-                        <div>
-                            <dt>Output</dt>
-                            <dd>Scored opportunities, not raw mentions</dd>
-                        </div>
-                        <div>
-                            <dt>Cadence</dt>
-                            <dd>Continuous collection, scheduled briefs</dd>
-                        </div>
-                        <div>
-                            <dt>Evidence</dt>
-                            <dd>Every claim cites the capture behind it</dd>
-                        </div>
-                    </dl>
-                </div>
-            </header>
-
-            {/* ── Marquee ─────────────────────────────────────────────────── */}
-            <div className="lp-marquee" aria-hidden="true">
-                {[0, 1].map((dup) => (
-                    <div className="lp-marquee-track" key={dup}>
-                        {[
-                            'Positioning gaps', 'Coordinated campaigns', 'Price moves', 'Crisis signals',
-                            'Partnership motions', 'Review sentiment', 'Ad creative shifts', 'Launch detection',
-                            'Narrative drift', 'Share-of-voice swings',
-                        ].map((t) => (
-                            <span className="lp-marquee-item" key={t}><s />{t}</span>
-                        ))}
-                    </div>
-                ))}
-            </div>
-
-            {/* ── Pipeline ────────────────────────────────────────────────── */}
-            <section className="lp-section" id="pipeline">
-                <div className="lp-grid-lines" aria-hidden="true">
-                    <span /><span /><span /><span />
-                </div>
-                <div className="lp-shell" style={{ position: 'relative' }}>
-                    <div className="lp-head">
-                        <div className="lp-head-t">
-                            <span className="lp-eyebrow lp-rv">01 — The pipeline</span>
-                            <h2 className="lp-h2">
-                                <span className="lp-mask"><span>Six stages between</span></span>
-                                <span className="lp-mask" style={{ ['--rv-d' as string]: '80ms' }}>
-                                    <span>noise and a decision.</span>
-                                </span>
-                            </h2>
-                        </div>
-                        <div className="lp-rv" style={{ ['--rv-d' as string]: '160ms' }}>
-                            <p className="lp-body">
-                                Most tools stop at stage one and hand you a firehose. The work that matters
-                                is everything after it — and it is the part nobody wants to do by hand.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="lp-pipe">
-                        <div className="lp-pipe-sticky">
-                            <div className="lp-pipe-stage lp-rv">
-                                <svg viewBox="0 0 400 400" aria-hidden="true">
-                                    <circle className="lp-pipe-ring" cx="200" cy="200" r="118" />
-                                    <circle className="lp-pipe-ring" cx="200" cy="200" r="76" opacity="0.55" />
-                                    <circle className="lp-pipe-ring" cx="200" cy="200" r="34" opacity="0.3" />
-
-                                    {nodes.slice(0, -1).map((n, i) => {
-                                        const next = nodes[i + 1];
-                                        return (
-                                            <path
-                                                key={`l${i}`}
-                                                data-link=""
-                                                data-on="0"
-                                                className="lp-pipe-link"
-                                                fill="none"
-                                                d={`M ${n[0]} ${n[1]} A 118 118 0 0 1 ${next[0]} ${next[1]}`}
-                                            />
-                                        );
-                                    })}
-
-                                    {nodes.map((n, i) => (
-                                        <circle
-                                            key={`n${i}`}
-                                            data-node=""
-                                            data-on="0"
-                                            className="lp-pipe-node"
-                                            cx={n[0]}
-                                            cy={n[1]}
-                                            r="9"
-                                        />
-                                    ))}
-
-                                    {caps.map((c, i) => (
-                                        <text
-                                            key={`c${i}`}
-                                            data-cap=""
-                                            data-on="0"
-                                            className="lp-pipe-cap"
-                                            x={c[0]}
-                                            y={c[1]}
-                                            textAnchor="middle"
-                                        >
-                                            {PIPELINE[i].k}
-                                        </text>
-                                    ))}
-
-                                    <text
-                                        x="200"
-                                        y="196"
-                                        textAnchor="middle"
-                                        fill="currentColor"
-                                        style={{ fontSize: 11, opacity: 0.5, letterSpacing: '0.14em' }}
-                                    >
-                                        OSHIFT
-                                    </text>
-                                    <text
-                                        x="200"
-                                        y="212"
-                                        textAnchor="middle"
-                                        fill="currentColor"
-                                        style={{ fontSize: 8.5, opacity: 0.3, letterSpacing: '0.1em' }}
-                                    >
-                                        PIPELINE v1
-                                    </text>
-                                </svg>
-                            </div>
-                        </div>
-
-                        <div className="lp-pipe-steps">
-                            {PIPELINE.map((s, i) => (
-                                <article className="lp-step" data-on="0" key={s.k}>
-                                    <div className="lp-step-n">{String(i + 1).padStart(2, '0')}</div>
-                                    <div className="lp-step-b">
-                                        <h3>{s.h}</h3>
-                                        <p>{s.p}</p>
-                                        <div className="lp-step-tags">
-                                            {s.tags.map((t) => (
-                                                <span className="lp-tag" key={t}>{t}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── Surface / bento ─────────────────────────────────────────── */}
-            <section className="lp-section" id="surface">
-                <div className="lp-shell">
-                    <div className="lp-head">
-                        <div className="lp-head-t">
-                            <span className="lp-eyebrow lp-rv">02 — What you get</span>
-                            <h2 className="lp-h2">
-                                <span className="lp-mask"><span>Answers with</span></span>
-                                <span className="lp-mask" style={{ ['--rv-d' as string]: '80ms' }}>
-                                    <span>receipts attached.</span>
-                                </span>
-                            </h2>
-                        </div>
-                        <div className="lp-rv" style={{ ['--rv-d' as string]: '160ms' }}>
-                            <p className="lp-body">
-                                Nothing here is a vibe. Every card in the product traces to captures with
-                                timestamps, and anything the pipeline cannot support with evidence is
-                                labelled rather than dressed up.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="lp-bento">
-                        <div className="lp-card lp-rv" data-span="4">
-                            <div className="lp-card-i">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <polyline points="12 16 16 12 12 8" />
-                                    <line x1="8" y1="12" x2="16" y2="12" />
-                                </svg>
-                            </div>
-                            <h3>Ranked opportunities</h3>
-                            <p>
-                                Scored by priority, tagged with impact and effort, and carrying the
-                                reasoning that produced them. Sorted so the top of the list is the thing
-                                to do next.
-                            </p>
-                            <div className="lp-bars">
-                                {[38, 52, 44, 71, 63, 88, 74, 96, 82, 58, 47, 35].map((v, i) => (
-                                    <i
-                                        key={i}
-                                        data-hi={v > 80 ? '1' : '0'}
-                                        style={{ height: `${v}%`, ['--bd' as string]: `${i * 48}ms` }}
-                                    />
-                                ))}
-                            </div>
-                            <div className="lp-card-foot">
-                                <span className="lp-mono">PRIORITY DISTRIBUTION</span>
-                                <span className="lp-mono lp-accent">HIGH · 4</span>
-                            </div>
-                        </div>
-
-                        <div className="lp-card lp-rv" data-span="2" style={{ ['--rv-d' as string]: '80ms' }}>
-                            <div className="lp-card-i">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 2 2 7l10 5 10-5-10-5z" />
-                                    <polyline points="2 17 12 22 22 17" />
-                                    <polyline points="2 12 12 17 22 12" />
-                                </svg>
-                            </div>
-                            <h3>Positioning gaps</h3>
-                            <p>
-                                Where the market is asking for something nobody is answering — separated
-                                into what to watch and what to act on now.
-                            </p>
-                            <div className="lp-card-foot">
-                                <span className="lp-mono">3 LAYERS</span>
-                                <span className="lp-mono">GAP · ACT · ALARM</span>
-                            </div>
-                        </div>
-
-                        <div className="lp-card lp-rv" data-span="2" style={{ ['--rv-d' as string]: '40ms' }}>
-                            <div className="lp-card-i">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                </svg>
-                            </div>
-                            <h3>Review sentiment</h3>
-                            <p>
-                                Aggregate rating movement across platforms, plus the specific complaints
-                                driving it.
-                            </p>
-                            <div className="lp-meter">
-                                <i style={{ width: '58%', background: '#22c55e', ['--bd' as string]: '0ms' }} />
-                                <i style={{ width: '24%', background: '#8b8b93', ['--bd' as string]: '120ms' }} />
-                                <i style={{ width: '18%', background: '#ff5a00', ['--bd' as string]: '240ms' }} />
-                            </div>
-                            <div className="lp-card-foot">
-                                <span className="lp-mono">POSITIVE 58%</span>
-                                <span className="lp-mono">CRITICAL 18%</span>
-                            </div>
-                        </div>
-
-                        <div className="lp-card lp-rv" data-span="4" style={{ ['--rv-d' as string]: '120ms' }}>
-                            <div className="lp-card-i">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <circle cx="12" cy="12" r="6" />
-                                    <circle cx="12" cy="12" r="2" />
-                                </svg>
-                            </div>
-                            <h3>Detected campaigns</h3>
-                            <p>
-                                Clusters of coordinated activity assembled from individual posts — themes,
-                                date range, and every capture that supports the read.
-                            </p>
-                            <div className="lp-rows">
-                                {[
-                                    ['#22c55e', 'Enterprise pivot messaging', '14 posts'],
-                                    ['#ff5a00', 'Aggressive pricing push', '31 posts'],
-                                    ['#8b8b93', 'Developer community play', '9 posts'],
-                                ].map(([c, t, n]) => (
-                                    <div className="lp-row" key={t}>
-                                        <span className="lp-dot" style={{ background: c }} />
-                                        {t}
-                                        <b>{n}</b>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="lp-card-foot">
-                                <span className="lp-mono">CONFIDENCE-WEIGHTED</span>
-                                <span className="lp-mono lp-accent">LIVE</span>
-                            </div>
-                        </div>
-
-                        <div className="lp-card lp-rv" data-span="3" style={{ ['--rv-d' as string]: '60ms' }}>
-                            <div className="lp-card-i">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                                    <polyline points="16 6 12 2 8 6" />
-                                    <line x1="12" y1="2" x2="12" y2="15" />
-                                </svg>
-                            </div>
-                            <h3>Briefs, exports, alerts</h3>
-                            <p>
-                                Conclusions arrive where your team already works, on a schedule you set.
-                                Nobody has to remember to open a dashboard.
-                            </p>
-                            <div className="lp-card-foot">
-                                <span className="lp-mono">SCHEDULED</span>
-                                <span className="lp-mono">AUTOMATION v1</span>
-                            </div>
-                        </div>
-
-                        <div className="lp-card lp-rv" data-span="3" style={{ ['--rv-d' as string]: '100ms' }}>
-                            <div className="lp-card-i">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" />
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                </svg>
-                            </div>
-                            <h3>Workspace isolation</h3>
-                            <p>
-                                Row-level security enforced in the database, not just the application
-                                layer. One workspace cannot read another’s rows.
-                            </p>
-                            <div className="lp-card-foot">
-                                <span className="lp-mono">POSTGRES RLS</span>
-                                <span className="lp-mono">TENANT-SCOPED</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── Proof / numbers ─────────────────────────────────────────── */}
-            <section className="lp-section" id="proof">
-                <div className="lp-shell">
-                    <div className="lp-nums lp-rv">
-                        {[
-                            { v: '6', d: 0, s: '', l: 'Source classes collected continuously — web, social, video, ads, news, reviews.' },
-                            { v: '17', d: 0, s: '', l: 'Analysis services running over every normalized signal.' },
-                            { v: '100', d: 0, s: '%', l: 'Findings carrying an explicit confidence value and source citations.' },
-                            { v: '0', d: 0, s: '', l: 'Conclusions shipped without evidence behind them.' },
-                        ].map((n) => (
-                            <div className="lp-num" key={n.l}>
-                                <div className="lp-num-v">
-                                    <span data-count={n.v} data-count-decimals={n.d}>0</span>
-                                    {n.s && <s>{n.s}</s>}
-                                </div>
-                                <div className="lp-num-l">{n.l}</div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="lp-split" style={{ marginTop: 'clamp(48px, 7vw, 96px)' }}>
-                        <div className="lp-rv">
-                            <span className="lp-eyebrow" style={{ marginBottom: 20, display: 'inline-flex' }}>
-                                03 — The principle
-                            </span>
-                            <h2 className="lp-h2" style={{ marginBottom: 24 }}>
-                                We would rather say
-                                <br />
-                                <span className="lp-accent">“we don’t know”</span> than guess.
-                            </h2>
-                            <p className="lp-body" style={{ maxWidth: '46ch', marginBottom: 18 }}>
-                                It is trivial to build a tool that always has an answer. Generate a
-                                confident paragraph, attach a number that looks precise, and ship it. Most
-                                of this category works exactly that way, and the output is unfalsifiable.
-                            </p>
-                            <p className="lp-body" style={{ maxWidth: '46ch' }}>
-                                We took the harder position. If the pipeline has no evidence for a claim,
-                                the claim does not appear. If a metric has no source in the data, the
-                                interface says so plainly instead of inventing a plausible number. You can
-                                check every conclusion against the captures it came from — which means you
-                                can catch us being wrong.
-                            </p>
-                        </div>
-
-                        <div className="lp-quote lp-rv" style={{ ['--rv-d' as string]: '120ms' }}>
-                            <blockquote>
-                                “The competitive review used to take a full day every month, and it was
-                                stale by the time it was written. Now the argument in the room is about
-                                what to do — not about what happened.”
-                            </blockquote>
-                            <div className="lp-quote-by">
-                                <span className="lp-avatar">M</span>
-                                <div>
-                                    <strong>Head of Product Marketing</strong>
-                                    <span>Early access · B2B SaaS</span>
-                                </div>
-                            </div>
-                            <p className="lp-mono" style={{ marginTop: 22, opacity: 0.65 }}>
-                                Early-access feedback. Named references available on request.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── FAQ ─────────────────────────────────────────────────────── */}
-            <section className="lp-section" id="faq">
-                <div className="lp-shell">
-                    <div className="lp-head">
-                        <div className="lp-head-t">
-                            <span className="lp-eyebrow lp-rv">04 — Questions</span>
-                            <h2 className="lp-h2">
-                                <span className="lp-mask"><span>The things people</span></span>
-                                <span className="lp-mask" style={{ ['--rv-d' as string]: '80ms' }}>
-                                    <span>actually ask.</span>
-                                </span>
-                            </h2>
-                        </div>
-                    </div>
-
-                    <div className="lp-faq lp-rv">
-                        {FAQ.map((f) => (
-                            <details key={f.q}>
-                                <summary>
-                                    {f.q}
-                                    <span className="lp-faq-x" aria-hidden="true" />
-                                </summary>
-                                <p className="lp-faq-a">{f.a}</p>
-                            </details>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── Closing CTA ─────────────────────────────────────────────── */}
-            <section className="lp-cta">
-                <div className="lp-shell">
-                    <h2 className="lp-display lp-rv">
-                        Stop finding out
-                        <br />
-                        <span className="lp-accent">second.</span>
-                    </h2>
-                    <div className="lp-rv" style={{ ['--rv-d' as string]: '120ms' }}>
-                        <p className="lp-lede" style={{ margin: '26px auto 0', textAlign: 'center' }}>
-                            Name your competitors. Collection starts immediately.
-                        </p>
-                    </div>
-                    <div className="lp-cta-row lp-rv" style={{ ['--rv-d' as string]: '200ms' }}>
-                        <Link
-                            href="/signup"
-                            className="lp-btn lp-btn-solid lp-btn-lg"
-                            data-magnet
-                            data-cursor-label="Start"
-                        >
-                            Start watching
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                                <polyline points="12 5 19 12 12 19" />
-                            </svg>
-                        </Link>
-                        <Link href="/login" className="lp-btn lp-btn-ghost lp-btn-lg">
-                            Sign in
-                        </Link>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── Footer ──────────────────────────────────────────────────── */}
-            <footer className="lp-foot">
-                <div className="lp-shell">
-                    <div className="lp-foot-top">
-                        <div>
-                            <Link href="/landing" className="lp-brand" style={{ marginBottom: 14 }}>
-                                <i />
-                                OShift
-                            </Link>
-                            <p className="lp-body" style={{ maxWidth: '30ch', fontSize: 13.5 }}>
-                                Competitive intelligence that reads the whole market so your team can read
-                                one page.
-                            </p>
-                        </div>
-                        <div>
-                            <h4>Product</h4>
-                            <ul>
-                                <li><a href="#pipeline">Pipeline</a></li>
-                                <li><a href="#surface">Capabilities</a></li>
-                                <li><a href="#proof">Principles</a></li>
-                                <li><a href="#faq">FAQ</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4>Account</h4>
-                            <ul>
-                                <li><Link href="/login">Sign in</Link></li>
-                                <li><Link href="/signup">Create account</Link></li>
-                                <li><Link href="/forgot-password">Reset password</Link></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4>Company</h4>
-                            <ul>
-                                <li><a href="mailto:hello@oshift.app">Contact</a></li>
-                                <li><a href="#faq">Data sources</a></li>
-                                <li><a href="#proof">Security</a></li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div className="lp-foot-bot">
-                        <span className="lp-mono">© {new Date().getFullYear()} OSHIFT — ALL RIGHTS RESERVED</span>
-                        <span className="lp-mono">BUILT FOR TEAMS WHO REFUSE TO BE SURPRISED</span>
-                    </div>
-
-                    <span className="lp-wordmark" aria-hidden="true">OSHIFT</span>
-                </div>
-            </footer>
-        </div>
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [showEvidence, setShowEvidence] = useState(false);
+  const reduced = useReducedMotion();
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll();
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const sculptureY = useTransform(heroProgress, [0, 1], [0, 65]);
+  const sculptureRotate = useTransform(heroProgress, [0, 1], [0, -9]);
+  const story = stories[active];
+  const StoryIcon = story.icon;
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [menuOpen]);
+  useEffect(() => {
+    const sections = document.querySelectorAll(".shift-landing [data-reveal]");
+    const observer = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.setAttribute("data-visible", "true");
+            observer.unobserve(entry.target);
+          }
+        }),
+      { threshold: 0.12 },
     );
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <main className="shift-landing" data-motion={paused ? "paused" : "playing"}>
+      <a className="shift-skip" href="#product">
+        Skip to product
+      </a>
+      <motion.div
+        className="reading-progress"
+        style={{ scaleX: scrollYProgress }}
+        aria-hidden="true"
+      />
+      <nav className="shift-nav" aria-label="Main navigation">
+        <Brand />
+        <div className="nav-center">
+          <a href="#product">The product</a>
+          <a href="#possibilities">The possibilities</a>
+          <a href="#questions">The questions</a>
+        </div>
+        <div className="nav-right">
+          <a className="login-link" href="/login">
+            Log in <ArrowUpRight size={14} />
+          </a>
+          <CTA />
+          <button
+            className="menu-toggle"
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-navigation"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
+      </nav>
+      {menuOpen && (
+        <div className="mobile-navigation" id="mobile-navigation">
+          <a onClick={() => setMenuOpen(false)} href="#product">
+            The product <ArrowUpRight />
+          </a>
+          <a onClick={() => setMenuOpen(false)} href="#possibilities">
+            The possibilities <ArrowUpRight />
+          </a>
+          <a onClick={() => setMenuOpen(false)} href="#questions">
+            The questions <ArrowUpRight />
+          </a>
+          <a href="/login">
+            Log in <ArrowUpRight />
+          </a>
+        </div>
+      )}
+      <header className="shift-hero" ref={heroRef}>
+        <div className="hero-composition">
+          <div className="hero-copy">
+            <h1>
+              <span className="type-mask">
+                <span>Always</span>
+              </span>
+              <span className="type-mask">
+                <span>one step</span>
+              </span>
+              <span className="type-mask">
+                <span>
+                  <em>ahead.</em>
+                </span>
+              </span>
+            </h1>
+            <p>
+              Turn your competitors’ public signals
+              <br />
+              into actionable, evidence-backed intelligence.
+            </p>
+            <div className="hero-actions">
+              <CTA>Find your next move</CTA>
+              <a className="text-button" href="#product">
+                Meet OShift{" "}
+                <span>
+                  <ArrowDown size={16} />
+                </span>
+              </a>
+            </div>
+          </div>
+          <motion.div
+            className="hero-sculpture"
+            style={
+              reduced || paused
+                ? {}
+                : { y: sculptureY, rotate: sculptureRotate }
+            }
+          >
+            <div className="lens-orbit orbit-one" aria-hidden="true" />
+            <div className="lens-orbit orbit-two" aria-hidden="true" />
+            <SignalLens paused={paused || !!reduced} rotation={rotation} />
+            <div className="hero-mascot">
+              <Image
+                src="/investigator_mascot.png"
+                alt="OShift’s detective mascot connecting competitor clues"
+                width={1024}
+                height={1536}
+                sizes="(max-width: 560px) 90vw, 42vw"
+                preload
+              />
+            </div>
+            <span className="source-chip source-web">
+              <Globe2 size={14} /> Web
+            </span>
+            <span className="source-chip source-ads">
+              <ScanLine size={14} /> Ads
+            </span>
+            <span className="source-chip source-social">
+              <MessageSquare size={14} /> Social
+            </span>
+            <div className="hero-finding">
+              <span className="finding-icon">
+                <Sparkles size={17} />
+              </span>
+              <div>
+                <small>THE DOTS, CONNECTED</small>
+                <strong>Your next move, uncovered.</strong>
+              </div>
+              <ArrowUpRight size={17} />
+            </div>
+            <div className="lens-controls">
+              <label htmlFor="lens-rotation">Explore the perspective</label>
+              <input
+                id="lens-rotation"
+                type="range"
+                min="-180"
+                max="180"
+                value={rotation}
+                onChange={(e) => setRotation(Number(e.target.value))}
+                aria-label="Rotate the 3D signal lens"
+              />
+              <button
+                onClick={() => setPaused(!paused)}
+                aria-label={
+                  paused ? "Play sculpture motion" : "Pause sculpture motion"
+                }
+                aria-pressed={paused}
+              >
+                {paused || reduced ? <Play size={13} /> : <Pause size={13} />}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        <div className="hero-bottom">
+          <span>
+            Less noise.
+            <br />
+            <b>More next.</b>
+          </span>
+          <div className="hero-bottom-center">
+            <span className="mini-signal">
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+            <span>
+              PUBLIC SIGNALS IN.
+              <br />
+              STRATEGIC OPPORTUNITIES OUT.
+            </span>
+          </div>
+          <a href="#product" className="scroll-cue">
+            Scroll to shift your perspective <ArrowDown size={16} />
+          </a>
+        </div>
+      </header>
+      <div className="source-ribbon">
+        <span>THE WHOLE PICTURE.</span>
+        <div>
+          <Globe2 size={16} /> Web
+        </div>
+        <div>
+          <MessageSquare size={16} /> Social
+        </div>
+        <div>
+          <Play size={16} /> Video
+        </div>
+        <div>
+          <ScanLine size={16} /> Paid ads
+        </div>
+        <div>
+          <FileText size={16} /> News
+        </div>
+        <div>
+          <Sparkles size={16} /> Reviews
+        </div>
+        <span>
+          ONE CLEAR DIRECTION. <ArrowUpRight size={17} />
+        </span>
+      </div>
+      <ClueLens paused={paused || !!reduced} />
+      <section id="product" className="product-section">
+        <div className="section-heading" data-reveal>
+          <h2>
+            They make noise.
+            <br />
+            You make <em>moves.</em>
+          </h2>
+          <p>
+            From a thousand scattered signals to the one
+            <br className="desktop-break" /> thing worth acting on. That’s the
+            shift.
+          </p>
+        </div>
+        <div
+          className="story-tabs"
+          role="tablist"
+          aria-label="Explore example intelligence"
+        >
+          <span>Pick a perspective</span>
+          {stories.map((item, i) => (
+            <button
+              key={item.label}
+              role="tab"
+              id={`story-tab-${i}`}
+              aria-controls="story-panel"
+              aria-selected={active === i}
+              tabIndex={active === i ? 0 : -1}
+              onClick={() => {
+                setActive(i);
+                setShowEvidence(false);
+              }}
+              onKeyDown={(e) => {
+                if (
+                  ["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)
+                ) {
+                  e.preventDefault();
+                  const next =
+                    e.key === "Home"
+                      ? 0
+                      : e.key === "End"
+                        ? 2
+                        : (i + (e.key === "ArrowRight" ? 1 : 2)) % 3;
+                  setActive(next);
+                  setShowEvidence(false);
+                  document.getElementById(`story-tab-${next}`)?.focus();
+                }
+              }}
+            >
+              {item.label}
+              <ArrowUpRight size={15} />
+            </button>
+          ))}
+        </div>
+        <div
+          className="story-stage"
+          id="story-panel"
+          role="tabpanel"
+          aria-labelledby={`story-tab-${active}`}
+        >
+          <div className="signal-input">
+            <div className="stage-label">
+              <span className="status-dot" /> THE SIGNALS
+            </div>
+            <div className="input-stack" key={`input-${active}`}>
+              {story.sources.map((source, i) => (
+                <div className={`input-signal signal-${i}`} key={source}>
+                  <span>
+                    {i === 0 ? (
+                      <Globe2 size={18} />
+                    ) : i === 1 ? (
+                      <ScanLine size={18} />
+                    ) : (
+                      <MessageSquare size={18} />
+                    )}
+                  </span>
+                  <div>
+                    <small>PUBLIC SOURCE</small>
+                    <strong>{source}</strong>
+                    <div className="signal-text-lines">
+                      <i />
+                      <i />
+                    </div>
+                  </div>
+                  <Check size={13} />
+                </div>
+              ))}
+            </div>
+            <span className="input-caption">
+              Scattered activity. Hidden context.
+            </span>
+          </div>
+          <div className="shift-processor" aria-hidden="true">
+            <div className="flow-line" />
+            <div className="processor-symbol">
+              <Image src="/mascot.png" alt="" width={38} height={45} />
+            </div>
+            <span>THE SHIFT</span>
+            <div className="flow-line" />
+          </div>
+          <div className="signal-output" key={`output-${active}`}>
+            <div className="stage-label">
+              <Sparkles size={13} /> THE OPPORTUNITY
+            </div>
+            <div className="output-label">
+              <StoryIcon size={15} />
+              {story.tag}
+              <span>{story.confidence}% confidence</span>
+            </div>
+            <h3>{story.finding}</h3>
+            <p>{story.move}</p>
+            <button
+              className="evidence-button"
+              onClick={() => setShowEvidence(!showEvidence)}
+              aria-expanded={showEvidence}
+            >
+              <span>
+                <FileText size={14} />
+                {showEvidence ? "Hide evidence" : "Follow the evidence"}
+              </span>
+              {showEvidence ? <Minus size={16} /> : <Plus size={16} />}
+            </button>
+            {showEvidence && (
+              <div className="evidence-details">
+                <p>{story.description}</p>
+                <ul>
+                  {story.sources.map((source) => (
+                    <li key={source}>
+                      <Check size={12} />
+                      {source}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <span className="illustrative-label">
+              Illustrative example · not live intelligence
+            </span>
+          </div>
+        </div>
+        <div className="product-footer">
+          <span>Collected. Connected. Prioritized.</span>
+          <span>
+            Every finding has a why. And the evidence to back it up.{" "}
+            <ArrowUpRight size={15} />
+          </span>
+        </div>
+      </section>
+      <section id="possibilities" className="possibilities-section">
+        <div className="possibilities-intro" data-reveal>
+          <span className="crosshair" aria-hidden="true">
+            <Plus size={26} />
+          </span>
+          <h2>
+            A wider view.
+            <br />A <em>sharper</em> edge.
+          </h2>
+          <p>
+            For the people who need to know
+            <br />
+            what’s coming—and what to do about it.
+          </p>
+        </div>
+        <div className="audience-list">
+          <article>
+            <div>
+              <h3>Stay a move ahead.</h3>
+              <p>
+                Keep a standing watch on your competitive landscape. Spot
+                campaigns, changing sentiment, and positioning gaps while
+                there’s still time to act.
+              </p>
+              <span className="audience-tag">FOR MARKETING TEAMS</span>
+            </div>
+            <ArrowUpRight size={30} />
+          </article>
+          <article>
+            <div>
+              <h3>Bring a better brief.</h3>
+              <p>
+                Turn research into direction. Give clients a clear point of view
+                on their market, emerging partnerships, and their next
+                opportunity.
+              </p>
+              <span className="audience-tag">FOR AGENCIES & STRATEGISTS</span>
+            </div>
+            <ArrowUpRight size={30} />
+          </article>
+        </div>
+      </section>
+      <section className="evidence-section">
+        <div className="evidence-art" aria-hidden="true">
+          <div className="evidence-circle circle-a" />
+          <div className="evidence-circle circle-b" />
+          <div className="evidence-circle circle-c" />
+          <ArrowUpRight className="evidence-arrow" strokeWidth={1} />
+          <span>
+            SEE THE SOURCE.
+            <br />
+            TRUST THE DIRECTION.
+          </span>
+        </div>
+        <div className="evidence-copy" data-reveal>
+          <h2>
+            A point of view.
+            <br />
+            With <em>proof.</em>
+          </h2>
+          <p>
+            Good intelligence isn’t a black box. Follow every finding back to
+            its sources, see the confidence behind it, and decide your next move
+            with clarity.
+          </p>
+          <div className="proof-details">
+            <span>
+              <Check size={17} /> Source citations
+            </span>
+            <span>
+              <Check size={17} /> Confidence scores
+            </span>
+            <span>
+              <Check size={17} /> Clear priorities
+            </span>
+          </div>
+          <a href="#product" className="text-button">
+            Explore an example{" "}
+            <span>
+              <ArrowUpRight size={16} />
+            </span>
+          </a>
+        </div>
+      </section>
+      <section id="questions" className="questions-section">
+        <div data-reveal>
+          <h2>
+            Good questions.
+            <br />
+            <em>Clear answers.</em>
+          </h2>
+          <p>A little more context, if you need it.</p>
+        </div>
+        <div className="faq-list">
+          {faqs.map(([question, answer], i) => (
+            <div className="faq-item" key={question}>
+              <h3>
+                <button
+                  id={`faq-heading-${i}`}
+                  aria-expanded={openFaq === i}
+                  aria-controls={`faq-answer-${i}`}
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  {question}
+                  <span>
+                    {openFaq === i ? <Minus size={20} /> : <Plus size={20} />}
+                  </span>
+                </button>
+              </h3>
+              <div
+                id={`faq-answer-${i}`}
+                role="region"
+                aria-labelledby={`faq-heading-${i}`}
+                hidden={openFaq !== i}
+              >
+                <p>{answer}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="final-cta">
+        <span className="cta-star" aria-hidden="true">
+          <AudioLines />
+        </span>
+        <h2 data-reveal>
+          Your next move
+          <br />
+          starts with a <em>shift.</em>
+        </h2>
+        <CTA light>See what comes next</CTA>
+        <p>Competitive intelligence for teams that look ahead.</p>
+        <div className="cta-orbit" aria-hidden="true" />
+      </section>
+      <footer
+        className="shift-footer"
+        itemScope
+        itemType="https://schema.org/Organization"
+      >
+        <div className="footer-brand">
+          <Brand />
+          <span>A different perspective changes everything.</span>
+        </div>
+        <div className="footer-business">
+          <strong itemProp="name">OrangeShift</strong>
+          <address
+            itemProp="address"
+            itemScope
+            itemType="https://schema.org/PostalAddress"
+          >
+            <span itemProp="streetAddress">
+              Smart Village, KM 28 Cairo-Alexandria Desert Road, Giza
+            </span>
+            <br />
+            <span itemProp="addressLocality">El Sheikh Zayed</span>,{" "}
+            <span itemProp="addressRegion">Giza</span>{" "}
+            <span itemProp="postalCode">12577</span>
+            <br />
+            <span itemProp="addressCountry">Egypt</span>
+          </address>
+        </div>
+        <nav className="footer-links" aria-label="Footer navigation">
+          <a href="#product">Product</a>
+          <a href="#questions">Questions</a>
+          <a href="/login">
+            Log in <ArrowUpRight size={13} />
+          </a>
+          <a
+            className="footer-social"
+            href="https://www.linkedin.com/in/orange-shift-185b3b441"
+            itemProp="sameAs"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="OrangeShift on LinkedIn (opens in a new tab)"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M20.45 2H3.55C2.69 2 2 2.68 2 3.52v16.96C2 21.32 2.69 22 3.55 22h16.9c.86 0 1.55-.68 1.55-1.52V3.52C22 2.68 21.31 2 20.45 2ZM7.93 18.75H4.98V9.2h2.95v9.55ZM6.45 7.9a1.71 1.71 0 1 1 0-3.42 1.71 1.71 0 0 1 0 3.42Zm12.3 10.85H15.8V14.1c0-1.11-.02-2.54-1.55-2.54-1.55 0-1.79 1.21-1.79 2.46v4.73H9.51V9.2h2.83v1.3h.04c.4-.75 1.36-1.55 2.79-1.55 2.98 0 3.58 1.96 3.58 4.5v5.3Z" />
+            </svg>
+            <span>LinkedIn</span>
+            <ArrowUpRight size={13} aria-hidden="true" />
+          </a>
+        </nav>
+        <span className="footer-copyright">
+          © {new Date().getFullYear()} OrangeShift
+        </span>
+      </footer>
+    </main>
+  );
 }

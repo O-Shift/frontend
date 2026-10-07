@@ -25,7 +25,7 @@ function LoginForm() {
     const from = searchParams.get('from');
     const requestedPath = from && from.startsWith('/') && !from.startsWith('//')
         ? from
-        : '/';
+        : '/dashboard';
     const afterLogin = `/workspaces?next=${encodeURIComponent(requestedPath)}`;
 
     const handleLogin = async (e?: React.FormEvent) => {

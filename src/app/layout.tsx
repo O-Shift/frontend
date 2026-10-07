@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { SURFACE_HEADER } from "@/lib/site-routing";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "./light-overrides.css";
@@ -17,7 +19,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
  * tags that social crawlers then cache and keep serving.
  */
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://oshift-eg.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.orangeshift.net";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -64,11 +66,12 @@ export const metadata: Metadata = {
  */
 const THEME_INIT = `(function(){try{var t=localStorage.getItem("oshift-theme");if(!t)t=window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const marketing = (await headers()).get(SURFACE_HEADER) === "marketing";
   return (
     // data-theme="dark" matches the :root defaults in globals.css, so the
     // server-rendered HTML is already correct for the common case and the
@@ -78,12 +81,16 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
-        <AnalyticsIdentity />
+        {!marketing && <AnalyticsIdentity />}
         <ThemeProvider>
-          <PinnedProvider>
-            <AppShell>{children}</AppShell>
-            <ToastProvider />
-          </PinnedProvider>
+          {marketing ? (
+            children
+          ) : (
+            <PinnedProvider>
+              <AppShell>{children}</AppShell>
+            </PinnedProvider>
+          )}
+          <ToastProvider />
         </ThemeProvider>
       </body>
     </html>

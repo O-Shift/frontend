@@ -15,10 +15,10 @@ import { createClient } from '@/utils/supabase/client';
 import { useWorkspaces } from '@/hooks/use-workspaces';
 
 function destinationAfterSelection(): string {
-  if (typeof window === 'undefined') return '/';
+  if (typeof window === 'undefined') return '/dashboard';
   const requested = new URLSearchParams(window.location.search).get('next');
-  if (!requested || !requested.startsWith('/') || requested.startsWith('//')) return '/';
-  if (requested === '/workspaces' || requested.startsWith('/workspaces?')) return '/';
+  if (!requested || !requested.startsWith('/') || requested.startsWith('//')) return '/dashboard';
+  if (requested === '/' || requested === '/workspaces' || requested.startsWith('/workspaces?')) return '/dashboard';
   return requested;
 }
 
