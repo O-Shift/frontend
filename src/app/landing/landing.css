@@ -2584,3 +2584,957 @@ body:has(.shift-landing) {
     gap: 18px;
   }
 }
+
+/* ==========================================================================
+   Hero Mascot & Clue Lens Centerpiece Integration
+   ========================================================================== */
+
+.hero-composition {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  min-height: 520px;
+  position: relative;
+  gap: 40px;
+}
+
+.hero-mascot-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 560px;
+  height: 560px;
+  width: 100%;
+  max-width: 580px;
+  margin: 0 auto;
+  user-select: none;
+  cursor: crosshair;
+}
+
+.hero-mascot-frame {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 540px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.hero-mascot-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 25px 45px rgba(0, 0, 0, 0.75));
+  animation: mascot-enter 1.2s var(--ease) both;
+}
+
+@keyframes mascot-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==========================================================================
+   Hero Planetary Orbits & X-Ray Decoder Lens
+   ========================================================================== */
+
+/* 3 Physical Orbit Tracks (Gravitational Rings around Mascot) */
+.hero-orbit-svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 640px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+
+.orbit-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1.2px;
+  stroke-dasharray: 4 6;
+  transition: stroke 0.3s;
+}
+
+.hero-mascot-stage[data-scanning="true"] .orbit-track {
+  stroke: rgba(255, 90, 0, 0.22);
+}
+
+/* 6 Floating Source Chips in Continuous Orbit */
+.hero-orbit-chip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  animation: none !important;
+  will-change: transform, opacity, z-index;
+  white-space: nowrap;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  background: #1e1e21;
+  border: 1px solid #3c3c36;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #d6d3c8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.hero-orbit-chip svg {
+  color: var(--orange);
+  flex-shrink: 0;
+}
+
+/* Interactive Magnifying Glass Cursor in the Hero */
+.hero-lens-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 224px;
+  height: 224px;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+  filter: drop-shadow(8px 22px 20px rgba(0, 0, 0, 0.75));
+}
+
+.hero-lens-cursor[data-active="true"] {
+  opacity: 1;
+}
+
+.hero-glass {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 90, 0, 0.4);
+  background: #111114;
+  box-shadow:
+    inset 0 0 35px rgba(255, 90, 0, 0.25),
+    0 0 25px rgba(0, 0, 0, 0.7);
+}
+
+.hero-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Decoded Layer Viewport inside the Lens */
+.hero-decoded-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 90, 0, 0.12) 0%, rgba(14, 14, 17, 0.96) 80%);
+}
+
+.decoded-hud-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.15;
+  background-image:
+    linear-gradient(#ff5a00 1px, transparent 1px),
+    linear-gradient(90deg, #ff5a00 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.decoded-constellations-svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 640px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+
+.constellation-hub {
+  fill: var(--orange);
+  filter: drop-shadow(0 0 6px rgba(255, 90, 0, 0.9));
+}
+
+.constellation-line {
+  stroke: var(--orange);
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 4px rgba(255, 90, 0, 0.8));
+}
+
+.decoded-mascot-frame {
+  z-index: 1;
+}
+
+.decoded-mascot-image {
+  filter: drop-shadow(0 0 24px rgba(255, 90, 0, 0.45)) contrast(1.15) brightness(1.08) !important;
+  opacity: 0.88;
+}
+
+/* Decoded Strategic Intelligence Cards inside Lens */
+.decoded-chip {
+  background: #171310 !important;
+  border: 1.5px solid var(--orange) !important;
+  color: #faf8f1 !important;
+  box-shadow:
+    0 0 18px rgba(255, 90, 0, 0.35),
+    0 10px 28px rgba(0, 0, 0, 0.85) !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  max-width: 260px !important;
+}
+
+.decoded-icon {
+  color: var(--orange) !important;
+  flex-shrink: 0;
+}
+
+.decoded-text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.decoded-header-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.decoded-tag {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--orange);
+  text-transform: uppercase;
+}
+
+.decoded-headline {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.decoded-body {
+  font-size: 9.5px;
+  color: #c7c3b8;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+/* Tactical HUD Reticle Overlay Locked to the Lens */
+.lens-hud-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+}
+
+.hud-tl {
+  top: 16px;
+  left: 16px;
+  border-top: 1.5px solid var(--orange);
+  border-left: 1.5px solid var(--orange);
+}
+
+.hud-tr {
+  top: 16px;
+  right: 16px;
+  border-top: 1.5px solid var(--orange);
+  border-right: 1.5px solid var(--orange);
+}
+
+.hud-bl {
+  bottom: 16px;
+  left: 16px;
+  border-bottom: 1.5px solid var(--orange);
+  border-left: 1.5px solid var(--orange);
+}
+
+.hud-br {
+  bottom: 16px;
+  right: 16px;
+  border-bottom: 1.5px solid var(--orange);
+  border-right: 1.5px solid var(--orange);
+}
+
+.hud-reticle-cross {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border: 1px dashed rgba(255, 90, 0, 0.45);
+  border-radius: 50%;
+}
+
+.hud-tag {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: var(--orange);
+  background: rgba(0, 0, 0, 0.75);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 90, 0, 0.4);
+  white-space: nowrap;
+}
+
+/* Stage Controls & Hint */
+.hero-stage-controls {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.hero-decode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #202024;
+  border: 1px solid #3c3c36;
+  border-radius: 6px;
+  color: #bfbbb0;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hero-decode-pill:hover {
+  border-color: var(--orange);
+  color: var(--paper);
+}
+
+.hero-decode-pill.is-pinned {
+  background: var(--orange);
+  color: var(--ink);
+  border-color: var(--orange);
+  font-weight: 700;
+}
+
+.hero-lens-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #8c897f;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.hero-lens-stage {
+  margin-top: 50px;
+  position: relative;
+  z-index: 3;
+}
+
+.hero-lens-stage .clue-section {
+  padding: 0;
+  background: transparent;
+}
+
+.hero-lens-stage .clue-heading {
+  margin-bottom: 28px;
+}
+
+/* ==========================================================================
+   Dossier Switcher for Clue Lens (Clean, Non-Pill Styling)
+   ========================================================================== */
+
+.clue-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--orange);
+  margin-bottom: 12px;
+}
+
+.dossier-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 12px 18px;
+  background: #202022;
+  border: 1px solid #383834;
+  border-radius: 8px;
+}
+
+.dossier-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #8f8b80;
+  white-space: nowrap;
+}
+
+.dossier-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dossier-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: #28282b;
+  border: 1px solid #43433e;
+  color: #b5b1a6;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dossier-tab:hover {
+  background: #323236;
+  color: var(--paper);
+}
+
+.dossier-tab.active-dossier {
+  background: var(--orange);
+  color: var(--ink);
+  border-color: var(--orange);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Section Eyebrow General Utility
+   ========================================================================== */
+
+.section-eyebrow {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--orange);
+  margin-bottom: 16px;
+}
+
+/* ==========================================================================
+   About Us Section (Clean & Architectural)
+   ========================================================================== */
+
+.about-section {
+  padding: 110px 6vw;
+  background: #18181b;
+  color: var(--paper);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.about-container {
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.about-header {
+  max-width: 820px;
+  margin-bottom: 60px;
+}
+
+.about-header h2 {
+  font-size: clamp(38px, 4.2vw, 68px);
+  line-height: 1.05;
+  margin-bottom: 24px;
+}
+
+.about-header h2 em {
+  color: var(--orange);
+}
+
+.about-lead {
+  font-size: clamp(15px, 1.3vw, 19px);
+  line-height: 1.6;
+  color: #b5b1a6;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 32px;
+  margin-bottom: 48px;
+}
+
+.about-card {
+  padding: 40px;
+  background: #202023;
+  border: 1px solid #383833;
+  border-radius: 12px;
+}
+
+.about-card-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--orange);
+  margin-bottom: 14px;
+}
+
+.about-card h3 {
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--paper);
+  margin-bottom: 16px;
+}
+
+.about-card p {
+  font-size: 14px;
+  color: #a7a398;
+  line-height: 1.7;
+}
+
+.about-flaws-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-flaws-list li {
+  padding: 14px 16px;
+  background: #18181a;
+  border-left: 3px solid #ff5a00;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: #b5b1a6;
+  line-height: 1.55;
+}
+
+.about-flaws-list strong {
+  display: block;
+  color: var(--paper);
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.principles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 24px;
+}
+
+.principle-item {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.principle-num {
+  font-family: "Shift Serif", serif;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--orange);
+  font-weight: 400;
+}
+
+.principle-item h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--paper);
+  margin: 0 0 6px 0;
+}
+
+.principle-item p {
+  font-size: 13px;
+  color: #a39f94;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.about-origin-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 24px 32px;
+  background: #202022;
+  border: 1px solid #33332e;
+  border-radius: 8px;
+}
+
+.origin-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+  white-space: nowrap;
+}
+
+.about-origin-strip p {
+  font-size: 13px;
+  color: #a8a49a;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Pricing Section (Clean Rectangular Structure, No Pills)
+   ========================================================================== */
+
+.pricing-section {
+  padding: 110px 6vw;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pricing-container {
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.pricing-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 55px;
+}
+
+.pricing-header h2 {
+  font-size: clamp(38px, 4.2vw, 68px);
+  line-height: 1.05;
+  margin-bottom: 16px;
+}
+
+.pricing-header h2 em {
+  color: var(--orange);
+}
+
+.pricing-header p {
+  font-size: 15px;
+  color: #a8a499;
+  line-height: 1.6;
+}
+
+/* Billing Toggle Switch */
+.billing-toggle-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 30px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #20201c;
+  border: 1px solid #383830;
+  font-size: 12px;
+  color: #8c897f;
+}
+
+.billing-toggle-wrapper .active-cycle {
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.discount-pill {
+  background: rgba(255, 90, 0, 0.15);
+  color: var(--orange);
+  font-weight: 700;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.billing-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 4px;
+  background: #33332c;
+  border: none;
+  position: relative;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.switch-thumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--paper);
+  transition: transform 0.25s var(--ease);
+}
+
+.switch-thumb.thumb-annual {
+  transform: translateX(20px);
+  background: var(--orange);
+}
+
+/* Pricing Grid */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  align-items: stretch;
+}
+
+.pricing-card {
+  position: relative;
+  background: #1c1c1f;
+  border: 1px solid #33332e;
+  border-radius: 12px;
+  padding: 36px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color 0.25s, transform 0.25s;
+}
+
+.pricing-card:hover {
+  border-color: #555549;
+  transform: translateY(-4px);
+}
+
+.pricing-card.featured-tier {
+  background: #202024;
+  border-color: var(--orange);
+  box-shadow: 0 15px 40px rgba(255, 90, 0, 0.12);
+}
+
+.featured-badge {
+  position: absolute;
+  top: -12px;
+  left: 28px;
+  background: var(--orange);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.tier-name {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--paper);
+  margin-bottom: 6px;
+}
+
+.tier-desc {
+  font-size: 12px;
+  color: #9c988e;
+  line-height: 1.5;
+  min-height: 36px;
+  margin-bottom: 20px;
+}
+
+.price-tag {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+.price-tag .currency {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--paper);
+}
+
+.price-tag .amount {
+  font-size: 46px;
+  font-weight: 800;
+  color: var(--paper);
+  line-height: 1;
+  letter-spacing: -1.5px;
+}
+
+.price-tag .period {
+  font-size: 13px;
+  color: #8c897f;
+}
+
+.billing-note {
+  font-size: 10px;
+  color: #7d7a71;
+  display: block;
+  margin-bottom: 24px;
+}
+
+.tier-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  border-top: 1px solid #2b2b26;
+  padding-top: 24px;
+}
+
+.tier-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #b5b1a6;
+  line-height: 1.45;
+}
+
+.tier-features li svg {
+  color: var(--orange);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tier-features li strong {
+  color: var(--paper);
+}
+
+.card-cta {
+  margin-top: auto;
+}
+
+.pricing-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 20px;
+  border-radius: 6px;
+  background: #2b2b2e;
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.pricing-btn:hover {
+  background: #3b3b40;
+}
+
+.pricing-btn.featured-btn {
+  background: var(--orange);
+  color: var(--ink);
+}
+
+.pricing-btn.featured-btn:hover {
+  background: #ff7324;
+}
+
+.pricing-trust-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  flex-wrap: wrap;
+  margin-top: 50px;
+  font-size: 12px;
+  color: #8b877d;
+}
+
+.pricing-trust-bar span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pricing-trust-bar span svg {
+  color: #22c55e;
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+
+@media (max-width: 1080px) {
+  .hero-composition {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .hero-mascot-frame {
+    height: 380px;
+    max-width: 320px;
+  }
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .about-section,
+  .pricing-section {
+    padding: 70px 6vw;
+  }
+  .about-origin-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .pricing-trust-bar {
+    gap: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .dossier-selector-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

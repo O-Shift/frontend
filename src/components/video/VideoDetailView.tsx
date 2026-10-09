@@ -21,11 +21,9 @@ import {
 import { FaTiktok, FaInstagram, FaYoutube } from 'react-icons/fa6';
 import type { VideoAsset } from '@/types/entities';
 
+import VideoScoreRadar from './VideoScoreRadar';
 import SpeedometerGauge from './widgets/SpeedometerGauge';
 import SegmentedBarMeter, { CategoryMetric } from './widgets/SegmentedBarMeter';
-import DonutSegments, { DonutItem } from './widgets/DonutSegments';
-import BezierPacingCurve from './widgets/BezierPacingCurve';
-import CircularDial from './widgets/CircularDial';
 import LollipopTimeline from './widgets/LollipopTimeline';
 
 interface VideoDetailViewProps {
@@ -59,7 +57,6 @@ export default function VideoDetailView({ asset, onBack }: VideoDetailViewProps)
   const analysis = asset.analysis;
   const scores = analysis?.final_scores_out_of_100;
   const hookAnalysis = analysis?.hook_analysis;
-  const attention = analysis?.attention_pattern;
   const cultural = analysis?.cultural_regional_signals;
   const emotions = analysis?.emotional_reaction_prediction?.primary_emotions || [];
   const meta = analysis?.video_metadata;
@@ -78,7 +75,7 @@ export default function VideoDetailView({ asset, onBack }: VideoDetailViewProps)
     scores?.overall_viral_pattern_similarity_score ??
     Math.round((hookScore + retentionScore + emotionalScore + shareScore) / 4);
 
-  // 1. Segmented Bar Categories: All 7 Real DB Scores in final_scores_out_of_100
+  // 1. Segmented Bar Categories: 7 Real DB Scores in final_scores_out_of_100
   const categories: CategoryMetric[] = [
     {
       name: 'Hook Power',
@@ -131,64 +128,17 @@ export default function VideoDetailView({ asset, onBack }: VideoDetailViewProps)
     },
   ];
 
-  // 2. Donut Breakdown: Real Proportional Contribution of the 4 Core Scoring Pillars
-  const pillarTotal = hookScore + retentionScore + emotionalScore + shareScore || 1;
-  const donutItems: DonutItem[] = [
-    {
-      label: 'Hook Power',
-      value: hookScore,
-      percentage: Math.round((hookScore / pillarTotal) * 100),
-      color: '#f97316',
-    },
-    {
-      label: 'Retention Depth',
-      value: retentionScore,
-      percentage: Math.round((retentionScore / pillarTotal) * 100),
-      color: '#ef4444',
-    },
-    {
-      label: 'Emotional Intensity',
-      value: emotionalScore,
-      percentage: Math.round((emotionalScore / pillarTotal) * 100),
-      color: '#ec4899',
-    },
-    {
-      label: 'Shareability',
-      value: shareScore,
-      percentage: Math.round((shareScore / pillarTotal) * 100),
-      color: '#14b8a6',
-    },
-  ];
-
-  // 3. Speedometer Sub-metrics: Real Pillar Scores
+  // 2. Speedometer Sub-metrics (Real DB scores)
   const speedMetrics = [
     { label: 'Hook Power', value: `${hookScore}/100` },
     { label: 'Retention Depth', value: `${retentionScore}/100` },
     { label: 'Shareability', value: `${shareScore}/100` },
-    { label: 'Cultural Cues', value: `${culturalScore}/100` },
   ];
 
-  // 4. Circular Dial Left Metrics: Real Hook Window & Audio Flag
   const withoutSound = hookAnalysis?.understandable_without_sound ?? true;
-  const primaryHookType = hookAnalysis?.hook_types?.[0] || 'Hook Mechanism';
-  const circularMetrics = [
-    { value: '3.0s', label: 'Hook window' },
-    {
-      value: withoutSound ? 'Mute Safe' : 'Audio Needed',
-      label: withoutSound ? 'Silent feed ready' : 'Requires sound',
-    },
-  ];
-
-  // 5. Pacing Curve: Computed from real key moments timestamps
   const durationSec = analysis?.duration_seconds || asset.duration_s || 30;
   const moments = analysis?.key_moments || [];
-  const pacingPoints =
-    moments.length >= 3
-      ? moments.map((m) => Math.round(((m.timestamp_sec / Math.max(durationSec, 1)) * 60) + 30))
-      : [35, 60, 50, 75, 95, 80, 65, 75, 88, 80];
-
-  const hookText =
-    analysis?.hook || hookAnalysis?.hook_strength_explanation || '';
+  const hookText = analysis?.hook || hookAnalysis?.hook_strength_explanation || '';
 
   return (
     <motion.div
@@ -398,61 +348,33 @@ export default function VideoDetailView({ asset, onBack }: VideoDetailViewProps)
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: BENTO DATA VISUALIZATIONS (100% REAL DATA) ── */}
+        {/* ── RIGHT COLUMN: NON-REDUNDANT INTELLIGENCE VISUALIZATIONS ── */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Row 1: Speedometer Gauge + Circular Dial */}
+          {/* 1. 7-Axis Multimodal Strategy Radar Chart */}
+          <VideoScoreRadar scores={scores} />
+
+          {/* 2. Side-by-side: Overall Viral Score Gauge + 7-Dimension Segmented Bar Meter */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <SpeedometerGauge
               score={overallViralScore}
-              title="Viral Match"
+              title="Overall Viral Match"
               subtitle="Multimodal pattern similarity"
               metrics={speedMetrics}
               accentColor="#f97316"
             />
-            <CircularDial
-              score={hookScore}
-              title="Hook Velocity"
-              topRightValue={`${(hookScore / 10).toFixed(1)} ★`}
-              centerLabel={`@ ${(hookScore / 10).toFixed(1)}`}
-              leftMetrics={circularMetrics}
-              dialColor="#f43f5e"
-              hookCategory={primaryHookType}
-            />
-          </div>
-
-          {/* Row 2: Segmented Bar Meter + Donut Segments */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <SegmentedBarMeter
               title="Score Dimensions"
               categories={categories}
             />
-            <DonutSegments
-              title="Pillar Breakdown"
-              subtitle="4 Core Scores"
-              items={donutItems}
-            />
           </div>
 
-          {/* Row 3: Bezier Pacing Curve + Lollipop Timeline */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <BezierPacingCurve
-              score={retentionScore}
-              title="Visual Pacing"
-              subtitle={
-                attention?.scene_changes_and_pacing ||
-                attention?.visual_novelty ||
-                'Scene cuts and visual attention flow'
-              }
-              curveColor="#f43f5e"
-              dataPoints={pacingPoints}
-            />
-            <LollipopTimeline
-              durationSeconds={durationSec}
-              keyMoments={moments}
-              title="Timeline Beats"
-              subtitle="Chronological narrative moments"
-            />
-          </div>
+          {/* 3. Chronological Narrative Beats Timeline */}
+          <LollipopTimeline
+            durationSeconds={durationSec}
+            keyMoments={moments}
+            title="Timeline Beats"
+            subtitle="Chronological narrative moments"
+          />
         </div>
       </div>
     </motion.div>

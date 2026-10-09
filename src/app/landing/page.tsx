@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useReducedMotion,
   useScroll,
-  useTransform,
 } from "framer-motion";
 import {
   ArrowUpRight,
@@ -17,7 +15,6 @@ import {
   Globe2,
   MessageSquare,
   Play,
-  Pause,
   Plus,
   Minus,
   ScanLine,
@@ -31,15 +28,7 @@ import {
 } from "lucide-react";
 import "./landing.css";
 import ClueLens from "./clue-lens";
-
-const SignalLens = dynamic(() => import("./signal-lens"), {
-  ssr: false,
-  loading: () => (
-    <div className="signal-lens" aria-hidden="true">
-      <div className="lens-fallback" />
-    </div>
-  ),
-});
+import HeroMascotStage from "./hero-mascot-stage";
 
 const stories = [
   {
@@ -80,28 +69,34 @@ const stories = [
     icon: CircleDot,
   },
 ];
+
 const faqs = [
   [
     "What does OShift actually do?",
-    "OShift collects public competitor activity, connects the patterns, and turns them into scored opportunities. Campaigns, positioning gaps, partnership motions, and emerging risks arrive with the evidence behind them.",
+    "OShift collects public competitor activity across web, ads, video, social, and reviews, connects the hidden patterns, and turns them into scored opportunities with verifiable evidence attached.",
   ],
   [
     "How is this different from social listening?",
-    "Listening tells you what was mentioned. OShift helps you understand what it means and what you can do next, with confidence, priority, and source citations attached.",
+    "Listening tells you what was mentioned. OShift analyzes multi-modal signals to deduce what it means and what you can do next, with confidence ratings, strategic priorities, and direct source citations.",
   ],
   [
     "Where do the signals come from?",
-    "The open web, social platforms, video, public ad libraries, news, and public reviews. Findings trace back to the source captures they were built from.",
+    "The open web (DOM diffs), social platforms, video transcripts, public ad libraries (Meta & Google), industry news, and verified reviews. Every finding traces back to raw source captures.",
   ],
   [
     "Is it built for in-house teams or agencies?",
-    "Both. Marketing teams can keep a standing watch on competitors. Agencies can turn the same evidence into sharper research, client briefs, and partnership strategy.",
+    "Both. Marketing teams keep a continuous standing watch on category rivals. Agencies and strategists use client workspace separation to generate pitch-ready research, battlecards, and client briefs.",
   ],
   [
-    "Can I check the evidence?",
-    "Yes. Findings include source citations and confidence scores. You can follow the evidence and judge the conclusion for yourself.",
+    "Can I check the evidence behind an opportunity?",
+    "Yes. Zero ungrounded AI hallucinations. Every single finding displays its raw citations, crawler timestamps, and confidence score so you can inspect the receipts yourself.",
+  ],
+  [
+    "Do you offer a free trial?",
+    "Yes. All plans include a 14-day full-access free trial with no credit card required to start. Setup takes under 2 minutes.",
   ],
 ];
+
 function Brand() {
   return (
     <Link className="shift-brand" href="/" aria-label="OShift home">
@@ -115,6 +110,7 @@ function Brand() {
     </Link>
   );
 }
+
 function CTA({
   children = "Start watching",
   light = false,
@@ -129,24 +125,21 @@ function CTA({
     </a>
   );
 }
+
 export default function LandingPage() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [rotation, setRotation] = useState(0);
+  const [annual, setAnnual] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [showEvidence, setShowEvidence] = useState(false);
   const reduced = useReducedMotion();
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll();
-  const { scrollYProgress: heroProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-  const sculptureY = useTransform(heroProgress, [0, 1], [0, 65]);
-  const sculptureRotate = useTransform(heroProgress, [0, 1], [0, -9]);
+
   const story = stories[active];
   const StoryIcon = story.icon;
+
   useEffect(() => {
     if (!menuOpen) return;
     const close = (e: KeyboardEvent) => {
@@ -155,6 +148,7 @@ export default function LandingPage() {
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [menuOpen]);
+
   useEffect(() => {
     const sections = document.querySelectorAll(".shift-landing [data-reveal]");
     const observer = new IntersectionObserver(
@@ -170,6 +164,7 @@ export default function LandingPage() {
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
   }, []);
+
   return (
     <main className="shift-landing" data-motion={paused ? "paused" : "playing"}>
       <a className="shift-skip" href="#product">
@@ -180,12 +175,16 @@ export default function LandingPage() {
         style={{ scaleX: scrollYProgress }}
         aria-hidden="true"
       />
+
+      {/* Main Navigation */}
       <nav className="shift-nav" aria-label="Main navigation">
         <Brand />
         <div className="nav-center">
           <a href="#product">The product</a>
-          <a href="#possibilities">The possibilities</a>
-          <a href="#questions">The questions</a>
+          <a href="#clues">The clue lens</a>
+          <a href="#about">About us</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#questions">FAQ</a>
         </div>
         <div className="nav-right">
           <a className="login-link" href="/login">
@@ -203,23 +202,33 @@ export default function LandingPage() {
           </button>
         </div>
       </nav>
+
+      {/* Mobile Drawer */}
       {menuOpen && (
         <div className="mobile-navigation" id="mobile-navigation">
           <a onClick={() => setMenuOpen(false)} href="#product">
             The product <ArrowUpRight />
           </a>
-          <a onClick={() => setMenuOpen(false)} href="#possibilities">
-            The possibilities <ArrowUpRight />
+          <a onClick={() => setMenuOpen(false)} href="#clues">
+            The clue lens <ArrowUpRight />
+          </a>
+          <a onClick={() => setMenuOpen(false)} href="#about">
+            About us <ArrowUpRight />
+          </a>
+          <a onClick={() => setMenuOpen(false)} href="#pricing">
+            Pricing <ArrowUpRight />
           </a>
           <a onClick={() => setMenuOpen(false)} href="#questions">
-            The questions <ArrowUpRight />
+            FAQ <ArrowUpRight />
           </a>
           <a href="/login">
             Log in <ArrowUpRight />
           </a>
         </div>
       )}
-      <header className="shift-hero" ref={heroRef}>
+
+      {/* Hero Section: Editorial Headline + Investigator Mascot */}
+      <header className="shift-hero" ref={heroRef} id="hero">
         <div className="hero-composition">
           <div className="hero-copy">
             <h1>
@@ -242,77 +251,24 @@ export default function LandingPage() {
             </p>
             <div className="hero-actions">
               <CTA>Find your next move</CTA>
-              <a className="text-button" href="#product">
-                Meet OShift{" "}
+              <a className="text-button" href="#clues">
+                Inspect the clues{" "}
                 <span>
                   <ArrowDown size={16} />
                 </span>
               </a>
             </div>
           </div>
-          <motion.div
-            className="hero-sculpture"
-            style={
-              reduced || paused
-                ? {}
-                : { y: sculptureY, rotate: sculptureRotate }
-            }
-          >
-            <div className="lens-orbit orbit-one" aria-hidden="true" />
-            <div className="lens-orbit orbit-two" aria-hidden="true" />
-            <SignalLens paused={paused || !!reduced} rotation={rotation} />
-            <div className="hero-mascot">
-              <Image
-                src="/investigator_mascot.png"
-                alt="OShift’s detective mascot connecting competitor clues"
-                width={1024}
-                height={1536}
-                sizes="(max-width: 560px) 90vw, 42vw"
-                preload
-              />
-            </div>
-            <span className="source-chip source-web">
-              <Globe2 size={14} /> Web
-            </span>
-            <span className="source-chip source-ads">
-              <ScanLine size={14} /> Ads
-            </span>
-            <span className="source-chip source-social">
-              <MessageSquare size={14} /> Social
-            </span>
-            <div className="hero-finding">
-              <span className="finding-icon">
-                <Sparkles size={17} />
-              </span>
-              <div>
-                <small>THE DOTS, CONNECTED</small>
-                <strong>Your next move, uncovered.</strong>
-              </div>
-              <ArrowUpRight size={17} />
-            </div>
-            <div className="lens-controls">
-              <label htmlFor="lens-rotation">Explore the perspective</label>
-              <input
-                id="lens-rotation"
-                type="range"
-                min="-180"
-                max="180"
-                value={rotation}
-                onChange={(e) => setRotation(Number(e.target.value))}
-                aria-label="Rotate the 3D signal lens"
-              />
-              <button
-                onClick={() => setPaused(!paused)}
-                aria-label={
-                  paused ? "Play sculpture motion" : "Pause sculpture motion"
-                }
-                aria-pressed={paused}
-              >
-                {paused || reduced ? <Play size={13} /> : <Pause size={13} />}
-              </button>
-            </div>
-          </motion.div>
+
+          {/* Mascot Artwork with 6 Orbiting Source Chips & Magnifying Glass */}
+          <HeroMascotStage paused={paused || !!reduced} />
         </div>
+
+        {/* The Interactive Clue Lens Centerpiece */}
+        <div className="hero-lens-stage" id="clues">
+          <ClueLens paused={paused || !!reduced} />
+        </div>
+
         <div className="hero-bottom">
           <span>
             Less noise.
@@ -338,6 +294,8 @@ export default function LandingPage() {
           </a>
         </div>
       </header>
+
+      {/* Source Coverage Ribbon */}
       <div className="source-ribbon">
         <span>THE WHOLE PICTURE.</span>
         <div>
@@ -362,7 +320,8 @@ export default function LandingPage() {
           ONE CLEAR DIRECTION. <ArrowUpRight size={17} />
         </span>
       </div>
-      <ClueLens paused={paused || !!reduced} />
+
+      {/* Product Section */}
       <section id="product" className="product-section">
         <div className="section-heading" data-reveal>
           <h2>
@@ -510,6 +469,8 @@ export default function LandingPage() {
           </span>
         </div>
       </section>
+
+      {/* Target Audiences */}
       <section id="possibilities" className="possibilities-section">
         <div className="possibilities-intro" data-reveal>
           <span className="crosshair" aria-hidden="true">
@@ -552,6 +513,8 @@ export default function LandingPage() {
           </article>
         </div>
       </section>
+
+      {/* Evidence & Verification Section */}
       <section className="evidence-section">
         <div className="evidence-art" aria-hidden="true">
           <div className="evidence-circle circle-a" />
@@ -594,14 +557,224 @@ export default function LandingPage() {
           </a>
         </div>
       </section>
+
+      {/* About Us Section */}
+      <section id="about" className="about-section">
+        <div className="about-container" data-reveal>
+          <div className="about-header">
+            <span className="section-eyebrow">WHO WE ARE</span>
+            <h2>
+              Built for teams who
+              <br />
+              refuse to be <em>surprised.</em>
+            </h2>
+            <p className="about-lead">
+              Markets don’t wait for quarterly business reviews. Your rivals test new landing pages at 2 a.m.,
+              launch stealth ad campaigns on weekends, and tweak their pricing unannounced. We built OrangeShift
+              to give you continuous 360° foresight—with the receipts attached.
+            </p>
+          </div>
+
+          <div className="about-grid">
+            <div className="about-card story-card">
+              <span className="about-card-badge">THE MISSION</span>
+              <h3>The Anti-Dashboard Philosophy</h3>
+              <p>
+                Traditional competitive intelligence is trapped between two flawed extremes:
+              </p>
+              <ul className="about-flaws-list">
+                <li>
+                  <strong>The $50,000 Slide Deck:</strong> High-priced consultants who deliver a 60-page PDF three months after your competitor has already moved on.
+                </li>
+                <li>
+                  <strong>The Social Listening Firehose:</strong> Dashboards that dump 20,000 unranked mentions and noisy keyword alerts without a single strategic conclusion.
+                </li>
+              </ul>
+              <p>
+                OrangeShift bridges that gap. We combine autonomous 24/7 multi-modal ingestion with deep strategic reasoning. You don’t get noise; you get scored moves with direct source links.
+              </p>
+            </div>
+
+            <div className="about-card principles-card">
+              <span className="about-card-badge">OUR PRINCIPLES</span>
+              <h3>How We Think</h3>
+              <div className="principles-list">
+                <div className="principle-item">
+                  <div className="principle-num">01</div>
+                  <div>
+                    <h4>Receipts Over Rumors</h4>
+                    <p>Every opportunity, battlecard, and brief links directly to raw captures (ad libraries, cached DOM diffs, video transcripts, verified reviews). Zero ungrounded AI hallucinations.</p>
+                  </div>
+                </div>
+                <div className="principle-item">
+                  <div className="principle-num">02</div>
+                  <div>
+                    <h4>Continuous Watch, Not Quarterly Panic</h4>
+                    <p>Automated background crawlers monitor competitors around the clock. You spot moves while there is still time to prepare your counter-move.</p>
+                  </div>
+                </div>
+                <div className="principle-item">
+                  <div className="principle-num">03</div>
+                  <div>
+                    <h4>Strategic Playbooks, Not Vanity Mentions</h4>
+                    <p>We don’t care how many times a competitor was mentioned on Twitter. We care what their product, pricing, and campaign roadmap looks like—and what you should do next.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="about-origin-strip">
+            <div className="origin-badge">
+              <Globe2 size={16} />
+              <span>Smart Village, Giza</span>
+            </div>
+            <p>
+              Engineering autonomous competitive intelligence engines for high-velocity marketing teams and strategists worldwide.
+            </p>
+            <CTA light>Join forward-looking teams</CTA>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="pricing-section">
+        <div className="pricing-container" data-reveal>
+          <div className="pricing-header">
+            <span className="section-eyebrow">TRANSPARENT PLANS</span>
+            <h2>
+              Predictable investment.
+              <br />
+              <em>Decisive edge.</em>
+            </h2>
+            <p>
+              Every plan includes a 14-day free trial. Start watching in under 2 minutes.
+            </p>
+            <div className="billing-toggle-wrapper">
+              <span className={!annual ? "active-cycle" : ""}>Monthly</span>
+              <button
+                type="button"
+                className="billing-switch"
+                onClick={() => setAnnual(!annual)}
+                aria-label="Toggle annual or monthly billing"
+                aria-pressed={annual}
+              >
+                <span className={`switch-thumb ${annual ? "thumb-annual" : ""}`} />
+              </button>
+              <span className={annual ? "active-cycle" : ""}>
+                Annual <span className="discount-pill">Save 20%</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="pricing-grid">
+            {/* Tier 1: Scout */}
+            <div className="pricing-card">
+              <div className="card-top">
+                <span className="tier-name">Scout</span>
+                <p className="tier-desc">For solo strategists, consultants, and early-stage challengers.</p>
+                <div className="price-tag">
+                  <span className="currency">$</span>
+                  <span className="amount">{annual ? "39" : "49"}</span>
+                  <span className="period">/ month</span>
+                </div>
+                <small className="billing-note">{annual ? "Billed annually ($468/yr)" : "Billed monthly"}</small>
+              </div>
+              <ul className="tier-features">
+                <li><Check size={16} /> Track up to <strong>3 competitors</strong></li>
+                <li><Check size={16} /> Weekly automated AI Intelligence Brief</li>
+                <li><Check size={16} /> Website change detection & DOM diffs</li>
+                <li><Check size={16} /> Meta & Google Ad Library tracking</li>
+                <li><Check size={16} /> 30-day historical signal archive</li>
+                <li><Check size={16} /> Instant email threat alerts</li>
+              </ul>
+              <div className="card-cta">
+                <a href="/start" className="pricing-btn">
+                  <span>Start with Scout</span>
+                  <ArrowUpRight size={16} />
+                </a>
+              </div>
+            </div>
+
+            {/* Tier 2: Intelligence (Popular) */}
+            <div className="pricing-card featured-tier">
+              <div className="featured-badge">MOST POPULAR</div>
+              <div className="card-top">
+                <span className="tier-name">Intelligence</span>
+                <p className="tier-desc">For high-growth marketing teams that need to outmaneuver rivals.</p>
+                <div className="price-tag">
+                  <span className="currency">$</span>
+                  <span className="amount">{annual ? "119" : "149"}</span>
+                  <span className="period">/ month</span>
+                </div>
+                <small className="billing-note">{annual ? "Billed annually ($1,428/yr)" : "Billed monthly"}</small>
+              </div>
+              <ul className="tier-features">
+                <li><Check size={16} /> Track up to <strong>10 competitors</strong></li>
+                <li><Check size={16} /> <strong>24/7 multi-modal signal stream</strong></li>
+                <li><Check size={16} /> Video transcription & sentiment shifts</li>
+                <li><Check size={16} /> AI Scored Opportunities & Positioning Gaps</li>
+                <li><Check size={16} /> Early crisis & creator partnership warnings</li>
+                <li><Check size={16} /> Hermès Conversational AI Agent (streaming RAG)</li>
+                <li><Check size={16} /> Unlimited Battlecard & Brief exports</li>
+              </ul>
+              <div className="card-cta">
+                <a href="/start" className="pricing-btn featured-btn">
+                  <span>Start 14-day free trial</span>
+                  <ArrowUpRight size={16} />
+                </a>
+              </div>
+            </div>
+
+            {/* Tier 3: Agency & Enterprise */}
+            <div className="pricing-card">
+              <div className="card-top">
+                <span className="tier-name">Agency & Enterprise</span>
+                <p className="tier-desc">For agencies managing multiple clients and category leaders.</p>
+                <div className="price-tag">
+                  <span className="currency">$</span>
+                  <span className="amount">{annual ? "319" : "399"}</span>
+                  <span className="period">/ month</span>
+                </div>
+                <small className="billing-note">{annual ? "Billed annually ($3,828/yr)" : "Billed monthly"}</small>
+              </div>
+              <ul className="tier-features">
+                <li><Check size={16} /> Track up to <strong>30 competitors</strong> (expandable)</li>
+                <li><Check size={16} /> <strong>Multi-workspace tenant isolation</strong> per client</li>
+                <li><Check size={16} /> White-label branded client reports & decks</li>
+                <li><Check size={16} /> Priority Inngest crawler pipelines & SLA</li>
+                <li><Check size={16} /> Custom data sources & bespoke competitor onboarding</li>
+                <li><Check size={16} /> Full REST API & Webhook signal access</li>
+                <li><Check size={16} /> Dedicated Intelligence Strategist & Slack channel</li>
+              </ul>
+              <div className="card-cta">
+                <a href="/start" className="pricing-btn">
+                  <span>Contact Enterprise</span>
+                  <ArrowUpRight size={16} />
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="pricing-trust-bar">
+            <span><Check size={14} /> 14-day free trial</span>
+            <span><Check size={14} /> No credit card required</span>
+            <span><Check size={14} /> Instant setup in &lt; 2 minutes</span>
+            <span><Check size={14} /> SOC2-grade tenant isolation</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Questions / FAQ */}
       <section id="questions" className="questions-section">
         <div data-reveal>
+          <span className="section-eyebrow">FREQUENTLY ASKED</span>
           <h2>
             Good questions.
             <br />
             <em>Clear answers.</em>
           </h2>
-          <p>A little more context, if you need it.</p>
+          <p>Everything you need to know about our intelligence engine.</p>
         </div>
         <div className="faq-list">
           {faqs.map(([question, answer], i) => (
@@ -631,6 +804,8 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      {/* Final Call to Action */}
       <section className="final-cta">
         <span className="cta-star" aria-hidden="true">
           <AudioLines />
@@ -644,6 +819,8 @@ export default function LandingPage() {
         <p>Competitive intelligence for teams that look ahead.</p>
         <div className="cta-orbit" aria-hidden="true" />
       </section>
+
+      {/* Footer */}
       <footer
         className="shift-footer"
         itemScope
@@ -673,7 +850,10 @@ export default function LandingPage() {
         </div>
         <nav className="footer-links" aria-label="Footer navigation">
           <a href="#product">Product</a>
-          <a href="#questions">Questions</a>
+          <a href="#clues">Clue Lens</a>
+          <a href="#about">About</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#questions">FAQ</a>
           <a href="/login">
             Log in <ArrowUpRight size={13} />
           </a>

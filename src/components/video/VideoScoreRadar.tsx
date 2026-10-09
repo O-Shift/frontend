@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
+import { Sparkles } from 'lucide-react';
 import type { FinalScores } from '@/types/entities';
 
 interface VideoScoreRadarProps {
@@ -21,7 +22,7 @@ interface VideoScoreRadarProps {
 export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRadarProps) {
   if (!scores) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-center text-sm text-[var(--text-secondary)] border border-[var(--border-color)] rounded-md bg-[var(--card-bg)]">
+      <div className="flex flex-col items-center justify-center p-6 text-center text-sm text-[var(--text-secondary)] border border-[var(--border-color)] rounded-2xl bg-[var(--card-bg)]">
         No score breakdown available for this video.
       </div>
     );
@@ -47,48 +48,31 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
         4
     );
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'var(--color-success)';
-    if (score >= 60) return 'var(--accent)';
-    if (score >= 40) return 'var(--color-warning)';
-    return 'var(--color-danger)';
-  };
-
   return (
-    <div className={`flex flex-col gap-4 p-5 rounded-md border border-[var(--border-color)] bg-[var(--card-bg)]  ${className}`}>
+    <div className={`flex flex-col gap-3 p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] shadow-sm hover:border-white/20 transition-all ${className}`}>
       <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-            Viral Performance Scorecard
-          </div>
-          <div className="text-lg font-bold text-[var(--text-primary)]">
-            Multimodal Strategy Radar
-          </div>
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
+            Multimodal Strategy Radar (7-Axis)
+          </h4>
         </div>
-        <div className="flex flex-col items-end">
-          <div className="flex items-baseline gap-1">
-            <span
-              className="text-2xl font-black"
-              style={{ color: getScoreColor(overallScore) }}
-            >
-              {overallScore}
-            </span>
-            <span className="text-xs text-[var(--text-secondary)] font-medium">/ 100</span>
-          </div>
-          <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-            {overallScore >= 80 ? ' High Viral Potential' : overallScore >= 60 ? ' Strong Performer' : ' Baseline Engagement'}
+        <div className="flex items-baseline gap-1 font-mono">
+          <span className="text-base font-black text-[var(--text-primary)]">
+            {overallScore}
           </span>
+          <span className="text-[11px] text-[var(--text-secondary)]">/ 100 PTS</span>
         </div>
       </div>
 
       {/* Radar Chart */}
-      <div className="w-full h-64 relative -my-2">
+      <div className="w-full h-64 relative -my-1">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="72%" data={data}>
             <PolarGrid stroke="var(--border-color)" strokeOpacity={0.6} />
             <PolarAngleAxis
               dataKey="subject"
-              tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontWeight: 500 }}
+              tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 600 }}
             />
             <PolarRadiusAxis
               angle={30}
@@ -99,51 +83,40 @@ export default function VideoScoreRadar({ scores, className = '' }: VideoScoreRa
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'var(--surface-raised)',
+                backgroundColor: 'var(--card-bg)',
                 border: '1px solid var(--border-color)',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 color: 'var(--text-primary)',
                 fontSize: '12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
               }}
               formatter={(value) => [`${value}/100`, 'Score']}
             />
             <Radar
-              name="Viral Score"
+              name="Strategy Score"
               dataKey="score"
-              stroke="var(--accent)"
-              fill="var(--accent)"
-              fillOpacity={0.35}
+              stroke="#f97316"
+              fill="#f97316"
+              fillOpacity={0.25}
               strokeWidth={2}
             />
           </RadarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Score Grid Breakdown */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-[var(--border-color)]">
-        {data.map((item) => (
+      {/* Quick 7-Score Pill Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[var(--border-color)]">
+        {data.slice(0, 4).map((item) => (
           <div
             key={item.subject}
-            className="flex flex-col p-2 rounded-lg bg-[var(--item-hover)] border border-[var(--border-color)]"
+            className="flex items-center justify-between p-2 rounded-xl bg-[var(--card-bg-alt)] border border-[var(--border-color)] text-xs"
           >
             <span className="text-[11px] text-[var(--text-secondary)] truncate">
               {item.subject}
             </span>
-            <div className="flex items-center justify-between mt-1">
-              <div className="w-full bg-[var(--pill-bg)] h-1.5 rounded-md overflow-hidden mr-2">
-                <div
-                  className="h-full rounded-md transition-all duration-500"
-                  style={{
-                    width: `${item.score}%`,
-                    backgroundColor: getScoreColor(item.score),
-                  }}
-                />
-              </div>
-              <span className="text-xs font-bold text-[var(--text-primary)] shrink-0">
-                {item.score}
-              </span>
-            </div>
+            <span className="font-bold text-[var(--text-primary)] font-mono ml-1">
+              {item.score}
+            </span>
           </div>
         ))}
       </div>
