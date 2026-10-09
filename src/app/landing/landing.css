@@ -3201,6 +3201,173 @@ body:has(.shift-landing) {
   margin: 0;
 }
 
+/* ==========================================================================
+   About Us Team Section
+   ========================================================================== */
+
+.about-team-section {
+  margin-top: 64px;
+  margin-bottom: 48px;
+  padding-top: 48px;
+  border-top: 1px solid #2e2e2a;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 36px;
+}
+
+.team-title {
+  font-size: clamp(28px, 2.8vw, 42px);
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--paper);
+  margin-top: 6px;
+}
+
+.team-title em {
+  color: var(--orange);
+}
+
+.team-intro {
+  font-size: 14px;
+  color: #a7a398;
+  line-height: 1.6;
+  max-width: 440px;
+  margin: 0;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.team-card {
+  position: relative;
+  background: #1c1c1f;
+  border: 1px solid #33332e;
+  border-radius: 10px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.team-card:hover {
+  transform: translateY(-4px);
+  border-color: #55554b;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.team-card-founder {
+  background: linear-gradient(180deg, rgba(255, 90, 0, 0.08) 0%, #1c1c1f 100%);
+  border-color: rgba(255, 90, 0, 0.35);
+}
+
+.team-card-founder:hover {
+  border-color: var(--orange);
+  box-shadow: 0 12px 30px rgba(255, 90, 0, 0.15);
+}
+
+.team-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.team-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #25252a;
+  border: 1px solid #42423c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--orange);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.team-card:hover .team-avatar {
+  background: #2e2824;
+  border-color: var(--orange);
+}
+
+.team-card-founder .team-avatar {
+  background: #2a201a;
+  border-color: rgba(255, 90, 0, 0.5);
+  box-shadow: 0 0 12px rgba(255, 90, 0, 0.2);
+}
+
+.team-linkedin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #26262b;
+  border: 1px solid #3c3c36;
+  color: #b5b1a6;
+  font-size: 11px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.team-linkedin-btn svg {
+  color: #0a66c2;
+  transition: transform 0.2s;
+}
+
+.team-linkedin-btn:hover {
+  background: #0a66c2;
+  border-color: #0a66c2;
+  color: #ffffff;
+}
+
+.team-linkedin-btn:hover svg {
+  color: #ffffff;
+  transform: translate(1px, -1px);
+}
+
+.team-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.team-member-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--paper);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.team-member-role {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #9c988d;
+  text-transform: uppercase;
+}
+
+.team-card-founder .team-member-role {
+  color: var(--orange);
+  font-weight: 700;
+}
+
 .about-origin-strip {
   display: flex;
   align-items: center;
@@ -3512,6 +3679,9 @@ body:has(.shift-landing) {
   .about-grid {
     grid-template-columns: 1fr;
   }
+  .team-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
   .pricing-grid {
     grid-template-columns: 1fr;
     max-width: 500px;
@@ -3523,6 +3693,15 @@ body:has(.shift-landing) {
   .about-section,
   .pricing-section {
     padding: 70px 6vw;
+  }
+  .team-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
   }
   .about-origin-strip {
     flex-direction: column;
@@ -3536,5 +3715,11 @@ body:has(.shift-landing) {
   .dossier-selector-bar {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .team-grid {
+    grid-template-columns: 1fr;
   }
 }

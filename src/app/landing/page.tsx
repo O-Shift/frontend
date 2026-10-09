@@ -97,6 +97,73 @@ const faqs = [
   ],
 ];
 
+interface TeamMember {
+  name: string;
+  role: string;
+  linkedin: string;
+  initials: string;
+}
+
+const teamMembers: TeamMember[] = [
+  {
+    name: "Ahmed Anan",
+    role: "Founder & CTO",
+    linkedin: "https://www.linkedin.com/in/ahmed-anan-b5431b384/",
+    initials: "AA",
+  },
+  {
+    name: "Mohamed Sheref",
+    role: "Co-Founder",
+    linkedin: "https://www.linkedin.com/in/mohamed-sheref-elezaly/",
+    initials: "MS",
+  },
+  {
+    name: "Noureldin Islam",
+    role: "Co-Founder",
+    linkedin: "https://www.linkedin.com/in/noureldinislam/",
+    initials: "NI",
+  },
+  {
+    name: "Bassel Mostafa",
+    role: "Co-Founder",
+    linkedin: "https://www.linkedin.com/in/bassel-gawdat/",
+    initials: "BM",
+  },
+  {
+    name: "Hend Aboelouon",
+    role: "Co-Founder",
+    linkedin: "https://www.linkedin.com/in/hend-abo-elouon-968995232/",
+    initials: "HA",
+  },
+  {
+    name: "Mahmoud Zahran",
+    role: "Co-Founder",
+    linkedin: "https://www.linkedin.com/in/mm-zahran/",
+    initials: "MZ",
+  },
+  {
+    name: "Fady Nasser",
+    role: "Co-Founder",
+    linkedin: "https://www.linkedin.com/in/fady-nasser-aziz/",
+    initials: "FN",
+  },
+];
+
+function LinkedinIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.64a1.64 1.64 0 1 0 0 3.28 1.64 1.64 0 0 0 0-3.28" />
+    </svg>
+  );
+}
+
 function Brand() {
   return (
     <Link className="shift-brand" href="/" aria-label="OShift home">
@@ -621,6 +688,50 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Founding Team Grid */}
+          <div className="about-team-section">
+            <div className="team-header">
+              <div>
+                <span className="about-card-badge">THE TEAM</span>
+                <h3 className="team-title">
+                  The builders behind <em>OrangeShift.</em>
+                </h3>
+              </div>
+              <p className="team-intro">
+                Founders and engineers building autonomous multi-modal intelligence to uncover competitive moves before they become obvious.
+              </p>
+            </div>
+
+            <div className="team-grid">
+              {teamMembers.map((member) => (
+                <div
+                  key={member.name}
+                  className={`team-card ${member.role.includes("CTO") ? "team-card-founder" : ""}`}
+                >
+                  <div className="team-card-top">
+                    <div className="team-avatar">
+                      <span>{member.initials}</span>
+                    </div>
+                    <a
+                      href={member.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="team-linkedin-btn"
+                      aria-label={`${member.name} on LinkedIn`}
+                    >
+                      <LinkedinIcon />
+                      <ArrowUpRight size={13} />
+                    </a>
+                  </div>
+                  <div className="team-card-info">
+                    <h4 className="team-member-name">{member.name}</h4>
+                    <span className="team-member-role">{member.role}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
