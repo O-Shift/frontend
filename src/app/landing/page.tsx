@@ -89,7 +89,7 @@ const faqs = [
   ],
   [
     "Can I check the evidence behind an opportunity?",
-    "Yes. Zero ungrounded AI hallucinations. Every single finding displays its raw citations, crawler timestamps, and confidence score so you can inspect the receipts yourself.",
+    "Yes. Findings include source citations and confidence scores so you can inspect the evidence and judge the conclusions yourself.",
   ],
   [
     "Do you offer a free trial?",
@@ -636,29 +636,30 @@ export default function LandingPage() {
               refuse to be <em>surprised.</em>
             </h2>
             <p className="about-lead">
-              Markets don’t wait for quarterly business reviews. Your rivals test new landing pages at 2 a.m.,
-              launch stealth ad campaigns on weekends, and tweak their pricing unannounced. We built OrangeShift
-              to give you continuous 360° foresight—with the receipts attached.
+              OrangeShift is a bootstrapped startup building competitive intelligence software
+              for marketing teams and agencies. We began building in May 2026 in Giza, Egypt,
+              and are testing the product with three prospective customers.
             </p>
           </div>
 
           <div className="about-grid">
             <div className="about-card story-card">
               <span className="about-card-badge">THE MISSION</span>
-              <h3>The Anti-Dashboard Philosophy</h3>
+              <h3>From signals to decisions</h3>
               <p>
-                Traditional competitive intelligence is trapped between two flawed extremes:
+                Marketing teams and agencies need more than another stream of alerts.
+                They need to understand what changed, why it matters, and where to act.
               </p>
               <ul className="about-flaws-list">
                 <li>
-                  <strong>The $50,000 Slide Deck:</strong> High-priced consultants who deliver a 60-page PDF three months after your competitor has already moved on.
+                  <strong>Connect the signals.</strong> Bring public competitor activity into one view, from website changes to campaigns and customer feedback.
                 </li>
                 <li>
-                  <strong>The Social Listening Firehose:</strong> Dashboards that dump 20,000 unranked mentions and noisy keyword alerts without a single strategic conclusion.
+                  <strong>Make the next move clear.</strong> Prioritize opportunities and explain the evidence behind each recommendation.
                 </li>
               </ul>
               <p>
-                OrangeShift bridges that gap. We combine autonomous 24/7 multi-modal ingestion with deep strategic reasoning. You don’t get noise; you get scored moves with direct source links.
+                That is what we are building at OrangeShift: competitive intelligence you can question, trace, and put to work.
               </p>
             </div>
 
@@ -670,7 +671,7 @@ export default function LandingPage() {
                   <div className="principle-num">01</div>
                   <div>
                     <h4>Receipts Over Rumors</h4>
-                    <p>Every opportunity, battlecard, and brief links directly to raw captures (ad libraries, cached DOM diffs, video transcripts, verified reviews). Zero ungrounded AI hallucinations.</p>
+                    <p>Link findings to source evidence and show confidence scores. Make it easy to check the reasoning before acting on it.</p>
                   </div>
                 </div>
                 <div className="principle-item">
@@ -738,12 +739,12 @@ export default function LandingPage() {
           <div className="about-origin-strip">
             <div className="origin-badge">
               <Globe2 size={16} />
-              <span>Smart Village, Giza</span>
+              <span>Giza, Egypt</span>
             </div>
             <p>
-              Engineering autonomous competitive intelligence engines for high-velocity marketing teams and strategists worldwide.
+              Questions, feedback, or a product walkthrough? Talk directly with our founding team.
             </p>
-            <CTA light>Join forward-looking teams</CTA>
+            <a className="founder-contact" href="mailto:ahmed.anan@orangeshift.net">Email the founders <ArrowUpRight size={16} aria-hidden="true" /></a>
           </div>
         </div>
       </section>
@@ -809,7 +810,7 @@ export default function LandingPage() {
 
             {/* Tier 2: Intelligence (Popular) */}
             <div className="pricing-card featured-tier">
-              <div className="featured-badge">MOST POPULAR</div>
+              <div className="featured-badge">FOR GROWING TEAMS</div>
               <div className="card-top">
                 <span className="tier-name">Intelligence</span>
                 <p className="tier-desc">For high-growth marketing teams that need to outmaneuver rivals.</p>
@@ -859,7 +860,7 @@ export default function LandingPage() {
                 <li><Check size={16} /> Dedicated Intelligence Strategist & Slack channel</li>
               </ul>
               <div className="card-cta">
-                <a href="/start" className="pricing-btn">
+                <a href="mailto:ahmed.anan@orangeshift.net" className="pricing-btn">
                   <span>Contact Enterprise</span>
                   <ArrowUpRight size={16} />
                 </a>
@@ -871,7 +872,7 @@ export default function LandingPage() {
             <span><Check size={14} /> 14-day free trial</span>
             <span><Check size={14} /> No credit card required</span>
             <span><Check size={14} /> Instant setup in &lt; 2 minutes</span>
-            <span><Check size={14} /> SOC2-grade tenant isolation</span>
+            <span><Check size={14} /> Source citations &amp; confidence scores</span>
           </div>
         </div>
       </section>
@@ -970,7 +971,7 @@ export default function LandingPage() {
           </a>
           <a
             className="footer-social"
-            href="https://www.linkedin.com/in/orange-shift-185b3b441"
+            href="https://www.linkedin.com/company/orangeshift/"
             itemProp="sameAs"
             target="_blank"
             rel="noopener noreferrer"
