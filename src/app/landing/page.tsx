@@ -859,7 +859,7 @@ export default function LandingPage() {
           </a>
           <a
             className="footer-social"
-            href="https://www.linkedin.com/in/orange-shift-185b3b441"
+            href="https://www.linkedin.com/company/orangeshift/"
             itemProp="sameAs"
             target="_blank"
             rel="noopener noreferrer"
